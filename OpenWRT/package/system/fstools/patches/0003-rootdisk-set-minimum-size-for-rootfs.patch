@@ -1,0 +1,22 @@
+Index: fstools-2018-04-16-e2436836/libfstools/rootdisk.c
+===================================================================
+--- fstools-2018-04-16-e2436836.orig/libfstools/rootdisk.c
++++ fstools-2018-04-16-e2436836/libfstools/rootdisk.c
+@@ -11,6 +11,8 @@
+  * GNU General Public License for more details.
+  */
+ 
++#define ROOTFS_MINSIZE	(96 * 1024 * 1024)
++#define ROOTFS_MINALIGN	(10 * 1024 * 1024)
+ #define F2FS_MINSIZE	(100 * 1024 * 1024)
+ #define _FILE_OFFSET_BITS 64
+ 
+@@ -151,6 +153,8 @@ static struct volume *rootdisk_volume_fi
+ 	p->v.name = DATA_LABEL;
+ 
+ 	p->offset = le64_to_cpu(sb.bytes_used);
++	p->offset += ROOTFS_MINALIGN;
++	if (p->offset < ROOTFS_MINSIZE) p->offset = ROOTFS_MINSIZE;
+ 	p->offset = ((p->offset + (ROOTDEV_OVERLAY_ALIGN - 1)) &
+ 		     ~(ROOTDEV_OVERLAY_ALIGN - 1));
+ 

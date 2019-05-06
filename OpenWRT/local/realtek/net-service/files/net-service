@@ -1,0 +1,40 @@
+#!/bin/sh
+
+COMMAND="mode"
+
+if [ "$#" -ne 2 ]; then
+  echo "Usage: $0 mode [1/2/3/4/5/get] "
+  exit 0
+fi
+
+if echo "$COMMAND" | grep -q $1; then
+	case "$2" in
+		1|2|3|4|5)
+			cp /usr/local/etc/network_config/mode$2/* /etc/config/
+			echo "$2" > /usr/local/etc/network_config/current_mode
+			if [ "$2" == "3" ]; then
+				uci set network.lan.igmp_snooping=0
+			else
+				uci set network.lan.igmp_snooping=1
+			fi
+			uci commit network
+			wifi down
+			exit $2
+		;;
+		get)
+			/usr/local/sbin/net-status
+			exit $?
+		;;
+		restart)
+			/etc/init.d/network restart
+			exit 1
+		;;
+		*)
+			echo "mode $2 is not supported"
+			exit 0
+		;;
+	esac
+else
+	echo "Command: $1 is not yet supported"
+	exit 0
+fi

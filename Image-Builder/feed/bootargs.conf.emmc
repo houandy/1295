@@ -1,0 +1,5 @@
+ethaddr=00:10:20:30:40:50
+gatewayip=192.168.100.254
+ipaddr=192.168.100.1
+netmask=255.255.255.0
+kernelargs=init=/etc/init root=/dev/mmcblk0p1 rootfstype=squashfs rootwait loglevel=8

@@ -1,0 +1,17 @@
+
+config interface 'loopback'
+	option ifname 'lo'
+	option proto 'static'
+	option ipaddr '127.0.0.1'
+	option netmask '255.0.0.0'
+
+config interface 'lan'
+	option ifname 'eth0'
+	option type 'bridge'
+	option _orig_ifname 'eth0 wlan0 radio1.network1 wlan2 radio3.network1'
+	option _orig_bridge 'true'
+	option proto 'dhcp'
+
+config globals 'globals'
+	option ula_prefix 'fdbf:71c6:05b2::/48'
+

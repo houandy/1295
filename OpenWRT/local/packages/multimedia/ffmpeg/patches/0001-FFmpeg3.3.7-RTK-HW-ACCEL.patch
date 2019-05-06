@@ -1,0 +1,2467 @@
+diff --git a/build.sh b/build.sh
+new file mode 100755
+index 0000000..4023e48
+--- /dev/null
++++ b/build.sh
+@@ -0,0 +1,165 @@
++#!/bin/bash
++
++./configure \
++	--pkg-config=pkg-config \
++	--disable-avdevice \
++	--disable-bzlib \
++	--enable-debug \
++	--disable-optimizations \
++	--disable-devices \
++	--disable-doc \
++	--disable-encoders \
++	--disable-ffprobe \
++	--disable-ffserver \
++	--enable-pic \
++	--enable-libmp3lame \
++	--disable-hwaccels \
++	--disable-iconv \
++	--disable-lzma \
++	--disable-protocol=concat \
++	--disable-schannel \
++	--disable-shared \
++	--disable-vda \
++	--enable-gpl \
++	--enable-libvorbis \
++	--enable-muxers \
++	--enable-version3 \
++	--enable-omx \
++	--enable-libass \
++	--enable-rma \
++	--enable-decoder=alac \
++	--enable-decoder=ansi \
++	--enable-decoder=apng \
++	--enable-decoder=ass \
++	--enable-decoder=ayuv \
++	--enable-decoder=bmp \
++	--enable-decoder=ccaption \
++	--enable-decoder=dirac \
++	--enable-decoder=dvbsub \
++	--enable-decoder=dvdsub \
++	--enable-decoder=ffv1 \
++	--enable-decoder=ffvhuff \
++	--enable-decoder=flac \
++	--enable-decoder=gif \
++	--enable-decoder=huffyuv \
++	--enable-decoder=jacosub \
++	--enable-decoder=libzvbi_teletext \
++	--enable-decoder=microdvd \
++	--enable-decoder=h264_rma \
++	--enable-decoder=mpeg4_rma \
++	--enable-decoder=hevc_rma \
++	--enable-decoder=mpeg1_rma \
++	--enable-decoder=mpeg2_rma \
++	--enable-decoder=vp8_rma \
++	--enable-decoder=vp9_rma \
++	--enable-decoder=vc1_rma \
++	--enable-decoder=wmv3_rma \
++	--enable-decoder=mjpeg_rma \
++	--enable-decoder=h263_rma \
++	--enable-decoder=avs_rma \
++	--enable-decoder=mjpeg \
++	--enable-decoder=movtext \
++	--enable-decoder=mpl2 \
++	--enable-decoder=opus \
++	--enable-decoder=cook \
++	--enable-decoder=wmapro \
++	--enable-decoder=pcm_alaw \
++	--enable-decoder=pcm_f32be \
++	--enable-decoder=pcm_f32le \
++	--enable-decoder=pcm_f64be \
++	--enable-decoder=pcm_f64le \
++	--enable-decoder=pcm_lxf \
++	--enable-decoder=pcm_mulaw \
++	--enable-decoder=pcm_s16be \
++	--enable-decoder=pcm_s16be_planar \
++	--enable-decoder=pcm_s16le \
++	--enable-decoder=pcm_s16le_planar \
++	--enable-decoder=pcm_s24be \
++	--enable-decoder=pcm_s24le \
++	--enable-decoder=pcm_s24le_planar \
++	--enable-decoder=pcm_s32be \
++	--enable-decoder=pcm_s32le \
++	--enable-decoder=pcm_s32le_planar \
++	--enable-decoder=pcm_s8 \
++	--enable-decoder=pcm_s8_planar \
++	--enable-decoder=pcm_u16be \
++	--enable-decoder=pcm_u16le \
++	--enable-decoder=pcm_u24be \
++	--enable-decoder=pcm_u24le \
++	--enable-decoder=pcm_u32be \
++	--enable-decoder=pcm_u32le \
++	--enable-decoder=pcm_u8 \
++	--enable-decoder=pgssub \
++	--enable-decoder=pjs \
++	--enable-decoder=png \
++	--enable-decoder=r210 \
++	--enable-decoder=rawvideo \
++	--enable-decoder=realtext \
++	--enable-decoder=sami \
++	--enable-decoder=ssa \
++	--enable-decoder=stl \
++	--enable-decoder=subrip \
++	--enable-decoder=subviewer \
++	--enable-decoder=text \
++	--enable-decoder=thp \
++	--enable-decoder=v210 \
++	--enable-decoder=v210x \
++	--enable-decoder=v308 \
++	--enable-decoder=v408 \
++	--enable-decoder=v410 \
++	--enable-decoder=vorbis \
++	--enable-decoder=vplayer \
++	--enable-decoder=webvtt \
++	--enable-decoder=xsub \
++	--enable-decoder=y41p \
++	--enable-decoder=yuv4 \
++	--enable-decoder=zero12v \
++	--enable-encoder=rawvideo \
++	--enable-encoder=alac \
++	--enable-encoder=ass \
++	--enable-encoder=dvbsub \
++	--enable-encoder=dvdsub \
++	--enable-encoder=flac \
++	--enable-encoder=h264_omx \
++	--enable-encoder=libopus \
++	--enable-encoder=libvorbis \
++	--enable-encoder=mjpeg \
++	--enable-encoder=movtext \
++	--enable-encoder=pcm_f32be \
++	--enable-encoder=pcm_f32le \
++	--enable-encoder=pcm_f64be \
++	--enable-encoder=pcm_f64le \
++	--enable-encoder=pcm_s16be \
++	--enable-encoder=pcm_s16be_planar \
++	--enable-encoder=pcm_s16le \
++	--enable-encoder=pcm_s16le_planar \
++	--enable-encoder=pcm_s24be \
++	--enable-encoder=pcm_s24le \
++	--enable-encoder=pcm_s24le_planar \
++	--enable-encoder=pcm_s32be \
++	--enable-encoder=pcm_s32le \
++	--enable-encoder=pcm_s32le_planar \
++	--enable-encoder=pcm_s8 \
++	--enable-encoder=pcm_s8_planar \
++	--enable-encoder=pcm_u16be \
++	--enable-encoder=pcm_u16le \
++	--enable-encoder=pcm_u24be \
++	--enable-encoder=pcm_u24le \
++	--enable-encoder=pcm_u32be \
++	--enable-encoder=pcm_u32le \
++	--enable-encoder=pcm_u8 \
++	--enable-encoder=ssa \
++	--enable-encoder=subrip \
++	--enable-encoder=text \
++	--enable-encoder=webvtt \
++	--enable-encoder=wrapped_avframe \
++	--enable-encoder=xsub \
++	--enable-decoder=pcm_dvd \
++	--enable-decoder=eac3 \
++	--enable-decoder=ac3 \
++	--enable-encoder=mp2 \
++	--enable-encoder=eac3 \
++	--enable-encoder=aac \
++	--enable-encoder=ac3 \
++	--enable-decoder=aac_latm
++	
+diff --git a/cmdutils.c b/cmdutils.c
+index 3d428f3..c40aca1 100644
+--- a/cmdutils.c
++++ b/cmdutils.c
+@@ -65,6 +65,10 @@
+ #include <windows.h>
+ #endif
+ 
++#if CONFIG_RMA
++AVDictionary *filter_codec_rtk_opts(AVDictionary *opts, AVFormatContext *s);
++#endif
++
+ static int init_report(const char *env);
+ 
+ AVDictionary *sws_dict;
+@@ -2056,14 +2060,39 @@ AVDictionary *filter_codec_opts(AVDictionary *opts, enum AVCodecID codec_id,
+     return ret;
+ }
+ 
++#if CONFIG_RMA
++AVDictionary *filter_codec_rtk_opts(AVDictionary *opts, AVFormatContext *s)
++{
++    AVDictionary    *ret = NULL;
++    AVDictionaryEntry *t = NULL;
++
++    while (t = av_dict_get(opts, "", t, AV_DICT_IGNORE_SUFFIX)) {
++        char *p = strchr(t->key, ':');
++        av_dict_set(&ret, t->key, t->value, 0);
++        if (p)
++            *p = ':';
++    }
++
++    return ret;
++}
++#endif
++
+ AVDictionary **setup_find_stream_info_opts(AVFormatContext *s,
+                                            AVDictionary *codec_opts)
+ {
+     int i;
+     AVDictionary **opts;
+-
++#if CONFIG_RMA
++    if (!s->nb_streams)
++    {
++        opts = av_mallocz_array(1, sizeof(*opts));
++        opts[0] = filter_codec_rtk_opts(codec_opts, s);
++        return opts;
++    }
++#else
+     if (!s->nb_streams)
+         return NULL;
++#endif
+     opts = av_mallocz_array(s->nb_streams, sizeof(*opts));
+     if (!opts) {
+         av_log(NULL, AV_LOG_ERROR,
+diff --git a/configure b/configure
+index a48f785..0cdabb8 100755
+--- a/configure
++++ b/configure
+@@ -310,6 +310,7 @@ External library support:
+   --disable-vda            disable Apple Video Decode Acceleration code [autodetect]
+   --disable-vdpau          disable Nvidia Video Decode and Presentation API for Unix code [autodetect]
+   --disable-videotoolbox   disable VideoToolbox code [autodetect]
++  --enable-rma             enable RTK Media Accelerator [no]
+ 
+ Toolchain options:
+   --arch=ARCH              select architecture [$arch]
+@@ -1615,6 +1616,7 @@ HWACCEL_LIBRARY_LIST="
+     libmfx
+     mmal
+     omx
++	rma
+ "
+ 
+ DOCUMENT_LIST="
+@@ -2636,6 +2638,7 @@ h264_vdpau_hwaccel_deps="vdpau"
+ h264_vdpau_hwaccel_select="h264_decoder"
+ h264_videotoolbox_hwaccel_deps="videotoolbox"
+ h264_videotoolbox_hwaccel_select="h264_decoder"
++h264_rma_decoder_deps="rma"
+ hevc_cuvid_hwaccel_deps="cuda cuvid"
+ hevc_cuvid_hwaccel_select="hevc_cuvid_decoder"
+ hevc_d3d11va_hwaccel_deps="d3d11va DXVA_PicParams_HEVC"
+@@ -2650,10 +2653,12 @@ hevc_vaapi_hwaccel_deps="vaapi VAPictureParameterBufferHEVC"
+ hevc_vaapi_hwaccel_select="hevc_decoder"
+ hevc_vdpau_hwaccel_deps="vdpau VdpPictureInfoHEVC"
+ hevc_vdpau_hwaccel_select="hevc_decoder"
++hevc_rma_decoder_deps="rma"
+ mjpeg_cuvid_hwaccel_deps="cuda cuvid"
+ mjpeg_cuvid_hwaccel_select="mjpeg_cuvid_decoder"
+ mjpeg_vaapi_encoder_deps="VAEncPictureParameterBufferJPEG"
+ mjpeg_vaapi_encoder_select="vaapi_encode jpegtables"
++mjpeg_rma_decoder_deps="rma"
+ mpeg_vdpau_decoder_deps="vdpau"
+ mpeg_vdpau_decoder_select="mpeg2video_decoder"
+ mpeg_xvmc_hwaccel_deps="xvmc"
+@@ -2668,6 +2673,7 @@ mpeg1_videotoolbox_hwaccel_deps="videotoolbox"
+ mpeg1_videotoolbox_hwaccel_select="mpeg1video_decoder"
+ mpeg1_xvmc_hwaccel_deps="xvmc"
+ mpeg1_xvmc_hwaccel_select="mpeg1video_decoder"
++mpeg1_rma_decoder_deps="rma"
+ mpeg2_crystalhd_decoder_select="crystalhd"
+ mpeg2_cuvid_hwaccel_deps="cuda cuvid"
+ mpeg2_cuvid_hwaccel_select="mpeg2_cuvid_decoder"
+@@ -2688,6 +2694,7 @@ mpeg2_videotoolbox_hwaccel_deps="videotoolbox"
+ mpeg2_videotoolbox_hwaccel_select="mpeg2video_decoder"
+ mpeg2_xvmc_hwaccel_deps="xvmc"
+ mpeg2_xvmc_hwaccel_select="mpeg2video_decoder"
++mpeg2_rma_decoder_deps="rma"
+ mpeg4_crystalhd_decoder_select="crystalhd"
+ mpeg4_cuvid_hwaccel_deps="cuda cuvid"
+ mpeg4_cuvid_hwaccel_select="mpeg4_cuvid_decoder"
+@@ -2705,6 +2712,7 @@ mpeg4_vdpau_hwaccel_deps="vdpau"
+ mpeg4_vdpau_hwaccel_select="mpeg4_decoder"
+ mpeg4_videotoolbox_hwaccel_deps="videotoolbox"
+ mpeg4_videotoolbox_hwaccel_select="mpeg4_decoder"
++mpeg4_rma_decoder_deps="rma"
+ msmpeg4_crystalhd_decoder_select="crystalhd"
+ vc1_crystalhd_decoder_select="crystalhd"
+ vc1_cuvid_hwaccel_deps="cuda cuvid"
+@@ -2724,6 +2732,7 @@ vc1_vdpau_decoder_deps="vdpau"
+ vc1_vdpau_decoder_select="vc1_decoder"
+ vc1_vdpau_hwaccel_deps="vdpau"
+ vc1_vdpau_hwaccel_select="vc1_decoder"
++vc1_rma_decoder_deps="rma"
+ vp8_cuvid_hwaccel_deps="cuda cuvid"
+ vp8_cuvid_hwaccel_select="vp8_cuvid_decoder"
+ vp9_cuvid_hwaccel_deps="cuda cuvid"
+@@ -2731,6 +2740,7 @@ vp9_cuvid_hwaccel_select="vp9_cuvid_decoder"
+ vp8_mediacodec_decoder_deps="mediacodec"
+ vp8_mediacodec_hwaccel_deps="mediacodec"
+ vp8_qsv_hwaccel_deps="libmfx"
++vp8_rma_decoder_deps="rma"
+ vp9_d3d11va_hwaccel_deps="d3d11va DXVA_PicParams_VP9"
+ vp9_d3d11va_hwaccel_select="vp9_decoder"
+ vp9_dxva2_hwaccel_deps="dxva2 DXVA_PicParams_VP9"
+@@ -2739,16 +2749,27 @@ vp9_mediacodec_decoder_deps="mediacodec"
+ vp9_mediacodec_hwaccel_deps="mediacodec"
+ vp9_vaapi_hwaccel_deps="vaapi VADecPictureParameterBufferVP9_bit_depth"
+ vp9_vaapi_hwaccel_select="vp9_decoder"
++vp9_rma_decoder_deps="rma"
+ wmv3_crystalhd_decoder_select="crystalhd"
+ wmv3_d3d11va_hwaccel_select="vc1_d3d11va_hwaccel"
+ wmv3_dxva2_hwaccel_select="vc1_dxva2_hwaccel"
+ wmv3_vaapi_hwaccel_select="vc1_vaapi_hwaccel"
+ wmv3_vdpau_decoder_select="vc1_vdpau_decoder"
+ wmv3_vdpau_hwaccel_select="vc1_vdpau_hwaccel"
++wmv3_rma_decoder_deps="rma"
++mp43_rma_decoder_deps="rma"
++rv10_rma_decoder_deps="rma"
++rv20_rma_decoder_deps="rma"
++rv30_rma_decoder_deps="rma"
++rv40_rma_decoder_deps="rma"
++avs_rma_decoder_deps="rma"
++h263_rma_decoder_deps="rma"
+ 
+ # hardware-accelerated codecs
+ omx_deps="dlopen pthreads"
+ omx_extralibs='$ldl'
++rma_deps="dlopen pthreads"
++rma_extralibs='$ldl'
+ qsvdec_select="qsv"
+ qsvenc_select="qsv"
+ vaapi_encode_deps="vaapi"
+@@ -5913,10 +5934,11 @@ enabled opengl            && { check_lib GL/glx.h glXGetProcAddress "-lGL" ||
+                              }
+ enabled omx_rpi && enable omx
+ enabled omx               && { check_header OMX_Core.h ||
+-                                { ! enabled cross_compile && enabled omx_rpi && {
+-                                    add_cflags -isystem/opt/vc/include/IL ; }
+-                                check_header OMX_Core.h ; } ||
+-                               die "ERROR: OpenMAX IL headers not found"; }
++						       die "ERROR OpenMAX libs not found."; }
++enabled rma               && { check_header rtkMediaAccel.h ||
++                               die "ERROR RMA header not found.";
++							   check_lib rtkMediaAccel.h RMA_Init -lRMA ||
++							   die "ERROR RMA libs not found."; }
+ enabled openssl           && { use_pkg_config openssl openssl/ssl.h OPENSSL_init_ssl ||
+                                use_pkg_config openssl openssl/ssl.h SSL_library_init ||
+                                check_lib openssl/ssl.h SSL_library_init -lssl -lcrypto ||
+diff --git a/ffmpeg.c b/ffmpeg.c
+index 4b4dae4..422eaf9 100644
+--- a/ffmpeg.c
++++ b/ffmpeg.c
+@@ -1807,7 +1807,22 @@ static void print_report(int is_last_report, int64_t timer_start, int64_t cur_ti
+         snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf)," speed=%4.3gx", speed);
+         av_bprintf(&buf_script, "speed=%4.3gx\n", speed);
+     }
++#if CONFIG_RMA
++    secs = t;
++    mins = secs / 60;
++    secs %= 60;
++    hours = mins / 60;
++    mins %= 60;
+ 
++    if (t < 0) {
++        snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf)," total_time=N/A");
++        av_bprintf(&buf_script, "total_time=N/A\n");
++    } else {
++        snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
++            " total_time=%02d:%02d:%02d", hours, mins, secs);
++        av_bprintf(&buf_script, "total_time=%02d:%02d:%02d\n", hours, mins, secs);
++    }
++#endif
+     if (print_stats || is_last_report) {
+         const char end = is_last_report ? '\n' : '\r';
+         if (print_stats==1 && AV_LOG_INFO > av_log_get_level()) {
+diff --git a/ffmpeg_opt.c b/ffmpeg_opt.c
+index e73a610..43a4154 100644
+--- a/ffmpeg_opt.c
++++ b/ffmpeg_opt.c
+@@ -112,7 +112,11 @@ int copy_ts           = 0;
+ int start_at_zero     = 0;
+ int copy_tb           = -1;
+ int debug_ts          = 0;
+-int exit_on_error     = 0;
++#if CONFIG_RMA
++    int exit_on_error     = 1;
++#else
++    int exit_on_error     = 0;
++#endif
+ int abort_on_flags    = 0;
+ int print_stats       = -1;
+ int qp_hist           = 0;
+@@ -1013,7 +1017,11 @@ static int open_input_file(OptionsContext *o, const char *filename)
+     ret = avformat_find_stream_info(ic, opts);
+     if (ret < 0) {
+         av_log(NULL, AV_LOG_FATAL, "%s: could not find codec parameters\n", filename);
++#if CONFIG_RMA
++        if (ic->nb_streams == 0 || ret == AVERROR_UNKNOWN) {
++#else
+         if (ic->nb_streams == 0) {
++#endif
+             avformat_close_input(&ic);
+             exit_program(1);
+         }
+@@ -1131,6 +1139,11 @@ static int open_input_file(OptionsContext *o, const char *filename)
+ 
+     for (i = 0; i < orig_nb_streams; i++)
+         av_dict_free(&opts[i]);
++
++#if CONFIG_RMA
++    if(orig_nb_streams == 0)
++        av_dict_free(&opts[0]);
++#endif
+     av_freep(&opts);
+ 
+     input_stream_potentially_available = 1;
+diff --git a/ffplay.c b/ffplay.c
+index cf138dc..fbe0ea0 100644
+--- a/ffplay.c
++++ b/ffplay.c
+@@ -107,7 +107,42 @@ const int program_birth_year = 2003;
+ 
+ #define USE_ONEPASS_SUBTITLE_RENDER 1
+ 
++#define USE_RTK_DIRECT_DISPLAY 1
++#if USE_RTK_DIRECT_DISPLAY
++#include <dlfcn.h>
++#define __LINUX_MEDIA_NAS__ 1
++#include "rtk_mi.h"
++
++#define LIBNAME "libRTKMediaIf.so"
++#define CONFIG_AVFILTER 0
++#define ALIGN16(x)      ((x + 15) & ~(15))
++
++
++typedef struct RTKFunc {
++    void *lib;
++    RtkMiReturn_e (*rtk_MI_Init)(MediaServiceSel_e);
++    RtkMiReturn_e (*rtk_MI_Destroy)(MediaServiceSel_e);
++    RtkMiReturn_e (*rtk_MI_Player_SetDispWindow)(unsigned int, unsigned int,unsigned int, unsigned int);
++    RtkMiReturn_e (*rtk_MI_Player_GetDispWindow)(unsigned int*, unsigned int*,unsigned int*, unsigned int*);
++    RtkMiReturn_e (*rtk_MI_Player_DirectFlip)(unsigned char *, unsigned int, unsigned int, long long, void *);
++    RtkMiReturn_e (*rtk_MI_Player_SetBlank)(unsigned char);
++    RtkMiReturn_e (*rtk_MI_Player_GetBlank)(unsigned char*);
++    RtkMiReturn_e (*rtk_MI_VO_SetOutput)(HDMIOutput_e ,DPOutput_e);
++    RtkMiReturn_e (*rtk_MI_VO_GetOutput)(HDMITxSt_t *, DPTxSt_t *);
++} RTKFunc;
++
++typedef struct RenderNode
++{
++    int frameIdx;
++    int renderIdx;
++    AVFrame *frame;
++    struct RenderNode* next;
++} RenderNode;
++#endif
++
++#if !USE_RTK_DIRECT_DISPLAY
+ static unsigned sws_flags = SWS_BICUBIC;
++#endif
+ 
+ typedef struct MyAVPacketList {
+     AVPacket pkt;
+@@ -305,16 +340,28 @@ typedef struct VideoState {
+     int last_video_stream, last_audio_stream, last_subtitle_stream;
+ 
+     SDL_cond *continue_read_thread;
++
++#if USE_RTK_DIRECT_DISPLAY
++    RTKFunc *rtk_func;
++    RenderNode *renderQueue;
++#endif
+ } VideoState;
+ 
+ /* options specified by the user */
+ static AVInputFormat *file_iformat;
+ static const char *input_filename;
+ static const char *window_title;
++#if !USE_RTK_DIRECT_DISPLAY
+ static int default_width  = 640;
+ static int default_height = 480;
+ static int screen_width  = 0;
+ static int screen_height = 0;
++#else
++static int default_width  = 1920;
++static int default_height = 1080;
++static int screen_width  = 1920;
++static int screen_height = 1080;
++#endif
+ static int audio_disable;
+ static int video_disable;
+ static int subtitle_disable;
+@@ -371,6 +418,98 @@ static int opt_add_vfilter(void *optctx, const char *opt, const char *arg)
+ }
+ #endif
+ 
++#if USE_RTK_DIRECT_DISPLAY
++static int rtk_load(RTKFunc *s)
++{
++    s->lib = dlopen(LIBNAME, RTLD_NOW | RTLD_GLOBAL);
++    if (!s->lib) {
++        av_log(NULL, AV_LOG_ERROR, "%s not found\n", LIBNAME);
++        return 0;
++    }
++    s->rtk_MI_Init                = (RtkMiReturn_e (*)(MediaServiceSel_e))dlsym(s->lib, "rtk_MI_Init");
++    s->rtk_MI_Destroy                 = (RtkMiReturn_e (*)(MediaServiceSel_e))dlsym(s->lib, "rtk_MI_Destroy");
++    s->rtk_MI_Player_SetDispWindow           = (RtkMiReturn_e (*)(unsigned int, unsigned int,unsigned int, unsigned int))dlsym(s->lib, "rtk_MI_Player_SetDispWindow");
++    s->rtk_MI_Player_GetDispWindow    = (RtkMiReturn_e (*)(unsigned int*, unsigned int*,unsigned int*, unsigned int*))dlsym(s->lib, "rtk_MI_Player_GetDispWindow");
++    s->rtk_MI_Player_DirectFlip               = (RtkMiReturn_e (*)(unsigned char *, unsigned int, unsigned int, long long, void *))dlsym(s->lib, "rtk_MI_Player_DirectFlip");
++    s->rtk_MI_Player_SetBlank                   = (RtkMiReturn_e (*)(unsigned char))dlsym(s->lib, "rtk_MI_Player_SetBlank");
++    s->rtk_MI_Player_GetBlank                   = (RtkMiReturn_e (*)(unsigned char*))dlsym(s->lib, "rtk_MI_Player_GetBlank");
++    s->rtk_MI_VO_SetOutput                   = (RtkMiReturn_e (*)(HDMIOutput_e, DPOutput_e))dlsym(s->lib, "rtk_MI_VO_SetOutput");
++    s->rtk_MI_VO_GetOutput                   = (RtkMiReturn_e (*)(HDMITxSt_t *, DPTxSt_t *))dlsym(s->lib, "rtk_MI_VO_GetOutput");
++
++    if (!s->rtk_MI_Init || !s->rtk_MI_Destroy ||
++      !s->rtk_MI_Player_SetDispWindow ||!s->rtk_MI_Player_GetDispWindow ||
++      !s->rtk_MI_Player_DirectFlip ||
++      !s->rtk_MI_Player_SetBlank || !s->rtk_MI_Player_GetBlank ||
++      !s->rtk_MI_VO_SetOutput || !s->rtk_MI_VO_GetOutput) {
++      av_log(NULL, AV_LOG_ERROR, "%s functions are fail\n", LIBNAME);
++      av_log(NULL, AV_LOG_ERROR, "%d, %d, %d, %d, %d, %d, %d, %d, %d\n",
++        !s->rtk_MI_Init, !s->rtk_MI_Destroy, !s->rtk_MI_Player_SetDispWindow, !s->rtk_MI_Player_GetDispWindow,
++        !s->rtk_MI_Player_DirectFlip, !s->rtk_MI_Player_SetBlank, !s->rtk_MI_Player_GetBlank,  !s->rtk_MI_VO_SetOutput, !s->rtk_MI_VO_GetOutput);
++      dlclose(s->lib);
++      s->lib = NULL;
++      return 0;
++    }
++    return 1;
++}
++
++/* RTK function */
++static RTKFunc *rtk_init(VideoState *is)
++{
++    int ret;
++    RTKFunc *rtk_func = NULL;
++    RtkMiReturn_e rtk_ret;
++
++    rtk_func = (RTKFunc*)malloc(sizeof(*rtk_func));
++    if (!rtk_func)
++        return NULL;
++
++    memset(rtk_func, 0, sizeof(*rtk_func));
++
++    ret = rtk_load(rtk_func);
++    if (ret < 0) {
++        free(rtk_func);
++        return NULL;
++    }
++
++
++    rtk_ret = rtk_func->rtk_MI_Init(MEDIA_SERVICE_PLAYER);
++    if(rtk_ret != RTK_MI_SUCCESS)
++    {
++        free(rtk_func);
++        av_log(NULL, AV_LOG_ERROR, "rtk direct display init fail\n");
++        return NULL;
++    }
++
++    return rtk_func;
++}
++
++static void rtk_deinit(VideoState *is)
++{
++    if ((!is) || (!is->rtk_func))
++      return;
++
++    is->rtk_func->rtk_MI_Destroy(MEDIA_SERVICE_PLAYER);
++
++    if(is->rtk_func->lib)
++      dlclose(is->rtk_func->lib);
++    free(is->rtk_func);
++
++}
++
++static void rtk_direct_render(VideoState *is, AVFrame *frame)
++{
++    RtkMiReturn_e ret = RTK_MI_SUCCESS;
++
++    ret = is->rtk_func->rtk_MI_Player_DirectFlip(frame->data[0], frame->width, frame->height, frame->pts, frame->opaque);
++    if(ret != RTK_MI_SUCCESS){
++        av_log(NULL, AV_LOG_ERROR, "RTK render fail %d\n", ret);
++    }
++}
++
++#endif
++
++
++
+ static inline
+ int cmp_audio_fmts(enum AVSampleFormat fmt1, int64_t channel_count1,
+                    enum AVSampleFormat fmt2, int64_t channel_count2)
+@@ -847,6 +986,7 @@ static void calculate_display_rect(SDL_Rect *rect,
+     rect->h = FFMAX(height, 1);
+ }
+ 
++#if !USE_RTK_DIRECT_DISPLAY
+ static int upload_texture(SDL_Texture *tex, AVFrame *frame, struct SwsContext **img_convert_ctx) {
+     int ret = 0;
+     switch (frame->format) {
+@@ -855,6 +995,7 @@ static int upload_texture(SDL_Texture *tex, AVFrame *frame, struct SwsContext **
+                 av_log(NULL, AV_LOG_ERROR, "Negative linesize is not supported for YUV.\n");
+                 return -1;
+             }
++
+             ret = SDL_UpdateYUVTexture(tex, NULL, frame->data[0], frame->linesize[0],
+                                                   frame->data[1], frame->linesize[1],
+                                                   frame->data[2], frame->linesize[2]);
+@@ -887,7 +1028,7 @@ static int upload_texture(SDL_Texture *tex, AVFrame *frame, struct SwsContext **
+     }
+     return ret;
+ }
+-
++#endif
+ static void video_image_display(VideoState *is)
+ {
+     Frame *vp;
+@@ -943,16 +1084,22 @@ static void video_image_display(VideoState *is)
+     calculate_display_rect(&rect, is->xleft, is->ytop, is->width, is->height, vp->width, vp->height, vp->sar);
+ 
+     if (!vp->uploaded) {
++#if !USE_RTK_DIRECT_DISPLAY
+         int sdl_pix_fmt = vp->frame->format == AV_PIX_FMT_YUV420P ? SDL_PIXELFORMAT_YV12 : SDL_PIXELFORMAT_ARGB8888;
+         if (realloc_texture(&is->vid_texture, sdl_pix_fmt, vp->frame->width, vp->frame->height, SDL_BLENDMODE_NONE, 0) < 0)
+             return;
+         if (upload_texture(is->vid_texture, vp->frame, &is->img_convert_ctx) < 0)
+             return;
++#else
++        rtk_direct_render(is, vp->frame);
++#endif
+         vp->uploaded = 1;
+         vp->flip_v = vp->frame->linesize[0] < 0;
+     }
+ 
++#if !USE_RTK_DIRECT_DISPLAY
+     SDL_RenderCopyEx(renderer, is->vid_texture, NULL, &rect, 0, NULL, vp->flip_v ? SDL_FLIP_VERTICAL : 0);
++#endif
+     if (sp) {
+ #if USE_ONEPASS_SUBTITLE_RENDER
+         SDL_RenderCopy(renderer, is->sub_texture, NULL, &rect);
+@@ -970,6 +1117,7 @@ static void video_image_display(VideoState *is)
+         }
+ #endif
+     }
++
+ }
+ 
+ static inline int compute_mod(int a, int b)
+@@ -1215,6 +1363,10 @@ static void stream_close(VideoState *is)
+ 
+ static void do_exit(VideoState *is)
+ {
++#if USE_RTK_DIRECT_DISPLAY
++    rtk_deinit(is);
++#endif
++
+     if (is) {
+         stream_close(is);
+     }
+@@ -1222,6 +1374,7 @@ static void do_exit(VideoState *is)
+         SDL_DestroyRenderer(renderer);
+     if (window)
+         SDL_DestroyWindow(window);
++
+     av_lockmgr_register(NULL);
+     uninit_opts();
+ #if CONFIG_AVFILTER
+@@ -1260,7 +1413,8 @@ static int video_open(VideoState *is)
+         h = default_height;
+     }
+ 
+-    if (!window) {
++    if (!window)
++    {
+         int flags = SDL_WINDOW_SHOWN;
+         if (!window_title)
+             window_title = input_filename;
+@@ -1270,7 +1424,11 @@ static int video_open(VideoState *is)
+             flags |= SDL_WINDOW_BORDERLESS;
+         else
+             flags |= SDL_WINDOW_RESIZABLE;
++#if USE_RTK_DIRECT_DISPLAY
++        window = SDL_CreateWindow("", 0, 0, 0, 0, SDL_WINDOW_BORDERLESS);
++#else
+         window = SDL_CreateWindow(window_title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, w, h, flags);
++#endif
+         SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
+         if (window) {
+             SDL_RendererInfo info;
+@@ -1292,7 +1450,9 @@ static int video_open(VideoState *is)
+         av_log(NULL, AV_LOG_FATAL, "SDL: could not set video mode - exiting\n");
+         do_exit(is);
+     }
+-
++#if USE_RTK_DIRECT_DISPLAY
++    is->rtk_func->rtk_MI_Player_SetDispWindow(0, 0, w, h);
++#endif
+     is->width  = w;
+     is->height = h;
+ 
+@@ -1307,11 +1467,14 @@ static void video_display(VideoState *is)
+ 
+     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+     SDL_RenderClear(renderer);
++
+     if (is->audio_st && is->show_mode != SHOW_MODE_VIDEO)
+         video_audio_display(is);
+     else if (is->video_st)
+         video_image_display(is);
++
+     SDL_RenderPresent(renderer);
++
+ }
+ 
+ static double get_clock(Clock *c)
+@@ -1547,6 +1710,7 @@ retry:
+ 
+             if (vp->serial != is->videoq.serial) {
+                 frame_queue_next(&is->pictq);
++                printf("%s, %d\n", __FUNCTION__, __LINE__);
+                 goto retry;
+             }
+ 
+@@ -1554,7 +1718,14 @@ retry:
+                 is->frame_timer = av_gettime_relative() / 1000000.0;
+ 
+             if (is->paused)
++            {
++                printf("%s, %d\n", __FUNCTION__, __LINE__);
++#if USE_RTK_DIRECT_DISPLAY
++                return;
++#else
+                 goto display;
++#endif
++            }
+ 
+             /* compute nominal last_duration */
+             last_duration = vp_duration(is, lastvp, vp);
+@@ -1563,7 +1734,12 @@ retry:
+             time= av_gettime_relative()/1000000.0;
+             if (time < is->frame_timer + delay) {
+                 *remaining_time = FFMIN(is->frame_timer + delay - time, *remaining_time);
++                //printf("%s, %d\n", __FUNCTION__, __LINE__);
++#if USE_RTK_DIRECT_DISPLAY
++                return;
++#else
+                 goto display;
++#endif
+             }
+ 
+             is->frame_timer += delay;
+@@ -1580,6 +1756,7 @@ retry:
+                 duration = vp_duration(is, vp, nextvp);
+                 if(!is->step && (framedrop>0 || (framedrop && get_master_sync_type(is) != AV_SYNC_VIDEO_MASTER)) && time > is->frame_timer + duration){
+                     is->frame_drops_late++;
++                    printf("Drop2\n");
+                     frame_queue_next(&is->pictq);
+                     goto retry;
+                 }
+@@ -1620,13 +1797,17 @@ retry:
+             }
+ 
+             frame_queue_next(&is->pictq);
++
+             is->force_refresh = 1;
+ 
+             if (is->step && !is->paused)
+                 stream_toggle_pause(is);
+         }
++#if !USE_RTK_DIRECT_DISPLAY
+ display:
++#endif
+         /* display picture */
++        //printf("is->force_refresh %d, is->show_mode %d, is->pictq.rindex_shown %d\n", is->force_refresh, is->show_mode, is->pictq.rindex_shown);
+         if (!display_disable && is->force_refresh && is->show_mode == SHOW_MODE_VIDEO && is->pictq.rindex_shown)
+             video_display(is);
+     }
+@@ -1727,6 +1908,7 @@ static int get_video_frame(VideoState *is, AVFrame *frame)
+                     is->videoq.nb_packets) {
+                     is->frame_drops_early++;
+                     av_frame_unref(frame);
++                    printf("Drop Frame\n");
+                     got_picture = 0;
+                 }
+             }
+@@ -3137,7 +3319,11 @@ static void stream_cycle_channel(VideoState *is, int codec_type)
+ static void toggle_full_screen(VideoState *is)
+ {
+     is_full_screen = !is_full_screen;
++#if !USE_RTK_DIRECT_DISPLAY
+     SDL_SetWindowFullscreen(window, is_full_screen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
++#else
++    //is->rtk_func->rtk_direct_disp_set_window(0, 0, 1920, 1080);
++#endif
+ }
+ 
+ static void toggle_audio_display(VideoState *is)
+@@ -3691,6 +3877,13 @@ int main(int argc, char **argv)
+         do_exit(NULL);
+     }
+ 
++#if USE_RTK_DIRECT_DISPLAY
++    is->rtk_func = rtk_init(is);
++    if(!is->rtk_func){
++        av_log(NULL, AV_LOG_FATAL, "Failed to initialize RTK MI Player!\n");
++        do_exit(NULL);
++    }
++#endif
+     event_loop(is);
+ 
+     /* never returns */
+diff --git a/libavcodec/Makefile b/libavcodec/Makefile
+index 0dd0c7b..296a24f 100644
+--- a/libavcodec/Makefile
++++ b/libavcodec/Makefile
+@@ -59,6 +59,8 @@ OBJS-$(CONFIG_BLOCKDSP)                += blockdsp.o
+ OBJS-$(CONFIG_BSWAPDSP)                += bswapdsp.o
+ OBJS-$(CONFIG_CABAC)                   += cabac.o
+ OBJS-$(CONFIG_CRYSTALHD)               += crystalhd.o
++OBJS-$(CONFIG_OMX)                     += omx.o
++OBJS-$(CONFIG_RMA)                     += rma_dec.o
+ OBJS-$(CONFIG_DCT)                     += dct.o dct32_fixed.o dct32_float.o
+ OBJS-$(CONFIG_ERROR_RESILIENCE)        += error_resilience.o
+ OBJS-$(CONFIG_EXIF)                    += exif.o tiff_common.o
+diff --git a/libavcodec/allcodecs.c b/libavcodec/allcodecs.c
+index 4df4772..169e6f5 100644
+--- a/libavcodec/allcodecs.c
++++ b/libavcodec/allcodecs.c
+@@ -123,6 +123,20 @@ static void register_all(void)
+     REGISTER_HWACCEL(WMV3_VDPAU,        wmv3_vdpau);
+ 
+     /* video codecs */
++#if CONFIG_RMA
++    REGISTER_DECODER(H264_RMA,          h264_rma);
++    REGISTER_DECODER(MPEG4_RMA,          mpeg4_rma);
++    REGISTER_DECODER(MJPEG_RMA,          mjpeg_rma);
++    REGISTER_DECODER(HEVC_RMA,          hevc_rma);
++    REGISTER_DECODER(MPEG1_RMA,          mpeg1_rma);
++    REGISTER_DECODER(MPEG2_RMA,          mpeg2_rma);
++    REGISTER_DECODER(VP8_RMA,          vp8_rma);
++    REGISTER_DECODER(VP9_RMA,          vp9_rma);
++    REGISTER_DECODER(VC1_RMA,          vc1_rma);
++    REGISTER_DECODER(WMV3_RMA,          wmv3_rma);
++    REGISTER_DECODER(AVS_RMA,          avs_rma);
++    REGISTER_DECODER(H263_RMA,          h263_rma);
++#endif
+     REGISTER_ENCODER(A64MULTI,          a64multi);
+     REGISTER_ENCODER(A64MULTI5,         a64multi5);
+     REGISTER_DECODER(AASC,              aasc);
+@@ -644,6 +658,7 @@ static void register_all(void)
+     REGISTER_DECODER(H264_CUVID,        h264_cuvid);
+     REGISTER_ENCODER(H264_NVENC,        h264_nvenc);
+     REGISTER_ENCODER(H264_OMX,          h264_omx);
++    REGISTER_ENCODER(MPEG4_OMX,          mpeg4_omx);
+     REGISTER_ENCODER(H264_QSV,          h264_qsv);
+     REGISTER_ENCODER(H264_VAAPI,        h264_vaapi);
+     REGISTER_ENCODER(H264_VIDEOTOOLBOX, h264_videotoolbox);
+diff --git a/libavcodec/avcodec.h b/libavcodec/avcodec.h
+index 57334df..6af3ff4 100644
+--- a/libavcodec/avcodec.h
++++ b/libavcodec/avcodec.h
+@@ -442,6 +442,9 @@ enum AVCodecID {
+     AV_CODEC_ID_CLEARVIDEO,
+     AV_CODEC_ID_XPM,
+     AV_CODEC_ID_AV1,
++#ifdef CONFIG_RMA
++    AV_CODEC_ID_MJPEG_RTK,
++#endif
+ 
+     /* various PCM "codecs" */
+     AV_CODEC_ID_FIRST_AUDIO = 0x10000,     ///< A dummy id pointing at the start of audio codecs
+@@ -3644,6 +3647,13 @@ typedef struct AVCodecContext {
+      *             AVCodecContext.get_format callback)
+      */
+     int hwaccel_flags;
++//RTK hack
++#if CONFIG_RMA
++    int isTryDecode;
++
++    int ori_width;
++    int ori_height;
++#endif
+ } AVCodecContext;
+ 
+ AVRational av_codec_get_pkt_timebase         (const AVCodecContext *avctx);
+@@ -4204,6 +4214,12 @@ typedef struct AVCodecParameters {
+      * Audio only. Number of samples to skip after a discontinuity.
+      */
+     int seek_preroll;
++
++    //RTK hack
++#if CONFIG_RMA
++    int ori_width;
++    int ori_height;
++#endif
+ } AVCodecParameters;
+ 
+ /**
+diff --git a/libavcodec/codec_desc.c b/libavcodec/codec_desc.c
+index 9711019..1727879 100644
+--- a/libavcodec/codec_desc.c
++++ b/libavcodec/codec_desc.c
+@@ -1381,6 +1381,16 @@ static const AVCodecDescriptor codec_descriptors[] = {
+         .long_name = NULL_IF_CONFIG_SMALL("Alliance for Open Media AV1"),
+         .props     = AV_CODEC_PROP_LOSSY,
+     },
++#ifdef CONFIG_RMA
++    {
++        .id        = AV_CODEC_ID_MJPEG_RTK,
++        .type      = AVMEDIA_TYPE_VIDEO,
++        .name      = "mjpeg_rtk",
++        .long_name = NULL_IF_CONFIG_SMALL("RTK Motion JPEG"),
++        .props     = AV_CODEC_PROP_INTRA_ONLY | AV_CODEC_PROP_LOSSY,
++        .mime_types= MT("image/jpeg"),
++    },
++#endif
+ 
+     /* image codecs */
+     {
+diff --git a/libavcodec/omx.c b/libavcodec/omx.c
+index 19b4f33..420e50c 100644
+--- a/libavcodec/omx.c
++++ b/libavcodec/omx.c
+@@ -21,6 +21,16 @@
+ 
+ #include "config.h"
+ 
++#if CONFIG_RMA
++#include "rtkMediaAccel.h"
++#define RMA_LIBNAME "libRMA.so"
++
++typedef struct RMALibContext {
++    void *lib;
++    RMA_ERRORTYPE (*rma_CheckValidBuffer)(void*, unsigned char *);
++    RMA_ERRORTYPE (*rma_Memcpy)(void*, void*, void*, unsigned int);
++} RMALibContext;
++#endif
+ #if CONFIG_OMX_RPI
+ #define OMX_SKIP64BIT
+ #endif
+@@ -73,6 +83,11 @@ static int64_t from_omx_ticks(OMX_TICKS value)
+         }                                                                 \
+     } while (0)
+ 
++#if CONFIG_RMA
++#define USE_INPUT_DEC_FRAME_INTERVAL (0)
++#endif
++
++
+ typedef struct OMXContext {
+     void *lib;
+     void *lib2;
+@@ -220,13 +235,21 @@ typedef struct OMXCodecContext {
+ 
+     int mutex_cond_inited;
+ 
+-    int num_in_frames, num_out_frames;
++    int eos_sent, got_eos;
+ 
+     uint8_t *output_buf;
+     int output_buf_size;
+ 
+     int input_zerocopy;
+     int profile;
++#if CONFIG_RMA
++    int i_frame_interval;
++    int rotation;
++    int to_interlace;
++    int enc_select;
++    RMALibContext *rma_func;
++#endif
++
+ } OMXCodecContext;
+ 
+ static void append_buffer(pthread_mutex_t *mutex, pthread_cond_t *cond,
+@@ -392,6 +415,9 @@ static av_cold int omx_component_init(AVCodecContext *avctx, const char *role)
+     OMX_PARAM_PORTDEFINITIONTYPE in_port_params = { 0 }, out_port_params = { 0 };
+     OMX_VIDEO_PARAM_PORTFORMATTYPE video_port_format = { 0 };
+     OMX_VIDEO_PARAM_BITRATETYPE vid_param_bitrate = { 0 };
++#if CONFIG_RMA
++    OMX_INDEXTYPE index;
++#endif
+     OMX_ERRORTYPE err;
+     int i;
+ 
+@@ -410,7 +436,23 @@ static av_cold int omx_component_init(AVCodecContext *avctx, const char *role)
+     av_strlcpy(role_params.cRole, role, sizeof(role_params.cRole));
+     // Intentionally ignore errors on this one
+     OMX_SetParameter(s->handle, OMX_IndexParamStandardComponentRole, &role_params);
+-
++#if CONFIG_RMA
++    err = OMX_GetExtensionIndex (s->handle, (OMX_STRING) "OMX.google.android.index.storeMetaDataInBuffers", &index);
++    if(err == OMX_ErrorNone)
++    {
++        struct StoreMetaDataInBuffersParams {
++            OMX_U32 nSize;
++            OMX_VERSIONTYPE nVersion;
++            OMX_U32 nPortIndex;
++            OMX_BOOL bStoreMetaData;
++        };
++        struct StoreMetaDataInBuffersParams storeParams = {0};
++        storeParams.bStoreMetaData = OMX_TRUE;
++        OMX_SetParameter (s->handle, index, &storeParams);
++    }
++    else
++        av_log(avctx, AV_LOG_ERROR, "Store Meta Data in Buffers is not supported by component");
++#endif
+     INIT_STRUCT(video_port_params);
+     err = OMX_GetParameter(s->handle, OMX_IndexParamVideoInit, &video_port_params);
+     CHECK(err);
+@@ -446,8 +488,14 @@ static av_cold int omx_component_init(AVCodecContext *avctx, const char *role)
+         video_port_format.nPortIndex = s->in_port;
+         if (OMX_GetParameter(s->handle, OMX_IndexParamVideoPortFormat, &video_port_format) != OMX_ErrorNone)
+             break;
++#if CONFIG_RMA
++        if (video_port_format.eColorFormat == OMX_COLOR_FormatYUV420Planar ||
++            video_port_format.eColorFormat == OMX_COLOR_FormatYUV420PackedPlanar ||
++            video_port_format.eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar) {
++#else
+         if (video_port_format.eColorFormat == OMX_COLOR_FormatYUV420Planar ||
+             video_port_format.eColorFormat == OMX_COLOR_FormatYUV420PackedPlanar) {
++#endif
+             s->color_format = video_port_format.eColorFormat;
+             break;
+         }
+@@ -473,9 +521,9 @@ static av_cold int omx_component_init(AVCodecContext *avctx, const char *role)
+     in_port_params.format.video.nFrameWidth  = avctx->width;
+     in_port_params.format.video.nFrameHeight = avctx->height;
+     if (avctx->framerate.den > 0 && avctx->framerate.num > 0)
+-        in_port_params.format.video.xFramerate = (1 << 16) * avctx->framerate.num / avctx->framerate.den;
++        in_port_params.format.video.xFramerate = ((unsigned long)avctx->framerate.num << 16) / (unsigned int)avctx->framerate.den;
+     else
+-        in_port_params.format.video.xFramerate = (1 << 16) * avctx->time_base.den / avctx->time_base.num;
++        in_port_params.format.video.xFramerate = ((unsigned long)avctx->time_base.den << 16) / (unsigned int)avctx->time_base.num;
+ 
+     err = OMX_SetParameter(s->handle, OMX_IndexParamPortDefinition, &in_port_params);
+     CHECK(err);
+@@ -494,7 +542,9 @@ static av_cold int omx_component_init(AVCodecContext *avctx, const char *role)
+     out_port_params.format.video.nFrameHeight  = avctx->height;
+     out_port_params.format.video.nStride       = 0;
+     out_port_params.format.video.nSliceHeight  = 0;
++#if (!CONFIG_RMA)
+     out_port_params.format.video.nBitrate      = avctx->bit_rate;
++#endif
+     out_port_params.format.video.xFramerate    = in_port_params.format.video.xFramerate;
+     out_port_params.format.video.bFlagErrorConcealment  = OMX_FALSE;
+     if (avctx->codec->id == AV_CODEC_ID_MPEG4)
+@@ -508,13 +558,63 @@ static av_cold int omx_component_init(AVCodecContext *avctx, const char *role)
+     CHECK(err);
+     s->num_out_buffers = out_port_params.nBufferCountActual;
+ 
+-    INIT_STRUCT(vid_param_bitrate);
+-    vid_param_bitrate.nPortIndex     = s->out_port;
+-    vid_param_bitrate.eControlRate   = OMX_Video_ControlRateVariable;
+-    vid_param_bitrate.nTargetBitrate = avctx->bit_rate;
+-    err = OMX_SetParameter(s->handle, OMX_IndexParamVideoBitrate, &vid_param_bitrate);
+-    if (err != OMX_ErrorNone)
+-        av_log(avctx, AV_LOG_WARNING, "Unable to set video bitrate parameter\n");
++
++#if CONFIG_RMA
++    if (s->rotation != 0) {
++        OMX_S32 degree;
++
++        err = OMX_GetExtensionIndex (s->handle, (OMX_STRING) "OMX.realtek.android.index.setVideoEncRotAngle", &index);
++
++        if (err == OMX_ErrorUnsupportedIndex) {
++            av_log(avctx, AV_LOG_ERROR, "Setting rotation not supported by component");
++        } else if (err != OMX_ErrorNone) {
++            av_log(avctx, AV_LOG_ERROR, "Failed to set rotation: (0x%08x)",  err);
++        }
++
++        degree = s->rotation;
++        err = OMX_SetParameter (s->handle, index, &degree);
++
++        if (err == OMX_ErrorUnsupportedIndex) {
++            av_log(avctx, AV_LOG_ERROR, "Setting rotation not supported by component");
++        } else if (err != OMX_ErrorNone) {
++            av_log(avctx, AV_LOG_ERROR, "Failed to set rotation: (0x%08x)", err);
++        }
++    }
++
++    if (s->to_interlace != 0) {
++        err = OMX_GetExtensionIndex (s->handle, (OMX_STRING) "OMX.RTK.index.EncodeToInterlace", &index);
++        if(err == OMX_ErrorNone)
++        {
++            err = OMX_SetParameter (s->handle, index, &s->to_interlace);
++
++            if (err == OMX_ErrorUnsupportedIndex) {
++                av_log(avctx, AV_LOG_ERROR, "Setting interlace is not supported by component");
++            } else if (err != OMX_ErrorNone) {
++                av_log(avctx, AV_LOG_ERROR, "Failed to set interlace: (0x%08x)", err);
++            }
++        }
++        else
++            av_log(avctx, AV_LOG_ERROR, "Setting interlace is not supported by component");
++    }
++
++
++    if (s->enc_select != 0) {
++        err = OMX_GetExtensionIndex (s->handle, (OMX_STRING) "OMX.realtek.android.index.setVideoEncIdx", &index);
++        if(err == OMX_ErrorNone)
++        {
++            err = OMX_SetParameter (s->handle, index, &s->enc_select);
++
++            if (err == OMX_ErrorUnsupportedIndex) {
++                av_log(avctx, AV_LOG_ERROR, "Setting encoder idx is not supported by component");
++            } else if (err != OMX_ErrorNone) {
++                av_log(avctx, AV_LOG_ERROR, "Failed to set encoder idx: (0x%08x)", err);
++            }
++        }
++        else
++            av_log(avctx, AV_LOG_ERROR, "Setting encoder idx is not supported by component");
++    }
++
++#endif
+ 
+     if (avctx->codec->id == AV_CODEC_ID_H264) {
+         OMX_VIDEO_PARAM_AVCTYPE avc = { 0 };
+@@ -523,7 +623,17 @@ static av_cold int omx_component_init(AVCodecContext *avctx, const char *role)
+         err = OMX_GetParameter(s->handle, OMX_IndexParamVideoAvc, &avc);
+         CHECK(err);
+         avc.nBFrames = 0;
+-        avc.nPFrames = avctx->gop_size - 1;
++#if CONFIG_RMA
++        if(s->i_frame_interval != 0)
++        {
++            if(avctx->framerate.num !=0 && avctx->framerate.den != 0)
++                avc.nPFrames = (avctx->framerate.num) * (s->i_frame_interval) / (avctx->framerate.den);
++            else if(avctx->time_base.num !=0 && avctx->time_base.den != 0)
++                avc.nPFrames = (avctx->time_base.num) * (s->i_frame_interval) / (avctx->time_base.den);
++        }
++        else
++#endif
++            avc.nPFrames = avctx->gop_size - 1;
+         switch (s->profile == FF_PROFILE_UNKNOWN ? avctx->profile : s->profile) {
+         case FF_PROFILE_H264_BASELINE:
+             avc.eProfile = OMX_VIDEO_AVCProfileBaseline;
+@@ -541,6 +651,14 @@ static av_cold int omx_component_init(AVCodecContext *avctx, const char *role)
+         CHECK(err);
+     }
+ 
++    INIT_STRUCT(vid_param_bitrate);
++    vid_param_bitrate.nPortIndex     = s->out_port;
++    vid_param_bitrate.eControlRate   = OMX_Video_ControlRateConstant;
++    vid_param_bitrate.nTargetBitrate = avctx->bit_rate;
++    err = OMX_SetParameter(s->handle, OMX_IndexParamVideoBitrate, &vid_param_bitrate);
++    if (err != OMX_ErrorNone)
++        av_log(avctx, AV_LOG_WARNING, "Unable to set video bitrate parameter\n");
++
+     err = OMX_SendCommand(s->handle, OMX_CommandStateSet, OMX_StateIdle, NULL);
+     CHECK(err);
+ 
+@@ -636,14 +754,42 @@ static av_cold void cleanup(OMXCodecContext *s)
+     av_freep(&s->output_buf);
+ }
+ 
++#if CONFIG_RMA
++static av_cold RMALibContext *rma_lib_init(void *logctx)
++{
++    RMALibContext *rma_func;
++
++    rma_func = av_mallocz(sizeof(*rma_func));
++    if (!rma_func)
++        return NULL;
++
++    rma_func->lib = dlopen(RMA_LIBNAME, RTLD_NOW | RTLD_GLOBAL);
++    if (!rma_func->lib) {
++        av_log(logctx, AV_LOG_WARNING, "%s not found\n", RMA_LIBNAME);
++        return NULL;
++    }
++    rma_func->rma_CheckValidBuffer = dlsym(rma_func->lib, "RMA_CheckValidBuffer");
++    rma_func->rma_Memcpy = dlsym(rma_func->lib, "RMA_Memcpy");
++
++    if (!rma_func->rma_Memcpy || !rma_func->rma_CheckValidBuffer) {
++        av_log(logctx, AV_LOG_WARNING, "Not all functions found in %s\n", RMA_LIBNAME);
++        dlclose(rma_func->lib);
++        rma_func->lib = NULL;
++        return NULL;
++    }
++
++    return rma_func;
++}
++#endif
+ static av_cold int omx_encode_init(AVCodecContext *avctx)
+ {
+     OMXCodecContext *s = avctx->priv_data;
+     int ret = AVERROR_ENCODER_NOT_FOUND;
+     const char *role;
++#if (!CONFIG_RMA)
+     OMX_BUFFERHEADERTYPE *buffer;
+     OMX_ERRORTYPE err;
+-
++#endif
+ #if CONFIG_OMX_RPI
+     s->input_zerocopy = 1;
+ #endif
+@@ -652,6 +798,12 @@ static av_cold int omx_encode_init(AVCodecContext *avctx)
+     if (!s->omx_context)
+         return AVERROR_ENCODER_NOT_FOUND;
+ 
++#if CONFIG_RMA
++    s->rma_func = rma_lib_init(avctx);
++    if (!s->rma_func)
++        return AVERROR_EXTERNAL;
++#endif
++
+     pthread_mutex_init(&s->state_mutex, NULL);
+     pthread_cond_init(&s->state_cond, NULL);
+     pthread_mutex_init(&s->input_mutex, NULL);
+@@ -664,12 +816,16 @@ static av_cold int omx_encode_init(AVCodecContext *avctx)
+     s->error = OMX_ErrorNone;
+ 
+     switch (avctx->codec->id) {
++#if CONFIG_MPEG4_OMX_ENCODER
+     case AV_CODEC_ID_MPEG4:
+         role = "video_encoder.mpeg4";
+         break;
++#endif
++#if CONFIG_H264_OMX_ENCODER
+     case AV_CODEC_ID_H264:
+         role = "video_encoder.avc";
+         break;
++#endif
+     default:
+         return AVERROR(ENOSYS);
+     }
+@@ -682,6 +838,7 @@ static av_cold int omx_encode_init(AVCodecContext *avctx)
+     if ((ret = omx_component_init(avctx, role)) < 0)
+         goto fail;
+ 
++#if (!CONFIG_RMA)
+     if (avctx->flags & AV_CODEC_FLAG_GLOBAL_HEADER) {
+         while (1) {
+             buffer = get_buffer(&s->output_mutex, &s->output_cond,
+@@ -725,7 +882,7 @@ static av_cold int omx_encode_init(AVCodecContext *avctx)
+             }
+         }
+     }
+-
++#endif
+     return 0;
+ fail:
+     return ret;
+@@ -796,7 +953,22 @@ static int omx_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
+             need_copy = 1;
+         }
+         if (need_copy)
+-            av_image_copy(dst, linesize, (const uint8_t**) frame->data, frame->linesize, avctx->pix_fmt, avctx->width, avctx->height);
++        {
++#if CONFIG_RMA
++            if(s->rma_func->rma_CheckValidBuffer(s->handle, frame->opaque) == 0)
++            {
++                RMA_BUFFERINFO* copy_buffer;
++                copy_buffer = (RMA_BUFFERINFO*)frame->opaque;
++
++                s->rma_func->rma_Memcpy(s->handle, buffer, copy_buffer, copy_buffer->nAllocLen);
++            }
++            else
++#endif
++            {
++                av_image_copy(dst, linesize, (const uint8_t**) frame->data, frame->linesize, avctx->pix_fmt, avctx->width, avctx->height);
++            }
++        }
++
+         buffer->nFlags = OMX_BUFFERFLAG_ENDOFFRAME;
+         buffer->nOffset = 0;
+         // Convert the timestamps to microseconds; some encoders can ignore
+@@ -805,20 +977,40 @@ static int omx_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
+         err = OMX_EmptyThisBuffer(s->handle, buffer);
+         if (err != OMX_ErrorNone) {
+             append_buffer(&s->input_mutex, &s->input_cond, &s->num_free_in_buffers, s->free_in_buffers, buffer);
++            av_log(avctx, AV_LOG_ERROR, "enc OMX_EmptyThisBuffer failed: %x\n", err);
++            return AVERROR_UNKNOWN;
++        }
++    } else if (!s->eos_sent) {
++        buffer = get_buffer(&s->input_mutex, &s->input_cond,
++                            &s->num_free_in_buffers, s->free_in_buffers, 1);
++
++        buffer->nFilledLen = 0;
++        buffer->nFlags = OMX_BUFFERFLAG_EOS;
++        buffer->pAppPrivate = buffer->pOutputPortPrivate = NULL;
++        err = OMX_EmptyThisBuffer(s->handle, buffer);
++
++        if (err != OMX_ErrorNone) {
++            append_buffer(&s->input_mutex, &s->input_cond, &s->num_free_in_buffers, s->free_in_buffers, buffer);
+             av_log(avctx, AV_LOG_ERROR, "OMX_EmptyThisBuffer failed: %x\n", err);
+             return AVERROR_UNKNOWN;
+         }
+-        s->num_in_frames++;
++        s->eos_sent = 1;
+     }
+ 
+-    while (!*got_packet && ret == 0) {
+-        // Only wait for output if flushing and not all frames have been output
++    while (!*got_packet && ret == 0 && !s->got_eos) {
++        // If not flushing, just poll the queue if there's finished packets.
++        // If flushing, do a blocking wait until we either get a completed
++        // packet, or get EOS.
+         buffer = get_buffer(&s->output_mutex, &s->output_cond,
+                             &s->num_done_out_buffers, s->done_out_buffers,
+-                            !frame && s->num_out_frames < s->num_in_frames);
++                            !frame);
+         if (!buffer)
+             break;
+ 
++        if (buffer->nFlags & OMX_BUFFERFLAG_EOS)
++            s->got_eos = 1;
++
++#if (!CONFIG_RMA)
+         if (buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG && avctx->flags & AV_CODEC_FLAG_GLOBAL_HEADER) {
+             if ((ret = av_reallocp(&avctx->extradata, avctx->extradata_size + buffer->nFilledLen + AV_INPUT_BUFFER_PADDING_SIZE)) < 0) {
+                 avctx->extradata_size = 0;
+@@ -828,8 +1020,9 @@ static int omx_encode_frame(AVCodecContext *avctx, AVPacket *pkt,
+             avctx->extradata_size += buffer->nFilledLen;
+             memset(avctx->extradata + avctx->extradata_size, 0, AV_INPUT_BUFFER_PADDING_SIZE);
+         } else {
+-            if (buffer->nFlags & OMX_BUFFERFLAG_ENDOFFRAME)
+-                s->num_out_frames++;
++#else
++        {
++#endif
+             if (!(buffer->nFlags & OMX_BUFFERFLAG_ENDOFFRAME) || !pkt->data) {
+                 // If the output packet isn't preallocated, just concatenate everything in our
+                 // own buffer
+@@ -886,8 +1079,19 @@ end:
+ static av_cold int omx_encode_end(AVCodecContext *avctx)
+ {
+     OMXCodecContext *s = avctx->priv_data;
+-
+     cleanup(s);
++#if CONFIG_RMA
++    if(s->rma_func)
++    {
++        if(s->rma_func->lib)
++        {
++            dlclose(s->rma_func->lib);
++            s->rma_func->lib = NULL;
++        }
++        av_free(s->rma_func);
++        s->rma_func = NULL;
++    }
++#endif
+     return 0;
+ }
+ 
+@@ -897,6 +1101,12 @@ static av_cold int omx_encode_end(AVCodecContext *avctx)
+ static const AVOption options[] = {
+     { "omx_libname", "OpenMAX library name", OFFSET(libname), AV_OPT_TYPE_STRING, { 0 }, 0, 0, VDE },
+     { "omx_libprefix", "OpenMAX library prefix", OFFSET(libprefix), AV_OPT_TYPE_STRING, { 0 }, 0, 0, VDE },
++#if CONFIG_RMA
++    { "i_frame_interval", "H264 encode I-Frame Interval, specified in seconds,you can choose 10, 24, 30 or 60", OFFSET(i_frame_interval), AV_OPT_TYPE_INT, { USE_INPUT_DEC_FRAME_INTERVAL }, 0, 60, VE },
++    { "rotation", "H264 encode rotation, you can choose 0, 90, 180 or 270", OFFSET(rotation), AV_OPT_TYPE_INT, { 0 }, 0, 270, VE },
++    { "to_interlace", "encode video to interlace", OFFSET(to_interlace), AV_OPT_TYPE_INT, { 0 }, 0, 1, VE },
++    { "enc_select", "Select which encoder(0 or 1) that you want", OFFSET(enc_select), AV_OPT_TYPE_INT, { 0 }, 0, 1, VE },
++#endif
+     { "zerocopy", "Try to avoid copying input frames if possible", OFFSET(input_zerocopy), AV_OPT_TYPE_INT, { .i64 = 0 }, 0, 1, VE },
+     { "profile",  "Set the encoding profile", OFFSET(profile), AV_OPT_TYPE_INT,   { .i64 = FF_PROFILE_UNKNOWN },       FF_PROFILE_UNKNOWN, FF_PROFILE_H264_HIGH, VE, "profile" },
+     { "baseline", "",                         0,               AV_OPT_TYPE_CONST, { .i64 = FF_PROFILE_H264_BASELINE }, 0, 0, VE, "profile" },
+@@ -905,12 +1115,12 @@ static const AVOption options[] = {
+     { NULL }
+ };
+ 
+-static const enum AVPixelFormat omx_encoder_pix_fmts[] = {
+-    AV_PIX_FMT_YUV420P, AV_PIX_FMT_NONE
++static const enum AVPixelFormat rtk_omx_enc_pix_fmts[] = {
++    AV_PIX_FMT_NV12, AV_PIX_FMT_NONE
+ };
+-
++#if CONFIG_MPEG4_OMX_ENCODER
+ static const AVClass omx_mpeg4enc_class = {
+-    .class_name = "mpeg4_omx",
++    .class_name = "mpeg4_omx_encoder",
+     .item_name  = av_default_item_name,
+     .option     = options,
+     .version    = LIBAVUTIL_VERSION_INT,
+@@ -924,29 +1134,32 @@ AVCodec ff_mpeg4_omx_encoder = {
+     .init             = omx_encode_init,
+     .encode2          = omx_encode_frame,
+     .close            = omx_encode_end,
+-    .pix_fmts         = omx_encoder_pix_fmts,
++    .pix_fmts         = rtk_omx_enc_pix_fmts,
+     .capabilities     = AV_CODEC_CAP_DELAY,
+     .caps_internal    = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
+     .priv_class       = &omx_mpeg4enc_class,
+ };
+-
++#endif
++#if CONFIG_H264_OMX_ENCODER
+ static const AVClass omx_h264enc_class = {
+-    .class_name = "h264_omx",
++    .class_name = "h264_omx_encoder",
+     .item_name  = av_default_item_name,
+     .option     = options,
+     .version    = LIBAVUTIL_VERSION_INT,
+ };
+ AVCodec ff_h264_omx_encoder = {
+     .name             = "h264_omx",
+-    .long_name        = NULL_IF_CONFIG_SMALL("OpenMAX IL H.264 video encoder"),
++    .long_name        = NULL_IF_CONFIG_SMALL("OpenMAX IL H264 video encoder"),
+     .type             = AVMEDIA_TYPE_VIDEO,
+     .id               = AV_CODEC_ID_H264,
+     .priv_data_size   = sizeof(OMXCodecContext),
+     .init             = omx_encode_init,
+     .encode2          = omx_encode_frame,
+     .close            = omx_encode_end,
+-    .pix_fmts         = omx_encoder_pix_fmts,
++    .pix_fmts         = rtk_omx_enc_pix_fmts,
+     .capabilities     = AV_CODEC_CAP_DELAY,
+     .caps_internal    = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
+     .priv_class       = &omx_h264enc_class,
+ };
++#endif
++
+diff --git a/libavcodec/rma_dec.c b/libavcodec/rma_dec.c
+new file mode 100644
+index 0000000..159ba1f
+--- /dev/null
++++ b/libavcodec/rma_dec.c
+@@ -0,0 +1,901 @@
++/*
++ * Rtk Media Acceleration Video decoder
++ * Copyright (C) 2017 Realtek
++ *
++ * This file is part of FFmpeg.
++ *
++ * FFmpeg is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * FFmpeg is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with FFmpeg; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
++ */
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <sys/time.h>
++#include <dlfcn.h>
++#include <pthread.h>
++
++#include "config.h"
++
++#include "libavutil/buffer_internal.h"
++#include "libavutil/time.h"
++#include "libavutil/avstring.h"
++#include "libavutil/avutil.h"
++#include "libavutil/common.h"
++#include "libavutil/imgutils.h"
++#include "libavutil/log.h"
++#include "libavutil/opt.h"
++#include "libavutil/fifo.h"
++#include "libavutil/avassert.h"
++
++#include "avcodec.h"
++#include "h264.h"
++#include "internal.h"
++
++#include "rtkMediaAccel.h"
++
++#ifndef off64_t
++#define off64_t __off64_t
++#endif
++
++#define RMA_LIBNAME "libRMA.so"
++
++#define RTK_VERSION_MAJOR  1
++#define RTK_VERSION_MINOR  0
++#define RTK_VERSION_MICRO  8
++
++typedef struct RMALibContext {
++    void *lib;
++    void *(*rma_Init)(const char *);
++    RMA_ERRORTYPE (*rma_Uninit)(void*);
++    RMA_ERRORTYPE (*rma_Start)(void*, RMA_PARAMETER);
++    RMA_ERRORTYPE (*rma_FreeBuffer)(void *, void *);
++    RMA_ERRORTYPE (*rma_EnqueueInputBuffer)(void*, unsigned char*, unsigned int, long long, RMA_ENQUEUETYPE);
++    RMA_ERRORTYPE (*rma_DequeueOutputBuffer)(void*, unsigned int*, void*);
++    RMA_ERRORTYPE (*rma_Flush)(void*);
++} RMALibContext;
++
++
++
++typedef struct RMADecContext {
++    const AVClass *class;
++    RMALibContext *rma_func;
++    AVBSFContext *bsfc;
++    AVCodecContext *avctx;
++    void *rma_handler;
++    const char *role;
++    AVFifoBuffer *fifo;
++    AVPacket filtered_pkt;
++
++    int postinit_done;
++
++    char *libname;
++    int dec_o_fps;
++    int dec_o_width;
++    int dec_o_height;
++    int auto_resize;
++    int turbo_mode;
++    int rtk_version;
++    int search_I_frm;
++    int search_I_err_tolerance;
++} RMADecContext;
++
++
++static const struct {
++    enum AVPixelFormat lav;
++    RMA_COLOR_FORMAT rma;
++} rma_pix_fmt_map[] = {
++    { AV_PIX_FMT_NV12,     RMA_COLOR_FORMAT_YUV420_SEMIPLANAR },
++    { AV_PIX_FMT_YUV420P,  RMA_COLOR_FORMAT_YUV420_PLANAR },
++    { AV_PIX_FMT_NONE,     RMA_COLOR_FORMAT_NONE },
++};
++
++static const struct {
++    enum AVCodecID avId;
++    RMA_CODEC rma;
++    const char *role;
++} rma_codec_map[] = {
++#if CONFIG_MPEG4_RMA_DECODER
++    { AV_CODEC_ID_MPEG4, RMA_CODEC_MPEG4, "video_decoder.mpeg4" },
++#endif
++#if CONFIG_H264_RMA_DECODER
++    { AV_CODEC_ID_H264, RMA_CODEC_H264, "video_decoder.avc" },
++#endif
++#if CONFIG_HEVC_RMA_DECODER
++    { AV_CODEC_ID_HEVC, RMA_CODEC_HEVC, "video_decoder.hevc" },
++#endif
++#if CONFIG_MPEG1_RMA_DECODER
++    { AV_CODEC_ID_MPEG1VIDEO, RMA_CODEC_MPEG1, "video_decoder.mpeg2" },
++#endif
++#if CONFIG_MPEG2_RMA_DECODER
++    { AV_CODEC_ID_MPEG2VIDEO, RMA_CODEC_MPEG2, "video_decoder.mpeg2" },
++#endif
++#if CONFIG_VP8_RMA_DECODER
++    { AV_CODEC_ID_VP8, RMA_CODEC_VP8, "video_decoder.vp8" },
++#endif
++#if CONFIG_VP9_RMA_DECODER
++    { AV_CODEC_ID_VP9, RMA_CODEC_VP9, "video_decoder.vp9" },
++#endif
++#if CONFIG_VC1_RMA_DECODER
++    { AV_CODEC_ID_VC1, RMA_CODEC_VC1, "video_decoder.vc1" },
++#endif
++#if CONFIG_WMV3_RMA_DECODER
++    { AV_CODEC_ID_WMV3, RMA_CODEC_WMV3, "video_decoder.wmv" },
++#endif
++#if CONFIG_MJPEG_RMA_DECODER
++    { AV_CODEC_ID_MJPEG_RTK,  RMA_CODEC_MJPEG, "video_decoder.jpeg" },
++#endif
++#if CONFIG_H263_RMA_DECODER
++    { AV_CODEC_ID_H263,  RMA_CODEC_H263,"video_decoder.h263" },
++#endif
++#if CONFIG_AVS_RMA_DECODER
++    { AV_CODEC_ID_AVS,  RMA_CODEC_AVS,"video_decoder.avs" },
++#endif
++    { AV_CODEC_ID_NONE,  RMA_CODEC_NONE, "video_decoder.none" },
++};
++
++static enum AVPixelFormat ff_rma_get_pix_fmt(RMA_COLOR_FORMAT rma);
++static av_cold const char * ff_rma_get_role(enum AVCodecID avId);
++static av_cold RMA_CODEC ff_rma_get_codec(enum AVCodecID avId);
++static av_cold RMALibContext *rma_lib_init(void *logctx);
++
++
++static enum AVPixelFormat ff_rma_get_pix_fmt(RMA_COLOR_FORMAT rma)
++{
++    unsigned i;
++    for (i = 0; rma_pix_fmt_map[i].lav != AV_PIX_FMT_NONE; i++) {
++        if (rma_pix_fmt_map[i].rma == rma)
++            return rma_pix_fmt_map[i].lav;
++    }
++    return AV_PIX_FMT_NONE;
++}
++
++static av_cold const char * ff_rma_get_role(enum AVCodecID avId)
++{
++    unsigned i;
++    for (i = 0; strcmp(rma_codec_map[i].role, "video_decoder.none") != 0; i++) {
++        if (rma_codec_map[i].avId == avId)
++            return rma_codec_map[i].role;
++    }
++    return "video_decoder.none";
++}
++
++static av_cold RMA_CODEC ff_rma_get_codec(enum AVCodecID avId)
++{
++    unsigned i;
++    for (i = 0; rma_codec_map[i].rma != RMA_CODEC_NONE; i++) {
++        if (rma_codec_map[i].avId == avId)
++            return rma_codec_map[i].rma;
++    }
++    return RMA_CODEC_NONE;
++}
++
++static av_cold RMALibContext *rma_lib_init(void *logctx)
++{
++    RMALibContext *rma_func;
++
++    rma_func = av_mallocz(sizeof(*rma_func));
++    if (!rma_func)
++        return NULL;
++
++    rma_func->lib = dlopen(RMA_LIBNAME, RTLD_NOW | RTLD_GLOBAL);
++    if (!rma_func->lib) {
++        av_log(logctx, AV_LOG_WARNING, "%s not found\n", RMA_LIBNAME);
++        av_free(rma_func);
++        return NULL;
++    }
++
++    rma_func->rma_Init = dlsym(rma_func->lib, "RMA_Init");
++    rma_func->rma_Uninit = dlsym(rma_func->lib, "RMA_Uninit");
++    rma_func->rma_Start = dlsym(rma_func->lib, "RMA_Start");
++    rma_func->rma_FreeBuffer = dlsym(rma_func->lib, "RMA_FreeBuffer");
++    rma_func->rma_EnqueueInputBuffer = dlsym(rma_func->lib, "RMA_EnqueueInputBuffer");
++    rma_func->rma_DequeueOutputBuffer = dlsym(rma_func->lib, "RMA_DequeueOutputBuffer");
++    rma_func->rma_Flush = dlsym(rma_func->lib, "RMA_Flush");
++
++    if (!rma_func->rma_Init || !rma_func->rma_Uninit || !rma_func->rma_Start || !rma_func->rma_FreeBuffer ||
++        !rma_func->rma_EnqueueInputBuffer || !rma_func->rma_DequeueOutputBuffer || !rma_func->rma_Flush) {
++        av_log(logctx, AV_LOG_WARNING, "Not all functions found in %s\n", RMA_LIBNAME);
++        av_log(logctx, AV_LOG_WARNING, "%d, %d, %d, %d, %d, %d, %d\n", !rma_func->rma_Init, !rma_func->rma_Uninit,
++            !rma_func->rma_Start, !rma_func->rma_FreeBuffer, !rma_func->rma_EnqueueInputBuffer,
++            !rma_func->rma_DequeueOutputBuffer, !rma_func->rma_Flush);
++        dlclose(rma_func->lib);
++        rma_func->lib = NULL;
++        av_free(rma_func);
++        return NULL;
++    }
++
++    return rma_func;
++}
++
++
++static av_cold int rma_decode_init(AVCodecContext *avctx)
++{
++    RMADecContext *s = avctx->priv_data;
++    int ret = AVERROR_DECODER_NOT_FOUND;
++    const char *bsf_name = NULL;
++
++    s->rma_func = rma_lib_init(avctx);
++    if (!s->rma_func)
++        return AVERROR_DECODER_NOT_FOUND;
++
++    s->avctx = avctx;
++    s->postinit_done = 0;
++
++    if (avctx->isTryDecode == 1)
++    {
++        avctx->ori_width = avctx->width;
++        avctx->ori_height = avctx->height;
++    }
++
++    s->fifo = av_fifo_alloc(sizeof(AVPacket));
++    if (!s->fifo) {
++        ret = AVERROR(ENOMEM);
++        return AVERROR_UNKNOWN;
++    }
++
++    av_init_packet(&s->filtered_pkt);
++
++    s->role = ff_rma_get_role(avctx->codec->id);
++
++    if(avctx->codec->id == AV_CODEC_ID_H264)
++        bsf_name = "h264_mp4toannexb";
++    else if(avctx->codec->id == AV_CODEC_ID_HEVC)
++    {
++        if(avctx->extradata && avctx->extradata[0] == 1)
++            bsf_name = "hevc_mp4toannexb";
++    }
++
++    if (avctx->codec_id == AV_CODEC_ID_H264 || avctx->codec_id == AV_CODEC_ID_MPEG2VIDEO) {
++        //regarding ticks_per_frame description, should be 2 for h.264:
++        avctx->ticks_per_frame = 2;
++    }
++
++    s->rma_handler = NULL;
++    s->rma_handler = s->rma_func->rma_Init(s->role);
++    if(!s->rma_handler)
++    {
++        av_free(s->rma_func);
++        return AVERROR_UNKNOWN;
++    }
++
++    av_log(avctx, AV_LOG_INFO, "Using rtk %s\n", s->role);
++
++    if (bsf_name) {
++        const AVBitStreamFilter *bsf = av_bsf_get_by_name(bsf_name);
++        if(!bsf)
++            return AVERROR_BSF_NOT_FOUND;
++        if ((ret = av_bsf_alloc(bsf, &s->bsfc)))
++            return ret;
++        if (((ret = avcodec_parameters_from_context(s->bsfc->par_in, avctx)) < 0) ||
++            ((ret = av_bsf_init(s->bsfc)) < 0)) {
++            av_bsf_free(&s->bsfc);
++            return ret;
++        }
++    }
++    return 0;
++}
++
++
++static void rma_decode_set_context_cb(void *opaque, RMA_COLOR_FORMAT colorFmt, unsigned int width, unsigned int height)
++{
++    AVCodecContext *avctx = opaque;
++    if(colorFmt!=RMA_COLOR_FORMAT_NONE)
++        avctx->pix_fmt = ff_rma_get_pix_fmt(colorFmt);
++
++    if (width && height)
++        ff_set_dimensions(avctx, width, height);
++}
++
++static int rma_decode_queue_input_buffer(AVCodecContext *avctx, const AVPacket* avpkt)
++{
++    RMADecContext *s = avctx->priv_data;
++    int ret = 0;
++
++    if (s->postinit_done == 0)
++    {
++        RMA_PARAMETER param = {0};
++
++        if(s->rtk_version)
++            av_log(avctx, AV_LOG_ERROR, "FFmpeg RTK Patch Version: %d.%d.%d\n", RTK_VERSION_MAJOR, RTK_VERSION_MINOR, RTK_VERSION_MICRO);
++
++        param.codec = ff_rma_get_codec(avctx->codec_id);
++        param.ori_width = avctx->ori_width;
++        param.ori_height = avctx->ori_height;
++        param.dec_o_width = s->dec_o_width;
++        param.dec_o_height = s->dec_o_height;
++        param.dec_o_fps = s->dec_o_fps;
++        param.auto_resize = s->auto_resize;
++        param.turbo_mode = s->turbo_mode;
++        param.search_I_frm = s->search_I_frm;
++        param.search_I_err_tolerance = s->search_I_err_tolerance;
++        param.omx_version = s->rtk_version;
++        param.pUserData = avctx;
++        param.setParam = rma_decode_set_context_cb;
++        s->rma_func->rma_Start(s->rma_handler, param);
++
++        if (!s->bsfc)
++        {
++            if (avctx->extradata_size && avctx->extradata)
++            {
++                if(s->rma_func->rma_EnqueueInputBuffer(s->rma_handler, avctx->extradata, avctx->extradata_size, 0, RMA_ENQUEUE_CONFIG)<0)
++                {
++                    av_log(avctx, AV_LOG_ERROR, "RMA EnqueueInputBuffer fail %d\n", __LINE__);
++                    return AVERROR_UNKNOWN;
++                }
++            }
++        }
++
++        s->postinit_done = 1;
++
++    }
++
++
++    if(s && avpkt && avpkt->size)
++    {
++        long long timeStamp = 0;
++        int64_t pts;
++
++        pts = (avpkt->pts != AV_NOPTS_VALUE) ? avpkt->pts : avpkt->dts;
++        if (avctx->pkt_timebase.num && avctx->pkt_timebase.den) {
++            timeStamp = av_rescale_q( pts, avctx->pkt_timebase, AV_TIME_BASE_Q);
++        }
++
++        if(timeStamp < 0) //AV_NOPTS_VALUE
++            timeStamp = 0;
++
++        ret = s->rma_func->rma_EnqueueInputBuffer(s->rma_handler, avpkt->data, avpkt->size, timeStamp, RMA_ENQUEUE_FRAME);
++        if(ret == RMA_ERR_AGAIN)
++        {
++            goto done;
++        }
++        else if(ret != RMA_SUCCESS)
++        {
++            av_log(avctx, AV_LOG_ERROR, "RMA EnqueueInputBuffer fail %d, ret %d\n", __LINE__, ret);
++            goto done;
++        }
++    }
++    else
++    {
++        ret = s->rma_func->rma_EnqueueInputBuffer(s->rma_handler, 0, 0, 0, RMA_ENQUEUE_EOS);
++        if(ret == RMA_ERR_AGAIN)
++        {
++            goto done;
++        }
++        else if(ret != RMA_SUCCESS)
++        {
++            av_log(avctx, AV_LOG_ERROR, "RMA EnqueueInputBuffer fail %d\n", __LINE__);
++            goto done;
++        }
++    }
++
++done:
++    return ret;
++}
++
++
++static void rma_free_buffer(void *opaque, uint8_t *data)
++{
++    RMADecContext *s = (RMADecContext *)opaque;
++    RMA_BUFFERINFO *bufInfo = (RMA_BUFFERINFO *)data;
++
++    if(s && s->rma_func && s->rma_handler)
++    {
++        s->rma_func->rma_FreeBuffer(s->rma_handler, bufInfo->bufferHeader);
++    }
++
++    av_freep(&data);
++}
++
++static int rma_decode_dequeue_output_buffer(AVCodecContext *avctx, AVFrame* frame)
++{
++    RMADecContext *s = avctx->priv_data;
++    int ret = 0;
++    RMA_BUFFERINFO *bufInfo;
++    unsigned int  outputFormatChange = 0;
++
++    bufInfo = av_mallocz(sizeof(RMA_BUFFERINFO));
++
++    ret = s->rma_func->rma_DequeueOutputBuffer(s->rma_handler, &outputFormatChange, bufInfo);
++
++    if(ret == RMA_ERR_INSUFFICIENT_RESOURCE)
++    {
++        av_freep(&bufInfo);
++        av_log(avctx, AV_LOG_DEBUG, "RMA EOF %d\n", __LINE__);
++        return AVERROR_EOF;
++    }
++
++    if(ret == RMA_ERR_AGAIN)
++    {
++        av_freep(&bufInfo);
++        return AVERROR(EAGAIN);
++    }
++
++    if ((ret = ff_decode_frame_props(avctx, frame)) < 0)
++    {
++        av_freep(&bufInfo);
++        av_log(avctx, AV_LOG_ERROR, "RMA ff_decode_frame_props fail %d\n", __LINE__);
++        return AVERROR(ENOMEM);
++    }
++
++    frame->width = avctx->width;
++    frame->height = avctx->height;
++
++    if (avctx->pkt_timebase.num && avctx->pkt_timebase.den) {
++        frame->pts = av_rescale_q(bufInfo->nTimeStamp, AV_TIME_BASE_Q, avctx->pkt_timebase);
++#if FF_API_PKT_PTS
++FF_DISABLE_DEPRECATION_WARNINGS
++        frame->pkt_pts = av_rescale_q(bufInfo->nTimeStamp, AV_TIME_BASE_Q, avctx->pkt_timebase);
++FF_ENABLE_DEPRECATION_WARNINGS
++#endif
++    } else {
++        frame->pts = bufInfo->nTimeStamp;
++#if FF_API_PKT_PTS
++FF_DISABLE_DEPRECATION_WARNINGS
++        frame->pkt_pts = bufInfo->nTimeStamp;
++FF_ENABLE_DEPRECATION_WARNINGS
++#endif
++    }
++
++    frame->pkt_dts = AV_NOPTS_VALUE;
++
++    frame->buf[0] = av_buffer_create((uint8_t *)bufInfo, bufInfo->nAllocLen, rma_free_buffer, s, BUFFER_FLAG_READONLY);
++
++    if (!frame->buf[0]) {
++        av_log(avctx, AV_LOG_ERROR, "RMA frame->buf[0] is NULL %d\n", __LINE__);
++        av_freep(&bufInfo);
++        return AVERROR(ENOMEM);
++    }
++
++    frame->data[0] = bufInfo->pBuffer;
++
++    frame->linesize[0] = bufInfo->stride;
++    frame->data[1] = frame->data[0] + bufInfo->stride * bufInfo->plane_size;
++    if (avctx->pix_fmt == AV_PIX_FMT_NV12) {
++        frame->linesize[1] = bufInfo->stride;
++    } else {
++        // FIXME: assuming chroma plane's stride is 1/2 of luma plane's for YV12
++        frame->linesize[1] = frame->linesize[2] = bufInfo->stride / 2;
++        frame->data[2] = frame->data[1] + bufInfo->stride * bufInfo->plane_size / 4;
++    }
++    frame->opaque = bufInfo;
++
++    return ret;
++}
++
++
++static int rma_dec_decode(AVCodecContext *avctx, RMADecContext *s,
++                             AVFrame *frame, int *got_frame,
++                             AVPacket *pkt)
++{
++    int ret;
++    int length = pkt->size;
++
++    ret = rma_decode_queue_input_buffer(avctx, pkt);
++    if (ret == RMA_ERR_AGAIN) {
++        length = 0;
++    }
++    else if (ret != RMA_SUCCESS) {
++        av_log(avctx, AV_LOG_ERROR, "Failed to queue input buffer (status=%d)\n", ret);
++        return AVERROR_EXTERNAL;
++    }
++
++    ret = rma_decode_dequeue_output_buffer(avctx, frame);
++    if (ret < 0 && ret != AVERROR(EAGAIN))
++        return ret;
++    if (ret >= 0)
++        *got_frame = 1;
++
++    return length;
++}
++
++static int rma_decode_frame(AVCodecContext *avctx, AVFrame *frame,
++                            int *got_frame, AVPacket *avpkt)
++{
++    RMADecContext *s = avctx->priv_data;
++    int ret;
++
++    /* buffer the input packet */
++    if (avpkt->size) {
++        AVPacket input_pkt = { 0 };
++
++        if (av_fifo_space(s->fifo) < sizeof(input_pkt)) {
++            ret = av_fifo_realloc2(s->fifo,
++                                   av_fifo_size(s->fifo) + sizeof(input_pkt));
++            if (ret < 0)
++                return ret;
++        }
++
++        ret = av_packet_ref(&input_pkt, avpkt);
++        if (ret < 0)
++            return ret;
++        av_fifo_generic_write(s->fifo, &input_pkt, sizeof(input_pkt), NULL);
++    }
++
++    while (!*got_frame) {
++        if (s->filtered_pkt.size <= 0) {
++            AVPacket input_pkt = { 0 };
++
++            av_packet_unref(&s->filtered_pkt);
++
++            /* no more data */
++            if (av_fifo_size(s->fifo) < sizeof(AVPacket)) {
++                return avpkt->size ? avpkt->size :
++                    rma_dec_decode(avctx, s, frame, got_frame, avpkt);
++            }
++
++            av_fifo_generic_read(s->fifo, &input_pkt, sizeof(input_pkt), NULL);
++
++            if (s->bsfc) {
++            ret = av_bsf_send_packet(s->bsfc, &input_pkt);
++            if (ret < 0) {
++                return ret;
++            }
++
++            ret = av_bsf_receive_packet(s->bsfc, &s->filtered_pkt);
++            if (ret == AVERROR(EAGAIN)) {
++                goto done;
++            }
++            } else {
++                av_packet_move_ref(&s->filtered_pkt, &input_pkt);
++            }
++
++            /* {h264,hevc}_mp4toannexb are used here and do not require flushing */
++            av_assert0(ret != AVERROR_EOF);
++
++            if (ret < 0) {
++                return ret;
++            }
++        }
++
++        ret = rma_dec_decode(avctx, s, frame, got_frame, &s->filtered_pkt);
++        if (ret < 0)
++            return ret;
++
++        s->filtered_pkt.size -= ret;
++    }
++
++done:
++    return avpkt->size;
++
++}
++
++static av_cold int rma_decode_end(AVCodecContext *avctx)
++{
++    RMADecContext *s = avctx->priv_data;
++
++    av_fifo_free(s->fifo);
++    av_bsf_free(&s->bsfc);
++    av_packet_unref(&s->filtered_pkt);
++
++    s->rma_func->rma_Uninit(s->rma_handler);
++    s->rma_handler = NULL;
++    if(s->rma_func->lib)
++        dlclose(s->rma_func->lib);
++    s->rma_func->lib = NULL;
++    av_free(s->rma_func);
++    s->rma_func = NULL;
++    return 0;
++}
++
++static av_cold void rma_decode_flush(AVCodecContext *avctx)
++{
++    RMADecContext *s = avctx->priv_data;
++
++    while (av_fifo_size(s->fifo)) {
++        AVPacket pkt;
++        av_fifo_generic_read(s->fifo, &pkt, sizeof(pkt), NULL);
++        av_packet_unref(&pkt);
++    }
++    av_fifo_reset(s->fifo);
++
++    av_packet_unref(&s->filtered_pkt);
++
++    s->rma_func->rma_Flush(s->rma_handler);
++}
++
++#define OFFSET(x) offsetof(RMADecContext, x)
++#define VD  AV_OPT_FLAG_VIDEO_PARAM | AV_OPT_FLAG_DECODING_PARAM
++
++static const AVOption options[] = {
++    { "dec_o_width", "set the output width to RMA decoder", OFFSET(dec_o_width), AV_OPT_TYPE_INT,{ .i64 = 0 } , 0, 1920, VD },
++    { "dec_o_height", "set the output height to RMA decoder", OFFSET(dec_o_height), AV_OPT_TYPE_INT,{ .i64 = 0 } , 0, 1088, VD },
++    { "dec_o_fps", "set the output fps to RMA decoder", OFFSET(dec_o_fps), AV_OPT_TYPE_INT,{ .i64 = 0 } , 0, 60, VD },
++    { "auto_resize", "keeping the original width/height ratio", OFFSET(auto_resize), AV_OPT_TYPE_INT,{ .i64 = 0 } , 0, 1, VD },
++    { "turbo_mode", "Speedup decode performance. Suggest enabling on 4k2k case", OFFSET(turbo_mode), AV_OPT_TYPE_INT,{ .i64 = 0 } , 0, 1, VD },
++    { "rtk_version", "Show verion information about RTK patch and libs", OFFSET(rtk_version), AV_OPT_TYPE_INT,{ .i64 = 0 } , 0, 1, VD },
++    { "search_I_frm", "Start to decode from first I frame", OFFSET(search_I_frm), AV_OPT_TYPE_INT,{ .i64 = 1 } , 0, 1, VD },
++    { "search_I_err_tolerance", "The percentage of error MBs that an I frame can display(only valid when search_I_frm is 1, default is 3)", OFFSET(search_I_err_tolerance), AV_OPT_TYPE_INT,{ .i64 = 3 } , 0, 100, VD },
++    { NULL }
++};
++
++#if CONFIG_H264_RMA_DECODER
++static const AVClass rma_h264dec_class = {
++    .class_name = "h264_rma_decoder",
++    .item_name  = av_default_item_name,
++    .option     = options,
++    .version    = LIBAVUTIL_VERSION_INT,
++};
++
++AVCodec ff_h264_rma_decoder = {
++    .name             = "h264_rma",
++    .long_name        = NULL_IF_CONFIG_SMALL("RTK Media Acceleration H264 video decoder"),
++    .type             = AVMEDIA_TYPE_VIDEO,
++    .id               = AV_CODEC_ID_H264,
++    .priv_data_size   = sizeof(RMADecContext),
++    .init             = rma_decode_init,
++    .decode           = rma_decode_frame,
++    .flush          = rma_decode_flush,
++    .close            = rma_decode_end,
++    .capabilities     = AV_CODEC_CAP_DELAY,
++    .caps_internal    = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
++    .priv_class       = &rma_h264dec_class,
++};
++#endif
++
++#if CONFIG_MPEG4_RMA_DECODER
++static const AVClass rma_mpeg4dec_class = {
++    .class_name = "mpeg4_rma_decoder",
++    .item_name  = av_default_item_name,
++    .option     = options,
++    .version    = LIBAVUTIL_VERSION_INT,
++};
++
++AVCodec ff_mpeg4_rma_decoder = {
++    .name             = "mpeg4_rma",
++    .long_name        = NULL_IF_CONFIG_SMALL("RTK Media Acceleration MPEG-4 video decoder"),
++    .type             = AVMEDIA_TYPE_VIDEO,
++    .id               = AV_CODEC_ID_MPEG4,
++    .priv_data_size   = sizeof(RMADecContext),
++    .init             = rma_decode_init,
++    .decode           = rma_decode_frame,
++    .flush          = rma_decode_flush,
++    .close            = rma_decode_end,
++    .capabilities     = AV_CODEC_CAP_DELAY,
++    .caps_internal    = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
++    .priv_class       = &rma_mpeg4dec_class,
++};
++#endif
++
++#if CONFIG_HEVC_RMA_DECODER
++static const AVClass rma_hevcdec_class = {
++    .class_name = "hevc_rma_decoder",
++    .item_name  = av_default_item_name,
++    .option     = options,
++    .version    = LIBAVUTIL_VERSION_INT,
++};
++
++AVCodec ff_hevc_rma_decoder = {
++    .name             = "hevc_rma",
++    .long_name        = NULL_IF_CONFIG_SMALL("RTK Media Acceleration HEVC video decoder"),
++    .type             = AVMEDIA_TYPE_VIDEO,
++    .id               = AV_CODEC_ID_HEVC,
++    .priv_data_size   = sizeof(RMADecContext),
++    .init             = rma_decode_init,
++    .decode           = rma_decode_frame,
++    .flush          = rma_decode_flush,
++    .close            = rma_decode_end,
++    .capabilities     = AV_CODEC_CAP_DELAY,
++    .caps_internal    = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
++    .priv_class       = &rma_hevcdec_class,
++};
++#endif
++
++#if CONFIG_MPEG2_RMA_DECODER
++static const AVClass rma_mpeg2dec_class = {
++    .class_name = "mpeg2_rma_decoder",
++    .item_name  = av_default_item_name,
++    .option     = options,
++    .version    = LIBAVUTIL_VERSION_INT,
++};
++
++AVCodec ff_mpeg2_rma_decoder = {
++    .name             = "mpeg2_rma",
++    .long_name        = NULL_IF_CONFIG_SMALL("RTK Media Acceleration MPEG-2 video decoder"),
++    .type             = AVMEDIA_TYPE_VIDEO,
++    .id               = AV_CODEC_ID_MPEG2VIDEO,
++    .priv_data_size   = sizeof(RMADecContext),
++    .init             = rma_decode_init,
++    .decode           = rma_decode_frame,
++    .flush          = rma_decode_flush,
++    .close            = rma_decode_end,
++    .capabilities     = AV_CODEC_CAP_DELAY,
++    .caps_internal    = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
++    .priv_class       = &rma_mpeg2dec_class,
++};
++#endif
++
++#if CONFIG_MPEG1_RMA_DECODER
++static const AVClass rma_mpeg1dec_class = {
++    .class_name = "mpeg1_rma_decoder",
++    .item_name  = av_default_item_name,
++    .option     = options,
++    .version    = LIBAVUTIL_VERSION_INT,
++};
++
++AVCodec ff_mpeg1_rma_decoder = {
++    .name             = "mpeg1_rma",
++    .long_name        = NULL_IF_CONFIG_SMALL("RTK Media Acceleration MPEG-1 video decoder"),
++    .type             = AVMEDIA_TYPE_VIDEO,
++    .id               = AV_CODEC_ID_MPEG1VIDEO,
++    .priv_data_size   = sizeof(RMADecContext),
++    .init             = rma_decode_init,
++    .decode           = rma_decode_frame,
++    .flush          = rma_decode_flush,
++    .close            = rma_decode_end,
++    .capabilities     = AV_CODEC_CAP_DELAY,
++    .caps_internal    = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
++    .priv_class       = &rma_mpeg1dec_class,
++};
++#endif
++#if CONFIG_VP8_RMA_DECODER
++static const AVClass rma_vp8dec_class = {
++    .class_name = "vp8_rma_decoder",
++    .item_name  = av_default_item_name,
++    .option     = options,
++    .version    = LIBAVUTIL_VERSION_INT,
++};
++
++AVCodec ff_vp8_rma_decoder = {
++    .name             = "vp8_rma",
++    .long_name        = NULL_IF_CONFIG_SMALL("RTK Media Acceleration VP8 video decoder"),
++    .type             = AVMEDIA_TYPE_VIDEO,
++    .id               = AV_CODEC_ID_VP8,
++    .priv_data_size   = sizeof(RMADecContext),
++    .init             = rma_decode_init,
++    .decode           = rma_decode_frame,
++    .flush          = rma_decode_flush,
++    .close            = rma_decode_end,
++    .capabilities     = AV_CODEC_CAP_DELAY,
++    .caps_internal    = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
++    .priv_class       = &rma_vp8dec_class,
++};
++#endif
++#if CONFIG_VP9_RMA_DECODER
++static const AVClass rma_vp9dec_class = {
++    .class_name = "vp9_rma_decoder",
++    .item_name  = av_default_item_name,
++    .option     = options,
++    .version    = LIBAVUTIL_VERSION_INT,
++};
++
++AVCodec ff_vp9_rma_decoder = {
++    .name             = "vp9_rma",
++    .long_name        = NULL_IF_CONFIG_SMALL("RTK Media Acceleration VP9 video decoder"),
++    .type             = AVMEDIA_TYPE_VIDEO,
++    .id               = AV_CODEC_ID_VP9,
++    .priv_data_size   = sizeof(RMADecContext),
++    .init             = rma_decode_init,
++    .decode           = rma_decode_frame,
++    .flush          = rma_decode_flush,
++    .close            = rma_decode_end,
++    .capabilities     = AV_CODEC_CAP_DELAY,
++    .caps_internal    = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
++    .priv_class       = &rma_vp9dec_class,
++};
++#endif
++#if CONFIG_VC1_RMA_DECODER
++static const AVClass rma_vc1dec_class = {
++    .class_name = "vc1_rma_decoder",
++    .item_name  = av_default_item_name,
++    .option     = options,
++    .version    = LIBAVUTIL_VERSION_INT,
++};
++
++AVCodec ff_vc1_rma_decoder = {
++    .name             = "vc1_rma",
++    .long_name        = NULL_IF_CONFIG_SMALL("RTK Media Acceleration VC1 video decoder"),
++    .type             = AVMEDIA_TYPE_VIDEO,
++    .id               = AV_CODEC_ID_VC1,
++    .priv_data_size   = sizeof(RMADecContext),
++    .init             = rma_decode_init,
++    .decode           = rma_decode_frame,
++    .flush          = rma_decode_flush,
++    .close            = rma_decode_end,
++    .capabilities     = AV_CODEC_CAP_DELAY,
++    .caps_internal    = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
++    .priv_class       = &rma_vc1dec_class,
++};
++#endif
++#if CONFIG_WMV3_RMA_DECODER
++static const AVClass rma_wmv3dec_class = {
++    .class_name = "wmv3_rma_decoder",
++    .item_name  = av_default_item_name,
++    .option     = options,
++    .version    = LIBAVUTIL_VERSION_INT,
++};
++
++AVCodec ff_wmv3_rma_decoder = {
++    .name             = "wmv3_rma",
++    .long_name        = NULL_IF_CONFIG_SMALL("RTK Media Acceleration WMV3 video decoder"),
++    .type             = AVMEDIA_TYPE_VIDEO,
++    .id               = AV_CODEC_ID_WMV3,
++    .priv_data_size   = sizeof(RMADecContext),
++    .init             = rma_decode_init,
++    .decode           = rma_decode_frame,
++    .flush          = rma_decode_flush,
++    .close            = rma_decode_end,
++    .capabilities     = AV_CODEC_CAP_DELAY,
++    .caps_internal    = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
++    .priv_class       = &rma_wmv3dec_class,
++};
++#endif
++#if CONFIG_MJPEG_RMA_DECODER
++static const AVClass rma_mjpegdec_class = {
++    .class_name = "mjpeg_rma_decoder",
++    .item_name  = av_default_item_name,
++    .option     = options,
++    .version    = LIBAVUTIL_VERSION_INT,
++};
++
++AVCodec ff_mjpeg_rma_decoder = {
++    .name             = "mjpeg_rma",
++    .long_name        = NULL_IF_CONFIG_SMALL("RTK Media Acceleration MJPEG video decoder"),
++    .type             = AVMEDIA_TYPE_VIDEO,
++    .id               = AV_CODEC_ID_MJPEG_RTK,
++    .priv_data_size   = sizeof(RMADecContext),
++    .init             = rma_decode_init,
++    .decode           = rma_decode_frame,
++    .flush          = rma_decode_flush,
++    .close            = rma_decode_end,
++    .capabilities     = AV_CODEC_CAP_DELAY,
++    .caps_internal    = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
++    .priv_class       = &rma_mjpegdec_class,
++};
++#endif
++#if CONFIG_H263_RMA_DECODER
++static const AVClass rma_h263dec_class = {
++    .class_name = "h263_rma_decoder",
++    .item_name  = av_default_item_name,
++    .option     = options,
++    .version    = LIBAVUTIL_VERSION_INT,
++};
++
++AVCodec ff_h263_rma_decoder = {
++    .name             = "h263_rma",
++    .long_name        = NULL_IF_CONFIG_SMALL("RTK Media Acceleration H.263 video decoder"),
++    .type             = AVMEDIA_TYPE_VIDEO,
++    .id               = AV_CODEC_ID_H263,
++    .priv_data_size   = sizeof(RMADecContext),
++    .init             = rma_decode_init,
++    .decode           = rma_decode_frame,
++    .flush          = rma_decode_flush,
++    .close            = rma_decode_end,
++    .capabilities     = AV_CODEC_CAP_DELAY,
++    .caps_internal    = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
++    .priv_class       = &rma_h263dec_class,
++};
++#endif
++#if CONFIG_AVS_RMA_DECODER
++static const AVClass rma_avsdec_class = {
++    .class_name = "avs_rma_decoder",
++    .item_name  = av_default_item_name,
++    .option     = options,
++    .version    = LIBAVUTIL_VERSION_INT,
++};
++
++AVCodec ff_avs_rma_decoder = {
++    .name             = "avs_rma",
++    .long_name        = NULL_IF_CONFIG_SMALL("RTK Media Acceleration AVS (Audio Video Standard) video decoder"),
++    .type             = AVMEDIA_TYPE_VIDEO,
++    .id               = AV_CODEC_ID_AVS,
++    .priv_data_size   = sizeof(RMADecContext),
++    .init             = rma_decode_init,
++    .decode           = rma_decode_frame,
++    .flush          = rma_decode_flush,
++    .close            = rma_decode_end,
++    .capabilities     = AV_CODEC_CAP_DELAY,
++    .caps_internal    = FF_CODEC_CAP_INIT_THREADSAFE | FF_CODEC_CAP_INIT_CLEANUP,
++    .priv_class       = &rma_avsdec_class,
++  };
++#endif
+diff --git a/libavcodec/utils.c b/libavcodec/utils.c
+index e60ff10..f8be37c 100644
+--- a/libavcodec/utils.c
++++ b/libavcodec/utils.c
+@@ -4235,6 +4235,10 @@ int avcodec_parameters_from_context(AVCodecParameters *par,
+         par->chroma_location     = codec->chroma_sample_location;
+         par->sample_aspect_ratio = codec->sample_aspect_ratio;
+         par->video_delay         = codec->has_b_frames;
++#if CONFIG_RMA
++        par->ori_width              = codec->ori_width;
++        par->ori_height              = codec->ori_height;
++#endif
+         break;
+     case AVMEDIA_TYPE_AUDIO:
+         par->format           = codec->sample_fmt;
+@@ -4290,6 +4294,10 @@ int avcodec_parameters_to_context(AVCodecContext *codec,
+         codec->chroma_sample_location = par->chroma_location;
+         codec->sample_aspect_ratio    = par->sample_aspect_ratio;
+         codec->has_b_frames           = par->video_delay;
++#if CONFIG_RMA
++        codec->ori_width              = par->ori_width;
++        codec->ori_height              = par->ori_height;
++#endif
+         break;
+     case AVMEDIA_TYPE_AUDIO:
+         codec->sample_fmt       = par->format;
+diff --git a/libavformat/options_table.h b/libavformat/options_table.h
+index 0c1915d..d88d597 100644
+--- a/libavformat/options_table.h
++++ b/libavformat/options_table.h
+@@ -36,7 +36,11 @@
+ static const AVOption avformat_options[] = {
+ {"avioflags", NULL, OFFSET(avio_flags), AV_OPT_TYPE_FLAGS, {.i64 = DEFAULT }, INT_MIN, INT_MAX, D|E, "avioflags"},
+ {"direct", "reduce buffering", 0, AV_OPT_TYPE_CONST, {.i64 = AVIO_FLAG_DIRECT }, INT_MIN, INT_MAX, D|E, "avioflags"},
++#if CONFIG_RMA
++{"probesize", "set probing size", OFFSET(probesize), AV_OPT_TYPE_INT64, {.i64 = 20000000 }, 32, INT64_MAX, D},
++#else
+ {"probesize", "set probing size", OFFSET(probesize), AV_OPT_TYPE_INT64, {.i64 = 5000000 }, 32, INT64_MAX, D},
++#endif
+ {"formatprobesize", "number of bytes to probe file format", OFFSET(format_probesize), AV_OPT_TYPE_INT, {.i64 = PROBE_BUF_MAX}, 0, INT_MAX-1, D},
+ {"packetsize", "set packet size", OFFSET(packet_size), AV_OPT_TYPE_INT, {.i64 = DEFAULT }, 0, INT_MAX, E},
+ {"fflags", NULL, OFFSET(flags), AV_OPT_TYPE_FLAGS, {.i64 = AVFMT_FLAG_FLUSH_PACKETS | AVFMT_FLAG_AUTO_BSF }, INT_MIN, INT_MAX, D|E, "fflags"},
+diff --git a/libavformat/utils.c b/libavformat/utils.c
+index 4df9ba5..f8d9bb4 100644
+--- a/libavformat/utils.c
++++ b/libavformat/utils.c
+@@ -189,17 +189,27 @@ FF_ENABLE_DEPRECATION_WARNINGS
+ static const AVCodec *find_probe_decoder(AVFormatContext *s, const AVStream *st, enum AVCodecID codec_id)
+ {
+     const AVCodec *codec;
+-
++#if CONFIG_RMA
++    codec = find_decoder(s, st, codec_id);
++    if (!codec)
++        return NULL;
++#endif
+ #if CONFIG_H264_DECODER
+     /* Other parts of the code assume this decoder to be used for h264,
+      * so force it if possible. */
++#if CONFIG_RMA
++    if (codec_id == AV_CODEC_ID_H264 && (strcmp(codec->name, "h264_rma")!=0))
++#else
+     if (codec_id == AV_CODEC_ID_H264)
++#endif
+         return avcodec_find_decoder_by_name("h264");
+ #endif
+ 
++#if (!CONFIG_RMA)
+     codec = find_decoder(s, st, codec_id);
+     if (!codec)
+         return NULL;
++#endif
+ 
+     if (codec->capabilities & AV_CODEC_CAP_AVOID_PROBING) {
+         const AVCodec *probe_codec = NULL;
+@@ -481,6 +491,16 @@ static int update_stream_avctx(AVFormatContext *s)
+         if (!st->internal->need_context_update)
+             continue;
+ 
++#ifdef CONFIG_RMA
++        //image uses native mjpeg decoder; video uses rtk rma decoder
++        if((st->codecpar->codec_id == AV_CODEC_ID_MJPEG) &&
++            (!(st->disposition & AV_DISPOSITION_ATTACHED_PIC) &&
++            (!(s->nb_streams == 1 &&
++            (av_match_ext(s->filename, "jpeg") | av_match_ext(s->filename, "jpg") |
++            (s->pb->buffer[0] == 0xFF && s->pb->buffer[1] == 0xD8 && s->pb->buffer[2] == 0xFF))))))
++            st->codecpar->codec_id = AV_CODEC_ID_MJPEG_RTK;
++#endif
++
+         /* close parser, because it depends on the codec */
+         if (st->parser && st->internal->avctx->codec_id != st->codecpar->codec_id) {
+             av_parser_close(st->parser);
+@@ -986,6 +1006,9 @@ static int has_decode_delay_been_guessed(AVStream *st)
+         return 1;
+ #if CONFIG_H264_DECODER
+     if (st->internal->avctx->has_b_frames &&
++#if CONFIG_RMA
++        (strcmp(st->internal->avctx->codec->name, "h264_rma")!=0) &&
++#endif
+        avpriv_h264_has_num_reorder_frames(st->internal->avctx) == st->internal->avctx->has_b_frames)
+         return 1;
+ #endif
+@@ -3415,7 +3438,9 @@ int avformat_find_stream_info(AVFormatContext *ic, AVDictionary **options)
+         AVDictionary *thread_opt = NULL;
+         st = ic->streams[i];
+         avctx = st->internal->avctx;
+-
++#if CONFIG_RMA
++        avctx->isTryDecode = 1;
++#endif
+         if (st->codecpar->codec_type == AVMEDIA_TYPE_VIDEO ||
+             st->codecpar->codec_type == AVMEDIA_TYPE_SUBTITLE) {
+ /*            if (!st->time_base.num)
+@@ -3704,9 +3729,29 @@ FF_ENABLE_DEPRECATION_WARNINGS
+          * least one frame of codec data, this makes sure the codec initializes
+          * the channel configuration and does not only trust the values from
+          * the container. */
++#if CONFIG_RMA
++        ret = try_decode_frame(ic, st, pkt,
++                         (options && i < orig_nb_streams) ? &options[i] : ((options && orig_nb_streams == 0)? &options[0]:NULL));
++
++        if (ret == AVERROR_UNKNOWN){
++                if (ic->flags & AVFMT_FLAG_NOBUFFER)
++                av_packet_unref(pkt);
++
++                st->codec_info_nb_frames++;
++                count++;
++
++                // close codecs which were opened in try_decode_frame()
++                for (i = 0; i < ic->nb_streams; i++) {
++                    st = ic->streams[i];
++                    avcodec_close(st->internal->avctx);
++                }
++
++                goto find_stream_info_err;
++            }
++#else
+         try_decode_frame(ic, st, pkt,
+                          (options && i < orig_nb_streams) ? &options[i] : NULL);
+-
++#endif
+         if (ic->flags & AVFMT_FLAG_NOBUFFER)
+             av_packet_unref(pkt);
+ 

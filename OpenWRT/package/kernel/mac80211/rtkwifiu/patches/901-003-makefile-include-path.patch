@@ -1,0 +1,78 @@
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8821ce/Makefile
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8821ce/Makefile
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8821ce/Makefile
+@@ -823,7 +823,7 @@ endif
+ 
+ ########### HAL_RTL8821C #################################
+ ifeq ($(CONFIG_RTL8821C), y)
+-include $(TopDIR)/rtl8821c.mk
++include $(TopDIR)/rtl8821ce/rtl8821c.mk
+ endif
+ 
+ ########### AUTO_CFG  #################################
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8812au/Makefile
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8812au/Makefile
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8812au/Makefile
+@@ -246,7 +246,7 @@ _BTC_FILES += hal/btc/halbtc8192e1ant.o
+ 				hal/btc/halbtc8821c2ant.o
+ endif
+ 
+-include $(TopDIR)/hal/phydm/phydm.mk
++include $(TopDIR)/rtl8812au/hal/phydm/phydm.mk
+ ########### HAL_RTL8188E #################################
+ ifeq ($(CONFIG_RTL8188E), y)
+ 
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8723bs/Makefile
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8723bs/Makefile
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8723bs/Makefile
+@@ -246,7 +246,7 @@ _BTC_FILES += hal/btc/halbtc8192e1ant.o
+ 				hal/btc/halbtc8821c2ant.o
+ endif
+ 
+-include $(TopDIR)/hal/phydm/phydm.mk
++include $(TopDIR)/rtl8723bs/hal/phydm/phydm.mk
+ ########### HAL_RTL8188E #################################
+ ifeq ($(CONFIG_RTL8188E), y)
+ 
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8812bu/Makefile
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8812bu/Makefile
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8812bu/Makefile
+@@ -805,7 +805,7 @@ endif
+ 
+ ########### HAL_RTL8822B #################################
+ ifeq ($(CONFIG_RTL8822B), y)
+-include $(TopDIR)/rtl8822b.mk
++include $(TopDIR)/rtl8812bu/rtl8822b.mk
+ endif
+ 
+ ########### HAL_RTL8821C #################################
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8192eu/Makefile
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8192eu/Makefile
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8192eu/Makefile
+@@ -245,7 +245,7 @@ _BTC_FILES += hal/btc/halbtc8192e1ant.o
+ 				hal/btc/halbtc8821c2ant.o
+ endif
+ 
+-include $(TopDIR)/hal/phydm/phydm.mk
++include $(TopDIR)/rtl8192eu/hal/phydm/phydm.mk
+ ########### HAL_RTL8188E #################################
+ ifeq ($(CONFIG_RTL8188E), y)
+ 
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8192ee/Makefile
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8192ee/Makefile
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8192ee/Makefile
+@@ -246,7 +246,7 @@ _BTC_FILES += hal/btc/halbtc8192e1ant.o
+ 				hal/btc/halbtc8821c2ant.o
+ endif
+ 
+-include $(TopDIR)/hal/phydm/phydm.mk
++include $(TopDIR)/rtl8192ee/hal/phydm/phydm.mk
+ ########### HAL_RTL8188E #################################
+ ifeq ($(CONFIG_RTL8188E), y)
+ 

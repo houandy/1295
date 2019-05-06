@@ -1,0 +1,19 @@
+--- a/src/video/SDL_egl.c
++++ b/src/video/SDL_egl.c
+@@ -61,11 +61,11 @@
+ 
+ #else
+ /* Desktop Linux */
+-#define DEFAULT_OGL "libGL.so.1"
+-#define DEFAULT_EGL "libEGL.so.1"
+-#define DEFAULT_OGL_ES2 "libGLESv2.so.2"
+-#define DEFAULT_OGL_ES_PVR "libGLES_CM.so.1"
+-#define DEFAULT_OGL_ES "libGLESv1_CM.so.1"
++#define DEFAULT_OGL "libGL.so"
++#define DEFAULT_EGL "libEGL.so"
++#define DEFAULT_OGL_ES2 "libGLESv2.so"
++#define DEFAULT_OGL_ES_PVR "libGLES_CM.so"
++#define DEFAULT_OGL_ES "libGLESv1_CM.so"
+ #endif /* SDL_VIDEO_DRIVER_RPI */
+ 
+ #define LOAD_FUNC(NAME) \

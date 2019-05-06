@@ -1,0 +1,64 @@
+#!/bin/sh
+
+. /usr/share/libubox/jshn.sh
+
+
+get_repeatermode() {
+	cur_mode=$(cat /usr/local/etc/network_config/current_mode)
+	json_add_int "repeater_mode" "$cur_mode"
+}
+
+get_ipaddr() {
+	radioidx=$1
+
+	[ "`uci get wireless.default_radio$radioidx.disabled 2>/dev/null`" = "1" ] && return
+	[ "`uci get wireless.radio$radioidx.disabled 2>/dev/null`" = "1" ] && return
+
+	network=`uci get wireless.default_radio$radioidx.network 2>/dev/null`
+	[ ! -n "$network" ] && return
+
+	type=`uci get network.$network.type 2>/dev/null`
+
+	if [ "$type" = "bridge" ]; then
+		iface="br-$network"
+	else
+		iface="wlan$radioidx"
+	fi
+
+	#return string
+	echo "`ifconfig $iface | grep "inet " | awk -F'[: ]+' '{print $4}'`"
+}
+
+get_net_status() {
+	for idx in 0 1 2 3
+	do
+		mode=`uci get wireless.default_radio$idx.mode 2>/dev/null`
+		ssid=`uci get wireless.default_radio$idx.ssid 2>/dev/null`
+		state=`cat /proc/net/rtl*/wlan$idx/ap_info | grep SSID`
+		[ -n "$state" ] && state=ok || state=ko
+
+		ipaddr=`get_ipaddr $idx`
+
+		json_add_object "radio$idx"
+		json_add_string "mode" "$mode"
+		json_add_string "ssid" "$ssid"
+		json_add_string "status" "$state"
+		json_add_string "ipaddr" "$ipaddr"
+		json_close_object
+	done
+}
+
+# generating json data
+tojson() {
+	json_init
+
+	get_repeatermode
+	get_net_status
+
+	MSG=`json_dump`
+	echo ${MSG} | tr -d '\n'
+}
+
+tojson
+
+exit 0

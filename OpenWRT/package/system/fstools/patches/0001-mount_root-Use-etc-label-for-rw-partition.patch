@@ -1,0 +1,223 @@
+From bfc7557c22b72f458e0c334ddbc53817e39b1893 Mon Sep 17 00:00:00 2001
+
+Date: Thu, 5 Nov 2015 16:55:51 +0800
+Subject: [PATCH 1/2] mount_root: Use DATA_LABEL for rw partition
+
+- Replace jffs2reset, snapshot, block and ubi as well
+---
+ block.c              |  4 ++--
+ CMakeLists.txt       |  6 ++++++
+ jffs2reset.c         |  4 ++--
+ libfstools/overlay.c |  4 ++--
+ mount_root.c         |  4 ++--
+ snapshot.c           | 14 +++++++-------
+ ubi.c                |  2 +-
+ 6 files changed, 16 insertions(+), 16 deletions(-)
+
+Index: fstools-2018-04-16-e2436836/block.c
+===================================================================
+--- fstools-2018-04-16-e2436836.orig/block.c
++++ fstools-2018-04-16-e2436836/block.c
+@@ -1503,7 +1503,7 @@ static int main_extroot(int argc, char *
+ 	 */
+ 
+ 	/* Start with looking for MTD partition */
+-	find_block_mtd("\"rootfs_data\"", blkdev_path, sizeof(blkdev_path));
++	find_block_mtd(DATA_STR, blkdev_path, sizeof(blkdev_path));
+ 	if (blkdev_path[0]) {
+ 		pr = find_block_info(NULL, NULL, blkdev_path);
+ 		if (pr && !strcmp(pr->type, "jffs2")) {
+@@ -1529,7 +1529,7 @@ static int main_extroot(int argc, char *
+ 	/* ... but it also could be an UBI volume */
+ 	memset(blkdev_path, 0, sizeof(blkdev_path));
+ 	libubi = libubi_open();
+-	find_block_ubi(libubi, "rootfs_data", blkdev_path, sizeof(blkdev_path));
++	find_block_ubi(libubi, DATA_LABEL, blkdev_path, sizeof(blkdev_path));
+ 	libubi_close(libubi);
+ 	if (blkdev_path[0]) {
+ 		char cfg[] = "/tmp/ubifs_cfg";
+Index: fstools-2018-04-16-e2436836/jffs2reset.c
+===================================================================
+--- fstools-2018-04-16-e2436836.orig/jffs2reset.c
++++ fstools-2018-04-16-e2436836/jffs2reset.c
+@@ -119,9 +119,9 @@ int main(int argc, char **argv)
+ 		return -1;
+ 	}
+ 
+-	v = volume_find("rootfs_data");
++	v = volume_find(DATA_LABEL);
+ 	if (!v) {
+-		ULOG_ERR("MTD partition 'rootfs_data' not found\n");
++		ULOG_ERR("MTD partition '%s' not found\n", DATA_LABEL);
+ 		return -1;
+ 	}
+ 
+Index: fstools-2018-04-16-e2436836/mount_root.c
+===================================================================
+--- fstools-2018-04-16-e2436836.orig/mount_root.c
++++ fstools-2018-04-16-e2436836/mount_root.c
+@@ -31,7 +31,7 @@ static int
+ start(int argc, char *argv[1])
+ {
+ 	struct volume *root;
+-	struct volume *data = volume_find("rootfs_data");
++	struct volume *data = volume_find(DATA_LABEL);
+ 	struct stat s;
+ 
+ 	if (!getenv("PREINIT") && stat("/tmp/.preinit", &s))
+@@ -101,7 +101,7 @@ stop(int argc, char *argv[1])
+ static int
+ done(int argc, char *argv[1])
+ {
+-	struct volume *v = volume_find("rootfs_data");
++	struct volume *v = volume_find(DATA_LABEL);
+ 
+ 	if (!v)
+ 		return -1;
+Index: fstools-2018-04-16-e2436836/snapshot.c
+===================================================================
+--- fstools-2018-04-16-e2436836.orig/snapshot.c
++++ fstools-2018-04-16-e2436836/snapshot.c
+@@ -39,7 +39,7 @@
+ static int
+ config_write(int argc, char **argv)
+ {
+-	struct volume *v = volume_find("rootfs_data");
++	struct volume *v = volume_find(DATA_LABEL);
+ 	int ret;
+ 
+ 	if (!v)
+@@ -56,7 +56,7 @@ config_write(int argc, char **argv)
+ static int
+ config_read(int argc, char **argv)
+ {
+-	struct volume *v = volume_find("rootfs_data");
++	struct volume *v = volume_find(DATA_LABEL);
+ 	struct file_header conf, sentinel;
+ 	int next, block, ret = 0;
+ 	uint32_t seq;
+@@ -84,7 +84,7 @@ config_read(int argc, char **argv)
+ static int
+ snapshot_write(int argc, char **argv)
+ {
+-	struct volume *v = volume_find("rootfs_data");
++	struct volume *v = volume_find(DATA_LABEL);
+ 	int block, ret;
+ 	uint32_t seq;
+ 
+@@ -117,9 +117,9 @@ snapshot_mark(int argc, char **argv)
+ 	if (getchar() != 'y')
+ 		return -1;
+ 
+-	v = volume_find("rootfs_data");
++	v = volume_find(DATA_LABEL);
+ 	if (!v) {
+-		ULOG_ERR("MTD partition 'rootfs_data' not found\n");
++		ULOG_ERR("MTD partition '%s' not found\n", DATA_LABEL);
+ 		return -1;
+ 	}
+ 
+@@ -146,7 +146,7 @@ snapshot_mark(int argc, char **argv)
+ static int
+ snapshot_read(int argc, char **argv)
+ {
+-	struct volume *v = volume_find("rootfs_data");;
++	struct volume *v = volume_find(DATA_LABEL);;
+ 	int block = 0, ret = 0;
+ 	char file[64];
+ 
+@@ -179,7 +179,7 @@ out:
+ static int
+ snapshot_info(void)
+ {
+-	struct volume *v = volume_find("rootfs_data");
++	struct volume *v = volume_find(DATA_LABEL);
+ 	struct file_header hdr = { 0 }, conf;
+ 	int block = 0;
+ 
+Index: fstools-2018-04-16-e2436836/ubi.c
+===================================================================
+--- fstools-2018-04-16-e2436836.orig/ubi.c
++++ fstools-2018-04-16-e2436836/ubi.c
+@@ -314,7 +314,7 @@ int main(int argc, char **argv)
+ 		return main_image("rootfs", argv[2], NULL);
+ 
+ 	} else if (!strcmp(argv[1], "overlay")) {
+-		return main_image("rootfs", argv[2], "rootfs_data");
++		return main_image("rootfs", argv[2], DATA_LABEL);
+ 
+ 	} else if (!strcmp(argv[1], "detach")) {
+ 		return main_detach(argv[2]);
+Index: fstools-2018-04-16-e2436836/CMakeLists.txt
+===================================================================
+--- fstools-2018-04-16-e2436836.orig/CMakeLists.txt
++++ fstools-2018-04-16-e2436836/CMakeLists.txt
+@@ -3,6 +3,12 @@ cmake_minimum_required(VERSION 2.6)
+ PROJECT(fs-tools C)
+ ADD_DEFINITIONS(-Os -ggdb -Wall -Werror --std=gnu99 -Wmissing-declarations -Wno-format-truncation)
+ 
++IF(DEFINED CMAKE_DATA)
++	ADD_DEFINITIONS(-DDATA_LABEL="${CMAKE_DATA}" -DDATA_STR="\\\"${CMAKE_DATA}\\\"")
++ELSE(DEFINED CMAKE_DATA)
++	ADD_DEFINITIONS(-DDATA_LABEL="rootfs_data" -DDATA_STR="\\\"rootfs_data\\\"")
++ENDIF(DEFINED CMAKE_DATA)
++
+ SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
+ 
+ ADD_LIBRARY(fstools SHARED
+Index: fstools-2018-04-16-e2436836/libfstools/overlay.c
+===================================================================
+--- fstools-2018-04-16-e2436836.orig/libfstools/overlay.c
++++ fstools-2018-04-16-e2436836/libfstools/overlay.c
+@@ -289,7 +289,7 @@ jffs2_switch(struct volume *v)
+ 	volume_init(v);
+ 	mp = find_mount_point(v->blk, 0);
+ 	if (mp) {
+-		ULOG_ERR("rootfs_data:%s is already mounted as %s\n", v->blk, mp);
++		ULOG_ERR("%s:%s is already mounted as %s\n", DATA_LABEL, v->blk, mp);
+ 		return -1;
+ 	}
+ 
+@@ -399,7 +399,7 @@ int mount_overlay(struct volume *v)
+ 
+ 	mp = find_mount_point(v->blk, 0);
+ 	if (mp) {
+-		ULOG_ERR("rootfs_data:%s is already mounted as %s\n", v->blk, mp);
++		ULOG_ERR("%s:%s is already mounted as %s\n", DATA_LABEL, v->blk, mp);
+ 		return -1;
+ 	}
+ 
+Index: fstools-2018-04-16-e2436836/libfstools/rootdisk.c
+===================================================================
+--- fstools-2018-04-16-e2436836.orig/libfstools/rootdisk.c
++++ fstools-2018-04-16-e2436836/libfstools/rootdisk.c
+@@ -126,7 +126,7 @@ static struct volume *rootdisk_volume_fi
+ 	struct squashfs_super_block sb;
+ 	struct rootdev_volume *p;
+ 
+-	if (strcmp(name, "rootfs_data") != 0)
++	if (strcmp(name, DATA_LABEL) != 0)
+ 		return NULL;
+ 
+ 	if (!rootdev)
+@@ -148,7 +148,7 @@ static struct volume *rootdisk_volume_fi
+ 
+ 	p = calloc(1, sizeof(*p));
+ 	p->v.drv = &rootdisk_driver;
+-	p->v.name = "rootfs_data";
++	p->v.name = DATA_LABEL;
+ 
+ 	p->offset = le64_to_cpu(sb.bytes_used);
+ 	p->offset = ((p->offset + (ROOTDEV_OVERLAY_ALIGN - 1)) &
+@@ -268,9 +268,9 @@ static int rootdisk_volume_init(struct v
+ 	case FS_NONE:
+ 		ULOG_INFO("rootdisk overlay filesystem has not been formatted yet\n");
+ 		if (rootdisk_use_f2fs(p))
+-			snprintf(str, sizeof(str), "mkfs.f2fs -q -l rootfs_data %s", v->blk);
++			snprintf(str, sizeof(str), "mkfs.f2fs -q -l %s %s", DATA_LABEL, v->blk);
+ 		else
+-			snprintf(str, sizeof(str), "mkfs.ext4 -q -L rootfs_data %s", v->blk);
++			snprintf(str, sizeof(str), "mkfs.ext4 -q -L %s %s", DATA_LABEL, v->blk);
+ 		ret = system(str);
+ 		break;
+ 	default:

@@ -1,0 +1,141 @@
+menuconfig RTK_NAS_PACKAGES
+	bool "Enable NAS packages"
+	default y if RTK_BOARD_FWDESC_LAYOUT
+	select BUSYBOX_CONFIG_RENICE
+	select BUSYBOX_CONFIG_START_STOP_DAEMON
+	select PACKAGE_kmod-rtl8168
+	help
+	  Select NAS packages: SMB, FTP, AFP, DLNA, DAAP, BT and disk management.
+
+	config RTK_KERNEL_4_4_162
+		bool "kernel 4.4.162, for RTD1619 SPI only"
+
+	config RTK_KERNEL_4_4_18
+		bool "kernel 4.4.18, for RTD129x only"
+
+	config RTK_KERNEL_4_9
+		bool "kernel 4.9"
+
+	config RTK_NAS_RAID
+		bool "RAID: Multi-bay HDD support"
+		depends on RTK_NAS_PACKAGES
+		default y
+		select PACKAGE_mdadm
+		select PACKAGE_luci-app-diskmanager if PACKAGE_luci
+		help
+		  Enalbe RAID support with disk management on web UI.
+
+	choice
+		prompt "Choose NAS configurations"
+		default RTK_NAS_FULL
+		depends on RTK_NAS_PACKAGES
+		help
+		  Choose configuration on combination of NAS services.
+
+		config RTK_NAS_FULL
+			bool "Full services"
+			select RTK_NAS_SMB
+			select RTK_NAS_FTP
+			select RTK_NAS_AFP
+			select RTK_NAS_DLNA if !RTK_NAS_TRANSCODE
+			select RTK_NAS_DAAP
+			select RTK_BLUECORE if TARGET_realtek_rtd129x
+			help
+			  All file transfer(SMB/FTP/AFP) and streaming(DLNA/DAAP) services.
+
+		config RTK_NAS_FILE
+			bool "File services"
+			select RTK_NAS_SMB
+			select RTK_NAS_FTP
+			select RTK_NAS_AFP
+			help
+			  Only file transfer services: SMB, FTP and AFP(Time Machine).
+
+		config RTK_NAS_STREAM
+			bool "Streaming services"
+			select RTK_NAS_DLNA
+			select RTK_NAS_DAAP
+			help
+			  Only streaming services: DLNA and DAAP(iTunes).
+	endchoice
+
+	choice
+		prompt "Choose P2P service for NAS"
+		default RTK_NAS_P2P_NONE
+		depends on RTK_NAS_PACKAGES
+		help
+		  Choose P2P service daemon.
+
+		config RTK_NAS_P2P_ARIA2
+			bool "Aria2"
+			select PACKAGE_aria2
+			select PACKAGE_webui-aria2
+			select PACKAGE_luci-app-aria2 if PACKAGE_luci
+
+		config RTK_NAS_P2P_TRANSMISSIONBT
+			bool "Transmission BT"
+			select PACKAGE_transmission-daemon-mbedtls
+			select PACKAGE_transmission-web
+			select PACKAGE_luci-app-transmission if PACKAGE_luci
+
+		config RTK_NAS_P2P_NONE
+			bool "None"
+	endchoice
+
+	config RTK_NAS_ECRYPT_FS
+		bool "Enable eCryptfs feature"
+		depends on RTK_NAS_PACKAGES
+		select PACKAGE_ecryptfs-utils
+
+	config RTK_NAS_TRANSCODE
+		bool "Enable hardware transcode"
+		depends on RTK_NAS_PACKAGES
+		select PACKAGE_kmod-openmax
+		select PACKAGE_openmax
+		select PACKAGE_ffmpeg
+		select RTK_BLUECORE
+
+	config RTK_NAS_VIDEO
+		bool "Enable Media Playback"
+		depends on RTK_NAS_PACKAGES
+		select PACKAGE_kmod-openmax
+		select PACKAGE_kmod-rtk-video
+		select PACKAGE_openmax
+		select PACKAGE_ffmpeg
+		select RTK_BLUECORE
+		select PACKAGE_weston
+		select PACKAGE_ffplay
+
+	config RTK_BLUECORE
+		bool
+		default n	
+
+config RTK_NAS_SMB
+	bool
+	depends on RTK_NAS_PACKAGES
+	select PACKAGE_samba4-server
+	select PACKAGE_luci-app-samba4 if PACKAGE_luci
+
+config RTK_NAS_FTP
+	bool
+	depends on RTK_NAS_PACKAGES
+	select PACKAGE_vsftpd-tls
+	select PACKAGE_luci-app-vsftpd if PACKAGE_luci
+
+config RTK_NAS_AFP
+	bool
+	depends on RTK_NAS_PACKAGES
+	select PACKAGE_netatalk
+	select PACKAGE_luci-app-netatalk if PACKAGE_luci
+
+config RTK_NAS_DLNA
+	bool
+	depends on RTK_NAS_PACKAGES
+	select PACKAGE_minidlna
+	select PACKAGE_luci-app-minidlna if PACKAGE_luci
+
+config RTK_NAS_DAAP
+	bool
+	depends on RTK_NAS_PACKAGES
+	select PACKAGE_forked-daapd
+	select PACKAGE_luci-app-forked-daapd if PACKAGE_luci

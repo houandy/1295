@@ -1,0 +1,32 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8"
+
+msgid "Group name"
+msgstr ""
+
+msgid "HTTPS DNS Proxy"
+msgstr ""
+
+msgid "HTTPS DNS Proxy Settings"
+msgstr ""
+
+msgid "Instances"
+msgstr ""
+
+msgid "Listen address"
+msgstr ""
+
+msgid "Listen port"
+msgstr ""
+
+msgid "Provider"
+msgstr ""
+
+msgid "Proxy server"
+msgstr ""
+
+msgid "Subnet address"
+msgstr ""
+
+msgid "User name"
+msgstr ""

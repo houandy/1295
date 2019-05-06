@@ -1,0 +1,69 @@
+config RTK_BOARD_CHIP_1295
+	bool
+	depends on TARGET_realtek_rtd129x
+
+config RTK_BOARD_CHIP_1296
+	bool
+	depends on TARGET_realtek_rtd129x
+
+config RTK_BOARD_CHIP_1395
+	bool
+	depends on TARGET_realtek_rtd139x
+
+config RTK_BOARD_CHIP_1619
+	bool
+	depends on TARGET_realtek_rtd16xx
+
+config RTK_BOARD_CHIP
+	string
+	depends on TARGET_realtek
+	default "rtd-1295" if RTK_BOARD_CHIP_1295
+	default "rtd-1296" if RTK_BOARD_CHIP_1296
+	default "rtd-1395" if RTK_BOARD_CHIP_1395
+	default "rtd-1619" if TARGET_realtek_rtd16xx
+
+config RTK_BOARD_CHIP_CODENAME
+	string
+	depends on TARGET_realtek
+	default "rtd12xx" if TARGET_realtek_rtd129x
+	default "rtd13xx" if TARGET_realtek_rtd139x
+	default "rtd16xx" if TARGET_realtek_rtd16xx
+
+choice
+	prompt "DDR memory size on board"
+	depends on TARGET_realtek
+	default RTK_BOARD_DDR_2GB if TARGET_realtek_rtd129x
+	default RTK_BOARD_DDR_1GB
+	help
+	  Select DDR memory size for Realtek boards.
+
+	config RTK_BOARD_DDR_1GB
+		bool "1GB"
+		depends on !RTK_BOARD_CHIP_1619
+
+	config RTK_BOARD_DDR_1.5GB
+		bool "1.5GB"
+		depends on RTK_BOARD_CHIP_1295 && !RTK_BOARD_CHIP_1395 && !RTK_BOARD_CHIP_1619
+
+	config RTK_BOARD_DDR_2GB
+		bool "2GB"
+
+	config RTK_BOARD_DDR_3GB
+		bool "3GB"
+		depends on RTK_BOARD_CHIP_1296 && !RTK_BOARD_CHIP_1395 && !RTK_BOARD_CHIP_1619
+
+	config RTK_BOARD_DDR_4GB
+		bool "4GB"
+		depends on RTK_BOARD_CHIP_1296 && !RTK_BOARD_CHIP_1395 && !RTK_BOARD_CHIP_1619
+endchoice
+
+config RTK_BOARD_DDR_SIZE
+	string
+	depends on TARGET_realtek
+	default "1GB" if RTK_BOARD_DDR_1GB
+	default "1.5GB" if RTK_BOARD_DDR_1.5GB
+	default "2GB" if RTK_BOARD_DDR_2GB
+	default "3GB" if RTK_BOARD_DDR_3GB
+	default "4GB" if RTK_BOARD_DDR_4GB
+
+source "Config-nas.in"

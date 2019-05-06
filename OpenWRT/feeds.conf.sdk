@@ -1,0 +1,4 @@
+src-link packages ./local/packages
+src-link luci ./local/luci
+src-link routing ./local/routing
+src-link realtek ./local/realtek

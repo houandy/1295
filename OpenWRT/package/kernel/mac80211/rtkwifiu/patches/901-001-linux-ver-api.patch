@@ -1,0 +1,377 @@
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8723bs/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8723bs/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8723bs/os_dep/linux/ioctl_cfg80211.c
+@@ -3845,7 +3845,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8723ds/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8723ds/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8723ds/os_dep/linux/ioctl_cfg80211.c
+@@ -4565,7 +4565,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8723du/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8723du/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8723du/os_dep/linux/ioctl_cfg80211.c
+@@ -4565,7 +4565,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8812au/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8812au/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8812au/os_dep/linux/ioctl_cfg80211.c
+@@ -4082,7 +4082,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8821cs/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8821cs/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8821cs/os_dep/linux/ioctl_cfg80211.c
+@@ -4536,7 +4536,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8821cu/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8821cu/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8821cu/os_dep/linux/ioctl_cfg80211.c
+@@ -4522,7 +4522,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8822be/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8822be/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8822be/os_dep/linux/ioctl_cfg80211.c
+@@ -4238,7 +4238,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8822bs/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8822bs/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8822bs/os_dep/linux/ioctl_cfg80211.c
+@@ -4402,7 +4402,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8822bu/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8822bu/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8822bu/os_dep/linux/ioctl_cfg80211.c
+@@ -4557,7 +4557,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8192eu/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8192eu/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8192eu/os_dep/linux/ioctl_cfg80211.c
+@@ -4078,7 +4078,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8188fu/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8188fu/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8188fu/os_dep/linux/ioctl_cfg80211.c
+@@ -4404,7 +4404,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8189fs/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8189fs/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8189fs/os_dep/linux/ioctl_cfg80211.c
+@@ -4449,7 +4449,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8192ee/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8192ee/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8192ee/os_dep/linux/ioctl_cfg80211.c
+@@ -4078,7 +4078,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8188eu/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8188eu/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8188eu/os_dep/linux/ioctl_cfg80211.c
+@@ -3854,7 +3854,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8189es/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8189es/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8189es/os_dep/linux/ioctl_cfg80211.c
+@@ -4410,7 +4410,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8192cu/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8192cu/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8192cu/os_dep/linux/ioctl_cfg80211.c
+@@ -3635,7 +3635,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8723de/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8723de/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8723de/os_dep/linux/ioctl_cfg80211.c
+@@ -4557,7 +4557,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8811au/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8811au/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8811au/os_dep/linux/ioctl_cfg80211.c
+@@ -4449,7 +4449,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8812ae/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8812ae/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8812ae/os_dep/linux/ioctl_cfg80211.c
+@@ -3663,7 +3663,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8812bu/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8812bu/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8812bu/os_dep/linux/ioctl_cfg80211.c
+@@ -3700,7 +3700,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8814ae/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8814ae/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8814ae/os_dep/linux/ioctl_cfg80211.c
+@@ -3656,7 +3656,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8814au/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8814au/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8814au/os_dep/linux/ioctl_cfg80211.c
+@@ -4010,7 +4010,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8821as/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8821as/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8821as/os_dep/linux/ioctl_cfg80211.c
+@@ -4008,7 +4008,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8821au/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8821au/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8821au/os_dep/linux/ioctl_cfg80211.c
+@@ -3973,7 +3973,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8821ce/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8821ce/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8821ce/os_dep/linux/ioctl_cfg80211.c
+@@ -3836,7 +3836,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8822ce/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8822ce/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8822ce/os_dep/linux/ioctl_cfg80211.c
+@@ -4557,7 +4557,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8822cs/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8822cs/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8822cs/os_dep/linux/ioctl_cfg80211.c
+@@ -4557,7 +4557,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8822cu/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8822cu/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8822cu/os_dep/linux/ioctl_cfg80211.c
+@@ -4557,7 +4557,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;
+Index: backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8723bu/os_dep/linux/ioctl_cfg80211.c
+===================================================================
+--- backports-2017-11-01.orig/drivers/net/wireless/realtek/rtkwifiu/rtl8723bu/os_dep/linux/ioctl_cfg80211.c
++++ backports-2017-11-01/drivers/net/wireless/realtek/rtkwifiu/rtl8723bu/os_dep/linux/ioctl_cfg80211.c
+@@ -4006,7 +4006,7 @@ static int rtw_cfg80211_add_monitor_if(_
+ 	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+ 	strncpy(mon_ndev->name, name, IFNAMSIZ);
+ 	mon_ndev->name[IFNAMSIZ - 1] = 0;
+-#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
++#if (LINUX_API_VERSION_CODE > KERNEL_VERSION(4, 11, 8))
+ 	mon_ndev->priv_destructor = rtw_ndev_destructor;
+ #else
+ 	mon_ndev->destructor = rtw_ndev_destructor;

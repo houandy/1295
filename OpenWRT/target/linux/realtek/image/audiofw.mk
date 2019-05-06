@@ -1,0 +1,15 @@
+# Use full audio FW on MNAS, Xen and new audio address
+#ifneq ($(CONFIG_XEN)$(findstring mnas_,$(SUBTARGET))$(CONFIG_AUDIO_ADDR_NEW),)
+ifneq ($(CONFIG_AUDIO_ADDR_NEW),)
+  AUDIO_BRANCH_SUFFIX:=$(if $(CONFIG_AUDIO_QA_BRANCH),_160705,)
+  AUDIO_CVBS:=$(if $(CONFIG_AUDIO_CVBS_ON),_CVBS_on,)
+  ifeq ($(CONFIG_AUDIO_QA_BRANCH),y)
+    AUDIO_ADDR_SUFFIX:=$(if $(CONFIG_AUDIO_ADDR_LEGACY),_81b00000,)
+  endif
+else
+  CONFIG_AUDIO_ADDR_LEGACY:=y
+  AUDIO_BRANCH_SUFFIX:=_NAS_slim
+endif
+
+AUDIO_FW_PATH:=$(if $(CONFIG_AUDIO_CUST_BRANCH),CustBranch-QA160627,$(call qstrip,$(CONFIG_AUDIO_FW_TRUNK)))/$(call qstrip,$(CONFIG_AUDIO_FW_PATH))
+AUDIO_FW_NAME:=bluecore.audio.release$(AUDIO_BRANCH_SUFFIX)$(AUDIO_CVBS)$(AUDIO_ADDR_SUFFIX).SQA.zip

@@ -1,0 +1,315 @@
+diff --git a/etc/netatalk/netatalk.c b/etc/netatalk/netatalk.c
+index f5e9ee6..2abe754 100644
+--- a/etc/netatalk/netatalk.c
++++ b/etc/netatalk/netatalk.c
+@@ -243,6 +243,18 @@ static void sigchld_cb(evutil_socket_t fd, short what, void *arg)
+     }
+ }
+ 
++#ifdef MULTI_CORE
++static void TasksetAFP(pid_t pid)
++{
++    char cmd[64] = {0};
++    snprintf(cmd, sizeof(cmd), "/usr/bin/taskset -p 3f %zd", pid);
++    if (0 != system(cmd)) {
++        LOG(log_error, logtype_default, "Error taskset 'afpd'");
++    }
++    LOG(log_note, logtype_afpd, "Netatalk AFP assign to cpu 0");
++}
++#endif
++
+ /* timer callback */
+ static void timer_cb(evutil_socket_t fd, short what, void *arg)
+ {
+@@ -255,6 +267,11 @@ static void timer_cb(evutil_socket_t fd, short what, void *arg)
+         if ((afpd_pid = run_process(_PATH_AFPD, "-d", "-F", obj.options.configfile, NULL)) == -1) {
+             LOG(log_error, logtype_default, "Error starting 'afpd'");
+         }
++#ifdef MULTI_CORE
++        else {
++            TasksetAFP(afpd_pid);
++        }
++#endif
+     }
+ 
+     if (cnid_metad_pid == NETATALK_SRV_NEEDED) {
+@@ -389,6 +406,11 @@ int main(int argc, char **argv)
+         LOG(log_error, logtype_afpd, "Error starting 'afpd'");
+         netatalk_exit(EXITERR_CONF);
+     }
++#ifdef MULTI_CORE
++    else {
++        TasksetAFP(afpd_pid);
++    }
++#endif
+ 
+     if ((cnid_metad_pid = run_process(_PATH_CNID_METAD, "-d", "-F", obj.options.configfile, NULL)) == NETATALK_SRV_ERROR) {
+         LOG(log_error, logtype_afpd, "Error starting 'cnid_metad'");
+diff --git a/libatalk/adouble/ad_recvfile.c b/libatalk/adouble/ad_recvfile.c
+index 1703ee8..5ed93c3 100644
+--- a/libatalk/adouble/ad_recvfile.c
++++ b/libatalk/adouble/ad_recvfile.c
+@@ -34,6 +34,12 @@
+ #include <atalk/logger.h>
+ #include <atalk/util.h>
+ 
++#ifdef MULTI_CORE
++#include <asm/unistd.h>
++#include <signal.h>
++#include <sys/sendfile.h>
++#endif
++
+ static int ad_recvfile_init(const struct adouble *ad, int eid, off_t *off)
+ {
+     int fd;
+@@ -59,18 +65,55 @@ static int ad_recvfile_init(const struct adouble *ad, int eid, off_t *off)
+  * Returns count if complete success.
+  */
+ 
+-#define TRANSFER_BUF_SIZE (128*1024)
++#if defined(WITH_SENDFILE) && defined(MULTI_CORE)
++static int __check_rtk()
++{
++    const char *rtd119x, *rtd129x;
++    struct stat status;
++    static bool checked = false;
++    static int ret = -1;
++
++    if(checked)
++        return ret;
++
++    rtd119x = "/sys/devices/1801a000.sb2";
++    rtd129x = "/sys/devices/platform/9801a000.sb2";
++
++    if(!stat(rtd119x, &status) && S_ISDIR(status.st_mode)){
++        ret = 0;
++    }
++    else if(!stat(rtd129x, &status) && S_ISDIR(status.st_mode)){
++        ret = 0;
++    }
+ 
++    checked = true;
++
++    return ret;
++}
++
++/* This function is copied from samba. */
+ static ssize_t default_sys_recvfile(int fromfd,
+                                     int tofd,
+                                     off_t offset,
+-                                    size_t count)
++                                    size_t count,
++                                    int splice_size)
+ {
+-    int saved_errno = 0;
+-    size_t total = 0;
+-    size_t bufsize = MIN(TRANSFER_BUF_SIZE, count);
+     size_t total_written = 0;
+-    char *buffer = NULL;
++    int      retRecv = 0;
++    sigset_t set, old_set;
++
++    static bool try_splice_call = true;
++
++    if (!try_splice_call) {
++        errno = ENOSYS;
++        return -1;
++    }
++    else if(__check_rtk()){
++        try_splice_call = false;
++
++        errno = ENOSYS;
++        return -1;
++    }
+ 
+     if (count == 0) {
+         return 0;
+@@ -79,54 +122,76 @@ static ssize_t default_sys_recvfile(int fromfd,
+     LOG(log_maxdebug, logtype_dsi, "default_recvfile: from = %d, to = %d, offset = %.0f, count = %lu\n",
+         fromfd, tofd, (double)offset, (unsigned long)count);
+ 
+-    if ((buffer = malloc(bufsize)) == NULL)
+-        return -1;
+-
+-    while (total < count) {
+-        size_t num_written = 0;
+-        ssize_t read_ret;
+-        size_t toread = MIN(bufsize,count - total);
+-
+-        /* Read from socket - ignore EINTR. */
+-        read_ret = read(fromfd, buffer, toread);
+-        if (read_ret <= 0) {
+-            /* EOF or socket error. */
+-            free(buffer);
+-            return -1;
++    do {
++        retRecv = 0;
++
++        /**
++        * We try to block all signals except for SIGQUIT,
++        * SIGABRT, SIGKILL, SIGTERM, SIGSTOP to prevent from
++        * broken pipe.
++        */
++        sigfillset(&set);
++        sigdelset(&set, SIGQUIT);
++        sigdelset(&set, SIGABRT);
++        sigdelset(&set, SIGKILL);
++        sigdelset(&set, SIGTERM);
++        sigdelset(&set, SIGSTOP);
++        sigprocmask(SIG_BLOCK, &set, &old_set);
++
++        retRecv = sendfile(tofd, fromfd, &offset, MIN(count-total_written, splice_size));
++        sigprocmask(SIG_SETMASK, &old_set, NULL);
++
++        if ( 0 < retRecv ) {
++            total_written += retRecv;
++            if (total_written == count) {
++                break;
++            }
++            continue;
++        } else if ( 0 == retRecv ) {
++            LOG(log_debug, logtype_afpd, "No data received, count=[%lu] total_written=[%lu]",
++                (unsigned long)count,
++                (unsigned long)total_written);
++            break;
+         }
+ 
+-        num_written = 0;
+-
+-        while (num_written < read_ret) {
+-            ssize_t write_ret;
+-
+-            if (tofd == -1) {
+-                write_ret = read_ret;
+-            } else {
+-                /* Write to file - ignore EINTR. */
+-                write_ret = pwrite(tofd, buffer + num_written, read_ret - num_written, offset);
+-                if (write_ret <= 0) {
+-                    /* write error - stop writing. */
+-                    tofd = -1;
+-                    saved_errno = errno;
+-                    continue;
++        if ( errno == EINTR ) {
++            continue;
++        }
++        switch(errno) {
++            case EINTR:
++                continue;
++            case ENOSPC:
++            case EDQUOT:
++                LOG(log_debug, logtype_afpd, "%m");
++                break;
++            case EBADF:
++            case EINVAL:
++                if (total_written == 0) {
++                    LOG(log_warning, logtype_dsi, "splice() doesn't work for recvfile");
++                    //try_splice_call = false;
++                    errno = ENOSYS;
++                    return -1;
+                 }
+-            }
+-            num_written += (size_t)write_ret;
+-            total_written += (size_t)write_ret;
++            case EPIPE:
++            default:
++                LOG(log_error, logtype_afpd, "recvfile failed (ret = -1), count=[%lu] total_written=[%lu] errno=[%d(%m)]",
++                        (unsigned long)count,
++                        (unsigned long)total_written,
++                        errno);
++                break;
+         }
+-        total += read_ret;
+-    }
++        break;
++    } while ( total_written < count );
+ 
+-    free(buffer);
+-    if (saved_errno) {
+-        /* Return the correct write error. */
+-        errno = saved_errno;
+-    }
+     return (ssize_t)total_written;
+ }
+ 
+-#ifdef HAVE_SPLICE
++ssize_t sys_recvfile(int fromfd, int tofd, off_t offset, size_t count, int splice_size)
++{
++    return default_sys_recvfile(fromfd, tofd, offset, count, splice_size);
++}
++
++#elif defined(HAVE_SPLICE)
+ static int waitfordata(int socket)
+ {
+     fd_set readfds;
+@@ -236,6 +301,71 @@ done:
+  No recvfile system call - use the default 128 chunk implementation.
+ *****************************************************************/
+ 
++#define TRANSFER_BUF_SIZE (128*1024)
++static ssize_t default_sys_recvfile(int fromfd,
++                                    int tofd,
++                                    off_t offset,
++                                    size_t count)
++{
++    int saved_errno = 0;
++    size_t total = 0;
++    size_t bufsize = MIN(TRANSFER_BUF_SIZE, count);
++    size_t total_written = 0;
++    char *buffer = NULL;
++
++    if (count == 0) {
++        return 0;
++    }
++
++    LOG(log_maxdebug, logtype_dsi, "default_recvfile: from = %d, to = %d, offset = %.0f, count = %lu\n",
++        fromfd, tofd, (double)offset, (unsigned long)count);
++
++    if ((buffer = malloc(bufsize)) == NULL)
++        return -1;
++
++    while (total < count) {
++        size_t num_written = 0;
++        ssize_t read_ret;
++        size_t toread = MIN(bufsize,count - total);
++
++        /* Read from socket - ignore EINTR. */
++        read_ret = read(fromfd, buffer, toread);
++        if (read_ret <= 0) {
++            /* EOF or socket error. */
++            free(buffer);
++            return -1;
++        }
++
++        num_written = 0;
++
++        while (num_written < read_ret) {
++            ssize_t write_ret;
++
++            if (tofd == -1) {
++                write_ret = read_ret;
++            } else {
++                /* Write to file - ignore EINTR. */
++                write_ret = pwrite(tofd, buffer + num_written, read_ret - num_written, offset);
++                if (write_ret <= 0) {
++                    /* write error - stop writing. */
++                    tofd = -1;
++                    saved_errno = errno;
++                    continue;
++                }
++            }
++            num_written += (size_t)write_ret;
++            total_written += (size_t)write_ret;
++        }
++        total += read_ret;
++    }
++
++    free(buffer);
++    if (saved_errno) {
++        /* Return the correct write error. */
++        errno = saved_errno;
++    }
++    return (ssize_t)total_written;
++}
+ ssize_t sys_recvfile(int fromfd, int tofd, off_t offset, size_t count)
+ {
+     return default_sys_recvfile(fromfd, tofd, offset, count);

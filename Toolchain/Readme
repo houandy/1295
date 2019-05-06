@@ -1,0 +1,5 @@
+SDK Toolchain Release.
+The SDK provides "GNU GCC8.2 and LibC 2.27". Please enter "OpenWRT-LEDE" to build toolchain from source
+To get official GNU GCC, please visit website: https://developer.arm.com/open-source/gnu-toolchain/gnu-a/downloads/8-2-2018-08
+aarch64 toolchain: gcc-arm-8.2-2018.08-x86_64-aarch64-linux-gnu.tar.xz
+arm toolchain: gcc-arm-8.2-2018.08-x86_64-arm-linux-gnueabi.tar.xz
