@@ -42,7 +42,7 @@ endif
   IMAGE/pack = padding-hash | check-size $$$$(1)
 endef
 
--include $(SUBTARGET).mk
+-include $(CHIP).mk
 
 ifneq ($(CONFIG_PACKAGE_rtk-imagefile),)
 ifneq ("$(layout_type)", "spi")
@@ -89,7 +89,7 @@ endif
 		printf "%s='%s'\n" "BUILD_RTK_BOARD_CHIP_CODENAME" "$(SDK)$(CONFIG_RTK_BOARD_CHIP_CODENAME)" >> $(BUILD_DIR)/root-realtek/etc/build_info; \
 		printf "%s='%s'\n" "BUILD_RTK_BOARD_DDR_SIZE" "$(SDK)$(CONFIG_RTK_BOARD_DDR_SIZE)" >> $(BUILD_DIR)/root-realtek/etc/build_info;
 	cp $(BUILD_DIR)/root-realtek/etc/build_info $(STAGING_DIR)/root-realtek/etc/build_info
-	( cd $(IMAGE_BUILDER); $(IMAGE_BUILDER)/build_image.sh $(IMAGE_BUILDER)/feed $(SUBTARGET)_$(layout_type) || exit 1; cd -)
+	( cd $(IMAGE_BUILDER); $(IMAGE_BUILDER)/build_image.sh $(IMAGE_BUILDER)/feed $(CHIP)_$(layout_type) || exit 1; cd -)
 	cp $(IMAGE_BUILDER)/install.img $(BIN_DIR)
 	rm -rf $(BIN_DIR)/rescue; cp $(IMAGE_BUILDER)/workspace/rescue $(BIN_DIR) -a
 endef
@@ -121,7 +121,7 @@ endif
 		printf "%s='%s'\n" "BUILD_RTK_BOARD_CHIP_CODENAME" "$(SDK)$(CONFIG_RTK_BOARD_CHIP_CODENAME)" >> $(BUILD_DIR)/root-realtek/etc/build_info; \
 		printf "%s='%s'\n" "BUILD_RTK_BOARD_DDR_SIZE" "$(SDK)$(CONFIG_RTK_BOARD_DDR_SIZE)" >> $(BUILD_DIR)/root-realtek/etc/build_info;
 	cp $(BUILD_DIR)/root-realtek/etc/build_info $(STAGING_DIR)/root-realtek/etc/build_info
-	( cd $(IMAGE_BUILDER); $(IMAGE_BUILDER)/build_image.sh $(IMAGE_BUILDER)/feed $(SUBTARGET)_$(layout_type) || exit 1; cd -)
+	( cd $(IMAGE_BUILDER); $(IMAGE_BUILDER)/build_image.sh $(IMAGE_BUILDER)/feed $(CHIP)_$(layout_type) || exit 1; cd -)
 	cp $(IMAGE_BUILDER)/install.img $(BIN_DIR)
 	rm -rf $(BIN_DIR)/rescue; cp $(IMAGE_BUILDER)/workspace/rescue $(BIN_DIR) -a
 endef
@@ -173,7 +173,7 @@ ifeq ("$(CONFIG_PACKAGE_weston)","y")
 	echo -e "\nexport XDG_RUNTIME_DIR=/tmp" >> $(FEED_DIR)/root-realtek/etc/profile
 endif
 	cp $(RESCUE_ROOTFS) $(FEED_DIR)
-	( cd $(IMAGE_BUILDER); $(IMAGE_BUILDER)/build_image.sh $(IMAGE_BUILDER)/feed $(SUBTARGET)_$(layout_type) || exit 1; cd -)
+	( cd $(IMAGE_BUILDER); $(IMAGE_BUILDER)/build_image.sh $(IMAGE_BUILDER)/feed $(CHIP)_$(layout_type) || exit 1; cd -)
 	cp $(IMAGE_BUILDER)/install.img $(BIN_DIR)
 	rm -rf $(BIN_DIR)/rescue; cp $(IMAGE_BUILDER)/workspace/rescue $(BIN_DIR) -a
 endef
@@ -211,7 +211,7 @@ endif
 	cp $(DTB_FILE) $(FEED_DIR)/rescue.dtb
 	cp $(KDIR)/$$(KERNEL_NAME) $(FEED_DIR)/Image
 	cp $(RESCUE_ROOTFS) $(FEED_DIR)
-	( cd $(IMAGE_BUILDER); $(IMAGE_BUILDER)/build_image.sh $(IMAGE_BUILDER)/feed $(SUBTARGET)_$(layout_type) || exit 1; cd -)
+	( cd $(IMAGE_BUILDER); $(IMAGE_BUILDER)/build_image.sh $(IMAGE_BUILDER)/feed $(CHIP)_$(layout_type) || exit 1; cd -)
 	cp $(IMAGE_BUILDER)/install.img $(BIN_DIR)
 	rm -rf $(BIN_DIR)/rescue; cp $(IMAGE_BUILDER)/workspace/rescue $(BIN_DIR) -a
 endef

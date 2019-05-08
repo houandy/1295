@@ -39,7 +39,7 @@ menuconfig RTK_NAS_PACKAGES
 			select RTK_NAS_AFP
 			select RTK_NAS_DLNA if !RTK_NAS_TRANSCODE
 			select RTK_NAS_DAAP
-			select RTK_BLUECORE if TARGET_realtek_rtd129x
+			select RTK_BLUECORE if RTK_BOARD_CHIP_1295
 			help
 			  All file transfer(SMB/FTP/AFP) and streaming(DLNA/DAAP) services.
 

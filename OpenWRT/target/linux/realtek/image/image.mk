@@ -1,7 +1,7 @@
 board_name:=$(basename $(subst -,.,$(PROFILE)))
 layout_type:=$(subst .,,$(suffix $(subst -,.,$(PROFILE))))
 
-DTS_FULL_DIR:=$(DTS_DIR)/realtek/$(SUBTARGET)
+DTS_FULL_DIR:=$(DTS_DIR)/realtek/$(CHIP)
 
 DTS_PREFIX:=$(CONFIG_RTK_BOARD_CHIP)-nas-$(board_name)
 ifeq ("$(CONFIG_RTK_NAS_TRANSCODE)","y")
@@ -15,7 +15,7 @@ DTS_SUFFIX:=$(if $(CONFIG_RTK_BOARD_DDR_SIZE),-$(CONFIG_RTK_BOARD_DDR_SIZE))
 RESCUE_DTS_PREFIX:=$(CONFIG_RTK_BOARD_CHIP)
 RESCUE_DTS_SUFFIX:=-nas-qa-rescue
 #SOURCE_DTS:=$(DTS_FULL_DIR)/$(DTS_PREFIX)-$(CONFIG_RTK_BOARD_DDR_SIZE).dts
-DTS_FILE:=$(DTS_FULL_DIR)/$(SUBTARGET)-openwrt.dts
+DTS_FILE:=$(DTS_FULL_DIR)/$(CHIP)-openwrt.dts
 
 DTB_FILE:=$(patsubst %.dts,%.dtb,$(DTS_FILE))
 FACTORY_NAME := factory.tar

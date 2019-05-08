@@ -1,6 +1,10 @@
 config RTK_BOARD_CHIP_1295
 	bool
-	depends on TARGET_realtek_rtd129x
+	depends on TARGET_realtek_hvlrs
+
+config RTK_BOARD_CHIP_1295
+        bool
+        depends on TARGET_realtek_rtd129x
 
 config RTK_BOARD_CHIP_1296
 	bool
@@ -25,6 +29,7 @@ config RTK_BOARD_CHIP
 config RTK_BOARD_CHIP_CODENAME
 	string
 	depends on TARGET_realtek
+	default "rtd12xx" if TARGET_realtek_hvlrs
 	default "rtd12xx" if TARGET_realtek_rtd129x
 	default "rtd13xx" if TARGET_realtek_rtd139x
 	default "rtd16xx" if TARGET_realtek_rtd16xx
@@ -32,7 +37,7 @@ config RTK_BOARD_CHIP_CODENAME
 choice
 	prompt "DDR memory size on board"
 	depends on TARGET_realtek
-	default RTK_BOARD_DDR_2GB if TARGET_realtek_rtd129x
+	default RTK_BOARD_DDR_2GB if RTK_BOARD_CHIP_1295
 	default RTK_BOARD_DDR_1GB
 	help
 	  Select DDR memory size for Realtek boards.

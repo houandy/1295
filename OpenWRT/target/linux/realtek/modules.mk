@@ -382,7 +382,7 @@ define KernelPackage/rtk-video
         CONFIG_SND_SOC=y \
         CONFIG_SND_SOC_COMPRESS=y \
 
-  DEPENDS:=@TARGET_realtek_rtd129x \
+  DEPENDS:=@RTK_BOARD_CHIP_1295 \
 
   FILES:=
 endef
@@ -402,7 +402,7 @@ define KernelPackage/lib-mali
 	  CONFIG_PM_DEVFREQ=y \
 	  CONFIG_MALI_DEVFREQ=y \
 	  CONFIG_MALI_EXPERT=y
-  DEPENDS:=@TARGET_realtek_rtd129x
+  DEPENDS:=@RTK_BOARD_CHIP_1295
   FILES:=$(LINUX_DIR)/drivers/gpu/arm/midgard/mali_kbase.ko
   AUTOLOAD:=$(call AutoProbe,mali_kbase)
 endef
