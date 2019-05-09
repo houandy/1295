@@ -29,7 +29,7 @@ define Package/weston
   SUBMENU:=Weston
   TITLE:=Weston
   URL:=http://cgit.freedesktop.org/wayland/weston
-  DEPENDS:=@TARGET_realtek_rtd129x \
+  DEPENDS:=@RTK_BOARD_CHIP_1295 \
 	+kmod-weston +mali-wayland \
 	+libdrm +pixman +libinput +libevdev \
 	+libxkbcommon +libxau +eudev +wayland-protocols \

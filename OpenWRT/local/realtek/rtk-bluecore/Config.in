@@ -1,7 +1,7 @@
 menuconfig UPDATE_AUDIO_FW
 	bool "Update audio FW to dailybuild"
 	default y
-	depends on PACKAGE_rtk-bluecore && (TARGET_realtek_rtd129x || TARGET_realtek_rtd139x || TARGET_realtek_rtd16xx)
+	depends on PACKAGE_rtk-bluecore && (RTK_BOARD_CHIP_1295 || TARGET_realtek_rtd129x || TARGET_realtek_rtd139x || TARGET_realtek_rtd16xx)
 	help
 	  Sync to latest dailybuild or keep at a specific tag.
 
@@ -15,7 +15,7 @@ menuconfig UPDATE_AUDIO_FW
 
 		config AUDIO_ADDR_LEGACY
 			bool "0x01b00000"
-			depends on TARGET_realtek_rtd129x
+			depends on RTK_BOARD_CHIP_1295
 
 		config AUDIO_ADDR_NEW
 			bool "0x0F900000"

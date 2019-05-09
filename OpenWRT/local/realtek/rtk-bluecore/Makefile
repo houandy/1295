@@ -39,7 +39,7 @@ define Package/rtk-bluecore
   SECTION:=multimedia
   CATEGORY:=Multimedia
   TITLE:=Bluecore Libraries
-  DEPENDS:=@(RTK_NAS_TRANSCODE&&(TARGET_realtek_rtd129x||TARGET_realtek_rtd139x||TARGET_realtek_rtd16xx))
+  DEPENDS:=@(RTK_NAS_TRANSCODE&&(RTK_BOARD_CHIP_1295||RTK_BOARD_CHIP_1395||RTK_BOARD_CHIP_1619))
   DEFAULT:=y
 endef
 

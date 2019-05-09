@@ -21,7 +21,7 @@ include $(INCLUDE_DIR)/package.mk
 define KernelPackage/mali
   SUBMENU:=GPU Drivers
   TITLE:=ARM Mali GPU driver
-  DEPENDS:=@TARGET_realtek&&TARGET_realtek_rtd16xx
+  DEPENDS:=@TARGET_realtek&&RTK_BOARD_CHIP_1619
   FILES:=$(PKG_BUILD_DIR)/driver/product/kernel/drivers/gpu/arm/midgard/mali_kbase.ko \
 		 $(PKG_BUILD_DIR)/driver/product/kernel/drivers/base/dma_buf_test_exporter/dma-buf-test-exporter.ko \
 		 $(PKG_BUILD_DIR)/driver/product/kernel/drivers/gpu/arm/midgard/tests/kutf/kutf.ko
