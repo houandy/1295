@@ -167,20 +167,17 @@ endif
 	$(call Build/kernel-dtb,$(RESCUE_DTS_PREFIX)$(RESCUE_DTS_SUFFIX))
 	cp $(DTB_FILE) $(FEED_DIR)/rescue.dtb
 	cp $(KDIR)/$$(KERNEL_NAME) $(FEED_DIR)/Image
-ifeq ("$(CONFIG_RTK_NAS_VIDEO)","y")
-  ifeq ("$(CONFIG_RTK_BOARD_CHIP_1619)","y")
-    unzip -o $(TOPDIR)/../Packages/fw/bluecore.audio/bluecore-RTD1619.audio.zip  bluecore.audio.CVBS_On -d $(FEED_DIR)
-  else
-    unzip -o $(TOPDIR)/../Packages/fw/bluecore.audio/bluecore.audio.zip  bluecore.audio.CVBS_On -d $(FEED_DIR)
-  endif
-	mv $(FEED_DIR)/bluecore.audio.CVBS_On $(FEED_DIR)/bluecore.audio
-else
-  ifeq ("$(CONFIG_RTK_BOARD_CHIP_1619)","y")
-    unzip -o $(TOPDIR)/../Packages/fw/bluecore.audio/bluecore-RTD1619.audio.zip  bluecore.audio.slim -d $(FEED_DIR)
-  else
-    unzip -o $(TOPDIR)/../Packages/fw/bluecore.audio/bluecore.audio.zip  bluecore.audio.slim -d $(FEED_DIR)
-  endif
+ifeq ("$(CONFIG_RTK_BOARD_CHIP_1619)","y")
+	unzip -o $(TOPDIR)/../Packages/fw/bluecore.audio/bluecore.audio-RTD1619.zip  bluecore.audio.slim -d $(FEED_DIR)
 	mv $(FEED_DIR)/bluecore.audio.slim $(FEED_DIR)/bluecore.audio
+else
+	ifeq ("$(CONFIG_RTK_NAS_VIDEO)","y")
+		unzip -o $(TOPDIR)/../Packages/fw/bluecore.audio/bluecore.audio.zip  bluecore.audio.CVBS_On -d $(FEED_DIR)
+		mv $(FEED_DIR)/bluecore.audio.CVBS_On $(FEED_DIR)/bluecore.audio
+	else
+		unzip -o $(TOPDIR)/../Packages/fw/bluecore.audio/bluecore.audio.zip  bluecore.audio.slim -d $(FEED_DIR)
+		mv $(FEED_DIR)/bluecore.audio.slim $(FEED_DIR)/bluecore.audio
+	endif
 endif
 ifeq ("$(CONFIG_PACKAGE_libiconv-full)","y")
 	echo -e "\nexport LD_PRELOAD=/usr/lib/preloadable_libiconv.so" >> $(FEED_DIR)/root-realtek/etc/profile
