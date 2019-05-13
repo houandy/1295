@@ -35,6 +35,5 @@
 *.hex
 *.map
 *.ipk
-*.tar
 key-build*
 fwmd5
