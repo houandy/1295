@@ -191,12 +191,53 @@
 		/* GPIO Wakeup */
 		wakeup-gpio-enable = /* (0) disable (1) enable */
 			<0>, /* Wakeup from BT : disable */
-			<1>; /* Wakeup from WiFi : disable */
+			<1>, /* Wakeup from WiFi : enable */
+			<1>; /* Wakeup from Button : enable */
 		wakeup-gpio-list = /* <&rtk_iso_gpio {num} {force input (0) } {default N/A (0)] }> */
 			<&rtk_iso_gpio 14 0 0>, /* BT wakeup host pin */
-			<&rtk_iso_gpio 33 0 0>; /* WiFi wakeup host pin */
+			<&rtk_iso_gpio 33 0 0>, /* WiFi wakeup host pin */
+			<&rtk_iso_gpio 34 0 0>; /* Button wakeup host pin */
 		wakeup-gpio-activity = /* (0) active low (1) active high*/
-			<0>, /* BT : high activity */
-			<0>; /* Wifi : high activity */
+			<0>, /* BT : low activity */
+			<0>, /* Wifi : low activity */
+			<0>; /* Button : low activity */
+	};
+	gpio-keys-polled {
+		compatible = "gpio-keys-polled";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		poll-interval = <20>;
+		power {
+			label = "power";
+			gpios = <&rtk_iso_gpio 34 0 0>;
+			linux,code = <0x164>;
+		};
+	};
+	gpio-leds {
+		compatible = "gpio-leds";
+		LED_B {
+			label = "IODATA:B";
+			gpios = <&rtk_iso_gpio 28 1 0>;
+			default-state = "on";
+			linux,default-trigger = "timer";
+			linux,default-delay_on = "200";
+			linux,default-delay_off = "200";
+		};
+		LED_R {
+			label = "IODATA:R";
+			gpios = <&rtk_iso_gpio 29 1 0>;
+			default-state = "on";
+			linux,default-trigger = "timer";
+			linux,default-delay_on = "200";
+			linux,default-delay_off = "200";
+		};
+		LED_G {
+			label = "IODATA:G";
+			gpios = <&rtk_iso_gpio 30 1 0>;
+			default-state = "on";
+			linux,default-trigger = "timer";
+			linux,default-delay_on = "200";
+			linux,default-delay_off = "200";
+		};
 	};
 };

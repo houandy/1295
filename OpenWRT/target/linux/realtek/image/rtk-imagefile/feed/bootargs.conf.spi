@@ -1,5 +1,0 @@
-ethaddr=00:10:20:30:40:50
-gatewayip=192.168.100.254
-ipaddr=192.168.100.1
-netmask=255.255.255.0
-kernelargs=mtdparts=RtkSFC:1024k(U-Boot)ro,64k(FWtbl)ro,128k(Factory),10944k(FW)ro,4096k(Free),128k(oops) init=/etc/init root=/dev/sda1 rootfstype=ext4 rootwait loglevel=8
