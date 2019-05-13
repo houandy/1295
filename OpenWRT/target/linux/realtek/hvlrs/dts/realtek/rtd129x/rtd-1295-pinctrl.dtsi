@@ -151,7 +151,12 @@
 			rtk119x,pins = "ao_lrck","ao_bck","aock","ao_sd_0","ao_sd_1","ao_sd_2";
 			rtk119x,function = "ao";
 		};
-				/*
+
+        etn_led_pins: etn_led@0 {
+            rtk119x,pins = "etn_led_rxtx";
+            rtk119x,function = "etn_led";
+        };
+        /*
         etn_led_pins: etn_led@0 {
             rtk119x,pins = "etn_led_link", "etn_led_rxtx";
             rtk119x,function = "etn_led";
