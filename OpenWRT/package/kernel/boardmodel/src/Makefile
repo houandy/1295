@@ -1,0 +1,1 @@
+obj-${CONFIG_BOARDMODEL}	+= boardmodel.o

@@ -161,6 +161,12 @@
 	rtk_misc_gpio: rtk_misc_gpio@9801b100 {
 		gpios = <&rtk_misc_gpio 8 0 0>;
 		/* install button, input, default N/A */
+
+		gpios =
+		<&rtk_misc_gpio 13 0 0>,
+		<&rtk_misc_gpio 14 0 0>,
+		<&rtk_misc_gpio 100 0 0>;
+		/* boardmodel_pin */
 	};
 
 	rtk_iso_gpio: rtk_iso_gpio@98007100 {
