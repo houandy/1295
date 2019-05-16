@@ -21,7 +21,7 @@ bootargs=bootargs.conf.spi
 lzma=y
 
 update_1stfw=y
-update_2ndfw=y
+update_2ndfw=n
 
 
 burn_fwtbl=y
@@ -52,7 +52,7 @@ burn_rescuedtb=y
 
 #Rescue rootfs
 rescuefs_file=rescue_rootfs.cpio.gz
-rescuefs_zone=$((0xBA000))
+rescuefs_zone=$((0xCA000))
 rescuefs_1stfw_addr=$((rescuedtb_1stfw_addr+rescuedtb_zone))
 rescuefs_2ndfw_addr=$((rescuedtb_2ndfw_addr+rescuedtb_zone))
 burn_rescue_rootfs=y
@@ -67,7 +67,7 @@ burn_bluecore=y
 
 #kernel
 kernel_file=Image
-kernel_zone=$((0x421000))
+kernel_zone=$((0x441000))
 kernel_1stfw_addr=$((bluecore_1stfw_addr+bluecore_zone))
 kernel_2ndfw_addr=$((bluecore_2ndfw_addr+bluecore_zone))
 burn_kernel=y
