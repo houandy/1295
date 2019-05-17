@@ -118,10 +118,8 @@
 				<&sdcard_pins_high>,
 				<&uart0_pins>,
 				<&uart1_pins>,
-				<&uart2_pins_0>,
 				<&i2c_pins_0>,
 				<&i2c_pins_1>,
-				<&i2c_pins_5>,
 				<&i2c_pins_6>,
 				<&pcie_clk_pins>,
 				<&rgmii0_pins>,
@@ -134,8 +132,6 @@
 				<&pwm1_1_pins>,
 				<&pwm2_1_pins>,
 				<&pwm3_1_pins>;
-				//<&dc_fan_sensor_pins>,
-				//<&etn_led_pins>;
 	};
 
 	mux_intc: intc@9801B000 {

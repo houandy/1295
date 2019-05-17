@@ -170,8 +170,8 @@
 	};
 
 	rtk_iso_gpio: rtk_iso_gpio@98007100 {
-		gpios = <&rtk_iso_gpio 21 1 0>;
-		/* igpio21, output, default low */
+		/*gpios = <&rtk_iso_gpio 21 1 0>;
+		 igpio21, output, default low */
 	};
 
 	timer {
@@ -217,6 +217,11 @@
 			label = "power";
 			gpios = <&rtk_iso_gpio 34 0 0>;
 			linux,code = <0x164>;
+		};
+		reset {
+			label = "reset";
+			gpios = <&rtk_misc_gpio 60 0 0>;
+			linux,code = <0x198>;
 		};
 	};
 	gpio-leds {
