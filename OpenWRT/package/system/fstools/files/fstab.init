@@ -3,14 +3,34 @@
 
 START=40
 
-boot() {
+fstab_add_mount() {
+	local uuid
+
+	config_get uuid $1 uuid
+
+	exist=`block info | grep $uuid |  sed 's/^\(.*\): \(.*\)/\1/'`
+
+	if [ "$exist" = "" ]; then 
+		uci delete fstab.$1
+		uci commit fstab
+	else
+		uci set fstab.$1.target="/mnt/`basename ${exist}`"
+		uci commit fstab
+	fi
+
+}
+
+start() {                            
+	config_load fstab
+	config_foreach fstab_add_mount mount
+
 	/sbin/block mount
+
+	section="$(uci show fstab | grep "vfat" | cut -d "." -f2)"
+	[ -z "$(uci get fstab.${section}.options)" ] && /etc/init.d/udev reload
+
 }
 
-start() {
-	echo "this file has been obsoleted. please call \"/sbin/block mount\" directly"
-}
-
-stop() {
+stop() {                            
 	/sbin/block umount
 }

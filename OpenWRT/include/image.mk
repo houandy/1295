@@ -287,7 +287,6 @@ endif
 define Image/mkfs/initrd
 	( cd $(TARGET_DIR); find . | cpio -o -H newc >$(KDIR)/root.cpio )
 	$(initrd_compression_cmd)
-	cp $(KDIR)/root.cpio.* $(BIN_DIR)/
 	mv $(KDIR)/root.cpio.* $(KDIR)/root.initrd
 	( cd $(TARGET_DIR); tar jcf $(BIN_DIR)/root.tar.bz2 *)
 endef
