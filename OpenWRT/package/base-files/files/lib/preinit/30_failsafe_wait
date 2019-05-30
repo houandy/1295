@@ -80,7 +80,7 @@ fs_wait_for_key () {
 	return $keypressed
 }
 
-failsafe_wait() {
+failsafe_wait_bak() {
 	FAILSAFE=
 	[ "$pi_preinit_no_failsafe" == "y" ] && {
 		fs_wait_for_key "" "" $fs_failsafe_wait_timeout
@@ -95,6 +95,20 @@ failsafe_wait() {
 		[ -f "/tmp/failsafe_button" ] && FAILSAFE=true && echo "- failsafe button "`cat /tmp/failsafe_button`" was pressed -"
 		[ "$FAILSAFE" = "true" ] && export FAILSAFE && touch /tmp/failsafe
 	fi
+}
+
+failsafe_wait() {
+  AITFOLDER="/tmp/_sys"
+  AITPARTITION=$(cat /proc/mtd | grep "AIT" | cut -d ":" -f 1 | sed -e  's/mtd/mtdblock/g')
+  mkdir -p ${AITFOLDER}
+  mount -t jffs2 "/dev/${AITPARTITION}" "${AITFOLDER}"
+  [ -f ${AITFOLDER}/.factory ] && {
+    FAILSAFE=true
+    export FAILSAFE
+    touch /tmp/failsafe
+  } || {
+    umount "/dev/${AITPARTITION}"
+  }
 }
 
 boot_hook_add preinit_main failsafe_wait
