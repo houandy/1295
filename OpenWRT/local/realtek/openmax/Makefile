@@ -30,7 +30,7 @@ define Package/openmax
   CATEGORY:=Multimedia
 #  SUBMENU:=Multimedia
   TITLE:=Realtek OpenMAX libraries
-  DEPENDS:=@RTK_NAS_TRANSCODE +libstdcpp +glib2 $(LIBRPC_DEPENDS) +jansson +alsa-lib
+  DEPENDS:=@RTK_NAS_TRANSCODE +libstdcpp $(LIBRPC_DEPENDS) +alsa-lib 
 endef
 
 define Package/openmax/description
@@ -53,6 +53,10 @@ define Package/openmax/install
 	tar -C $(1) --strip-components=1 -Jxf $(TARGET_SOURCE_URL)/$(TARGET_SOURCE) $(TARGET_NAME)/system
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/rtk-supplicant.init $(1)/etc/init.d/rtk-supplicant
+  endif
+  ifeq ($(CONFIG_RTK_BOARD_CHIP_CODENAME), rtd16xx)
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_BIN) ./files/osd.ini $(1)/etc/init.d/osd
   endif
 endef
 

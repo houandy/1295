@@ -313,6 +313,13 @@ config ROCKCHIP_SARADC
 	  To compile this driver as a module, choose M here: the
 	  module will be called rockchip_saradc.
 
+config RTK_LSADC
+        tristate "Realtek RTD129X LSADC support"
+        depends on ARCH_RTD129X
+        default y
+        help
+          Say Y, if you want to enable LSADC feature on Realtek RTD129X platform.
+
 config TI_ADC081C
 	tristate "Texas Instruments ADC081C021/027"
 	depends on I2C

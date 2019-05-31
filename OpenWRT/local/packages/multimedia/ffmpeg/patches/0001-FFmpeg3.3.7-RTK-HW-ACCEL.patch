@@ -1,9 +1,9 @@
 diff --git a/build.sh b/build.sh
 new file mode 100755
-index 0000000..4023e48
+index 0000000..8579b8c
 --- /dev/null
 +++ b/build.sh
-@@ -0,0 +1,165 @@
+@@ -0,0 +1,166 @@
 +#!/bin/bash
 +
 +./configure \
@@ -24,7 +24,8 @@ index 0000000..4023e48
 +	--disable-lzma \
 +	--disable-protocol=concat \
 +	--disable-schannel \
-+	--disable-shared \
++	--enable-shared \
++        --disable-static \
 +	--disable-vda \
 +	--enable-gpl \
 +	--enable-libvorbis \
@@ -351,9 +352,18 @@ index a48f785..0cdabb8 100755
                                 use_pkg_config openssl openssl/ssl.h SSL_library_init ||
                                 check_lib openssl/ssl.h SSL_library_init -lssl -lcrypto ||
 diff --git a/ffmpeg.c b/ffmpeg.c
-index 4b4dae4..422eaf9 100644
+index 4b4dae4..7ea0a82 100644
 --- a/ffmpeg.c
 +++ b/ffmpeg.c
+@@ -1104,7 +1104,7 @@ static void do_video_out(OutputFile *of,
+             format_video_sync != VSYNC_PASSTHROUGH &&
+             format_video_sync != VSYNC_DROP) {
+             if (delta0 < -0.6) {
+-                av_log(NULL, AV_LOG_WARNING, "Past duration %f too large\n", -delta0);
++                av_log(NULL, AV_LOG_VERBOSE, "Past duration %f too large\n", -delta0);
+             } else
+                 av_log(NULL, AV_LOG_DEBUG, "Clipping frame in rate conversion by %f\n", -delta0);
+             sync_ipts = ost->sync_opts;
 @@ -1807,7 +1807,22 @@ static void print_report(int is_last_report, int64_t timer_start, int64_t cur_ti
          snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf)," speed=%4.3gx", speed);
          av_bprintf(&buf_script, "speed=%4.3gx\n", speed);
@@ -419,10 +429,10 @@ index e73a610..43a4154 100644
  
      input_stream_potentially_available = 1;
 diff --git a/ffplay.c b/ffplay.c
-index cf138dc..fbe0ea0 100644
+index cf138dc..7503d61 100644
 --- a/ffplay.c
 +++ b/ffplay.c
-@@ -107,7 +107,42 @@ const int program_birth_year = 2003;
+@@ -107,7 +107,36 @@ const int program_birth_year = 2003;
  
  #define USE_ONEPASS_SUBTITLE_RENDER 1
  
@@ -434,7 +444,6 @@ index cf138dc..fbe0ea0 100644
 +
 +#define LIBNAME "libRTKMediaIf.so"
 +#define CONFIG_AVFILTER 0
-+#define ALIGN16(x)      ((x + 15) & ~(15))
 +
 +
 +typedef struct RTKFunc {
@@ -448,15 +457,10 @@ index cf138dc..fbe0ea0 100644
 +    RtkMiReturn_e (*rtk_MI_Player_GetBlank)(unsigned char*);
 +    RtkMiReturn_e (*rtk_MI_VO_SetOutput)(HDMIOutput_e ,DPOutput_e);
 +    RtkMiReturn_e (*rtk_MI_VO_GetOutput)(HDMITxSt_t *, DPTxSt_t *);
++    RtkMiReturn_e (*rtk_MI_ShowVersion)();
 +} RTKFunc;
 +
-+typedef struct RenderNode
-+{
-+    int frameIdx;
-+    int renderIdx;
-+    AVFrame *frame;
-+    struct RenderNode* next;
-+} RenderNode;
++
 +#endif
 +
 +#if !USE_RTK_DIRECT_DISPLAY
@@ -465,14 +469,13 @@ index cf138dc..fbe0ea0 100644
  
  typedef struct MyAVPacketList {
      AVPacket pkt;
-@@ -305,16 +340,28 @@ typedef struct VideoState {
+@@ -305,16 +334,29 @@ typedef struct VideoState {
      int last_video_stream, last_audio_stream, last_subtitle_stream;
  
      SDL_cond *continue_read_thread;
 +
 +#if USE_RTK_DIRECT_DISPLAY
 +    RTKFunc *rtk_func;
-+    RenderNode *renderQueue;
 +#endif
  } VideoState;
  
@@ -490,11 +493,13 @@ index cf138dc..fbe0ea0 100644
 +static int default_height = 1080;
 +static int screen_width  = 1920;
 +static int screen_height = 1080;
++static HDMIOutput_e hdmi_resolution = -1;
++static int rtk_mi_version;
 +#endif
  static int audio_disable;
  static int video_disable;
  static int subtitle_disable;
-@@ -371,6 +418,98 @@ static int opt_add_vfilter(void *optctx, const char *opt, const char *arg)
+@@ -371,6 +413,102 @@ static int opt_add_vfilter(void *optctx, const char *opt, const char *arg)
  }
  #endif
  
@@ -504,7 +509,7 @@ index cf138dc..fbe0ea0 100644
 +    s->lib = dlopen(LIBNAME, RTLD_NOW | RTLD_GLOBAL);
 +    if (!s->lib) {
 +        av_log(NULL, AV_LOG_ERROR, "%s not found\n", LIBNAME);
-+        return 0;
++        return -1;
 +    }
 +    s->rtk_MI_Init                = (RtkMiReturn_e (*)(MediaServiceSel_e))dlsym(s->lib, "rtk_MI_Init");
 +    s->rtk_MI_Destroy                 = (RtkMiReturn_e (*)(MediaServiceSel_e))dlsym(s->lib, "rtk_MI_Destroy");
@@ -515,21 +520,23 @@ index cf138dc..fbe0ea0 100644
 +    s->rtk_MI_Player_GetBlank                   = (RtkMiReturn_e (*)(unsigned char*))dlsym(s->lib, "rtk_MI_Player_GetBlank");
 +    s->rtk_MI_VO_SetOutput                   = (RtkMiReturn_e (*)(HDMIOutput_e, DPOutput_e))dlsym(s->lib, "rtk_MI_VO_SetOutput");
 +    s->rtk_MI_VO_GetOutput                   = (RtkMiReturn_e (*)(HDMITxSt_t *, DPTxSt_t *))dlsym(s->lib, "rtk_MI_VO_GetOutput");
++    s->rtk_MI_ShowVersion                = (RtkMiReturn_e (*)(MediaServiceSel_e))dlsym(s->lib, "rtk_MI_ShowVersion");
 +
 +    if (!s->rtk_MI_Init || !s->rtk_MI_Destroy ||
 +      !s->rtk_MI_Player_SetDispWindow ||!s->rtk_MI_Player_GetDispWindow ||
 +      !s->rtk_MI_Player_DirectFlip ||
 +      !s->rtk_MI_Player_SetBlank || !s->rtk_MI_Player_GetBlank ||
-+      !s->rtk_MI_VO_SetOutput || !s->rtk_MI_VO_GetOutput) {
++      !s->rtk_MI_VO_SetOutput || !s->rtk_MI_VO_GetOutput ||
++      !s->rtk_MI_ShowVersion ) {
 +      av_log(NULL, AV_LOG_ERROR, "%s functions are fail\n", LIBNAME);
-+      av_log(NULL, AV_LOG_ERROR, "%d, %d, %d, %d, %d, %d, %d, %d, %d\n",
++      av_log(NULL, AV_LOG_ERROR, "%d, %d, %d, %d, %d, %d, %d, %d, %d %d\n",
 +        !s->rtk_MI_Init, !s->rtk_MI_Destroy, !s->rtk_MI_Player_SetDispWindow, !s->rtk_MI_Player_GetDispWindow,
-+        !s->rtk_MI_Player_DirectFlip, !s->rtk_MI_Player_SetBlank, !s->rtk_MI_Player_GetBlank,  !s->rtk_MI_VO_SetOutput, !s->rtk_MI_VO_GetOutput);
++        !s->rtk_MI_Player_DirectFlip, !s->rtk_MI_Player_SetBlank, !s->rtk_MI_Player_GetBlank,  !s->rtk_MI_VO_SetOutput, !s->rtk_MI_VO_GetOutput,  !s->rtk_MI_ShowVersion );
 +      dlclose(s->lib);
 +      s->lib = NULL;
-+      return 0;
++      return -1;
 +    }
-+    return 1;
++    return 0;
 +}
 +
 +/* RTK function */
@@ -551,6 +558,8 @@ index cf138dc..fbe0ea0 100644
 +        return NULL;
 +    }
 +
++    if(rtk_mi_version)
++       rtk_func->rtk_MI_ShowVersion();
 +
 +    rtk_ret = rtk_func->rtk_MI_Init(MEDIA_SERVICE_PLAYER);
 +    if(rtk_ret != RTK_MI_SUCCESS)
@@ -593,7 +602,7 @@ index cf138dc..fbe0ea0 100644
  static inline
  int cmp_audio_fmts(enum AVSampleFormat fmt1, int64_t channel_count1,
                     enum AVSampleFormat fmt2, int64_t channel_count2)
-@@ -847,6 +986,7 @@ static void calculate_display_rect(SDL_Rect *rect,
+@@ -847,6 +985,7 @@ static void calculate_display_rect(SDL_Rect *rect,
      rect->h = FFMAX(height, 1);
  }
  
@@ -601,7 +610,7 @@ index cf138dc..fbe0ea0 100644
  static int upload_texture(SDL_Texture *tex, AVFrame *frame, struct SwsContext **img_convert_ctx) {
      int ret = 0;
      switch (frame->format) {
-@@ -855,6 +995,7 @@ static int upload_texture(SDL_Texture *tex, AVFrame *frame, struct SwsContext **
+@@ -855,6 +994,7 @@ static int upload_texture(SDL_Texture *tex, AVFrame *frame, struct SwsContext **
                  av_log(NULL, AV_LOG_ERROR, "Negative linesize is not supported for YUV.\n");
                  return -1;
              }
@@ -609,7 +618,7 @@ index cf138dc..fbe0ea0 100644
              ret = SDL_UpdateYUVTexture(tex, NULL, frame->data[0], frame->linesize[0],
                                                    frame->data[1], frame->linesize[1],
                                                    frame->data[2], frame->linesize[2]);
-@@ -887,7 +1028,7 @@ static int upload_texture(SDL_Texture *tex, AVFrame *frame, struct SwsContext **
+@@ -887,7 +1027,7 @@ static int upload_texture(SDL_Texture *tex, AVFrame *frame, struct SwsContext **
      }
      return ret;
  }
@@ -618,7 +627,7 @@ index cf138dc..fbe0ea0 100644
  static void video_image_display(VideoState *is)
  {
      Frame *vp;
-@@ -943,16 +1084,22 @@ static void video_image_display(VideoState *is)
+@@ -943,16 +1083,22 @@ static void video_image_display(VideoState *is)
      calculate_display_rect(&rect, is->xleft, is->ytop, is->width, is->height, vp->width, vp->height, vp->sar);
  
      if (!vp->uploaded) {
@@ -641,7 +650,7 @@ index cf138dc..fbe0ea0 100644
      if (sp) {
  #if USE_ONEPASS_SUBTITLE_RENDER
          SDL_RenderCopy(renderer, is->sub_texture, NULL, &rect);
-@@ -970,6 +1117,7 @@ static void video_image_display(VideoState *is)
+@@ -970,6 +1116,7 @@ static void video_image_display(VideoState *is)
          }
  #endif
      }
@@ -649,7 +658,7 @@ index cf138dc..fbe0ea0 100644
  }
  
  static inline int compute_mod(int a, int b)
-@@ -1215,6 +1363,10 @@ static void stream_close(VideoState *is)
+@@ -1215,6 +1362,10 @@ static void stream_close(VideoState *is)
  
  static void do_exit(VideoState *is)
  {
@@ -660,7 +669,7 @@ index cf138dc..fbe0ea0 100644
      if (is) {
          stream_close(is);
      }
-@@ -1222,6 +1374,7 @@ static void do_exit(VideoState *is)
+@@ -1222,6 +1373,7 @@ static void do_exit(VideoState *is)
          SDL_DestroyRenderer(renderer);
      if (window)
          SDL_DestroyWindow(window);
@@ -668,7 +677,7 @@ index cf138dc..fbe0ea0 100644
      av_lockmgr_register(NULL);
      uninit_opts();
  #if CONFIG_AVFILTER
-@@ -1260,7 +1413,8 @@ static int video_open(VideoState *is)
+@@ -1260,7 +1412,8 @@ static int video_open(VideoState *is)
          h = default_height;
      }
  
@@ -678,7 +687,7 @@ index cf138dc..fbe0ea0 100644
          int flags = SDL_WINDOW_SHOWN;
          if (!window_title)
              window_title = input_filename;
-@@ -1270,7 +1424,11 @@ static int video_open(VideoState *is)
+@@ -1270,7 +1423,11 @@ static int video_open(VideoState *is)
              flags |= SDL_WINDOW_BORDERLESS;
          else
              flags |= SDL_WINDOW_RESIZABLE;
@@ -690,7 +699,7 @@ index cf138dc..fbe0ea0 100644
          SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
          if (window) {
              SDL_RendererInfo info;
-@@ -1292,7 +1450,9 @@ static int video_open(VideoState *is)
+@@ -1292,7 +1449,9 @@ static int video_open(VideoState *is)
          av_log(NULL, AV_LOG_FATAL, "SDL: could not set video mode - exiting\n");
          do_exit(is);
      }
@@ -701,7 +710,7 @@ index cf138dc..fbe0ea0 100644
      is->width  = w;
      is->height = h;
  
-@@ -1307,11 +1467,14 @@ static void video_display(VideoState *is)
+@@ -1307,11 +1466,14 @@ static void video_display(VideoState *is)
  
      SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
      SDL_RenderClear(renderer);
@@ -716,20 +725,11 @@ index cf138dc..fbe0ea0 100644
  }
  
  static double get_clock(Clock *c)
-@@ -1547,6 +1710,7 @@ retry:
- 
-             if (vp->serial != is->videoq.serial) {
-                 frame_queue_next(&is->pictq);
-+                printf("%s, %d\n", __FUNCTION__, __LINE__);
-                 goto retry;
-             }
- 
-@@ -1554,7 +1718,14 @@ retry:
+@@ -1554,7 +1716,13 @@ retry:
                  is->frame_timer = av_gettime_relative() / 1000000.0;
  
              if (is->paused)
 +            {
-+                printf("%s, %d\n", __FUNCTION__, __LINE__);
 +#if USE_RTK_DIRECT_DISPLAY
 +                return;
 +#else
@@ -739,11 +739,10 @@ index cf138dc..fbe0ea0 100644
  
              /* compute nominal last_duration */
              last_duration = vp_duration(is, lastvp, vp);
-@@ -1563,7 +1734,12 @@ retry:
+@@ -1563,7 +1731,11 @@ retry:
              time= av_gettime_relative()/1000000.0;
              if (time < is->frame_timer + delay) {
                  *remaining_time = FFMIN(is->frame_timer + delay - time, *remaining_time);
-+                //printf("%s, %d\n", __FUNCTION__, __LINE__);
 +#if USE_RTK_DIRECT_DISPLAY
 +                return;
 +#else
@@ -752,15 +751,7 @@ index cf138dc..fbe0ea0 100644
              }
  
              is->frame_timer += delay;
-@@ -1580,6 +1756,7 @@ retry:
-                 duration = vp_duration(is, vp, nextvp);
-                 if(!is->step && (framedrop>0 || (framedrop && get_master_sync_type(is) != AV_SYNC_VIDEO_MASTER)) && time > is->frame_timer + duration){
-                     is->frame_drops_late++;
-+                    printf("Drop2\n");
-                     frame_queue_next(&is->pictq);
-                     goto retry;
-                 }
-@@ -1620,13 +1797,17 @@ retry:
+@@ -1620,12 +1792,15 @@ retry:
              }
  
              frame_queue_next(&is->pictq);
@@ -774,19 +765,9 @@ index cf138dc..fbe0ea0 100644
  display:
 +#endif
          /* display picture */
-+        //printf("is->force_refresh %d, is->show_mode %d, is->pictq.rindex_shown %d\n", is->force_refresh, is->show_mode, is->pictq.rindex_shown);
          if (!display_disable && is->force_refresh && is->show_mode == SHOW_MODE_VIDEO && is->pictq.rindex_shown)
              video_display(is);
-     }
-@@ -1727,6 +1908,7 @@ static int get_video_frame(VideoState *is, AVFrame *frame)
-                     is->videoq.nb_packets) {
-                     is->frame_drops_early++;
-                     av_frame_unref(frame);
-+                    printf("Drop Frame\n");
-                     got_picture = 0;
-                 }
-             }
-@@ -3137,7 +3319,11 @@ static void stream_cycle_channel(VideoState *is, int codec_type)
+@@ -3137,7 +3312,11 @@ static void stream_cycle_channel(VideoState *is, int codec_type)
  static void toggle_full_screen(VideoState *is)
  {
      is_full_screen = !is_full_screen;
@@ -798,7 +779,77 @@ index cf138dc..fbe0ea0 100644
  }
  
  static void toggle_audio_display(VideoState *is)
-@@ -3691,6 +3877,13 @@ int main(int argc, char **argv)
+@@ -3502,6 +3681,58 @@ static int opt_codec(void *optctx, const char *opt, const char *arg)
+    return 0;
+ }
+ 
++#if USE_RTK_DIRECT_DISPLAY
++static int opt_res(void *optctx, const char *opt, const char *arg)
++{
++    int res = parse_number_or_die(opt, arg, OPT_INT64, 1, INT_MAX);
++    switch(res)
++    {
++        case 1:
++            hdmi_resolution = HDMI_OUTPUT_1080P_50;
++            screen_width = 1920;
++            screen_height = 1080;
++            break;
++        case 2:
++            hdmi_resolution = HDMI_OUTPUT_4K_60;
++            screen_width = 3840;
++            screen_height = 2160;
++            break;
++        case 3:
++            hdmi_resolution = HDMI_OUTPUT_4K_50;
++            screen_width = 3840;
++            screen_height = 2160;
++            break;
++        case 4:
++            hdmi_resolution = HDMI_OUTPUT_4K_30;
++            screen_width = 3840;
++            screen_height = 2160;
++            break;
++        case 5:
++            hdmi_resolution = HDMI_OUTPUT_4K_25;
++            screen_width = 3840;
++            screen_height = 2160;
++            break;
++        case 6:
++            hdmi_resolution = HDMI_OUTPUT_720P_60;
++            screen_width = 1280;
++            screen_height = 720;
++            break;
++        case 7:
++            hdmi_resolution = HDMI_OUTPUT_720P_50;
++            screen_width = 1280;
++            screen_height = 720;
++            break;
++        case 0:
++        default:
++            hdmi_resolution = HDMI_OUTPUT_1080P_60;
++            screen_width = 1920;
++            screen_height = 1080;
++            break;
++    }
++    return 0;
++}
++#endif
++
+ static int dummy;
+ 
+ static const OptionDef options[] = {
+@@ -3550,6 +3781,10 @@ static const OptionDef options[] = {
+     { "scodec", HAS_ARG | OPT_STRING | OPT_EXPERT, { &subtitle_codec_name }, "force subtitle decoder", "decoder_name" },
+     { "vcodec", HAS_ARG | OPT_STRING | OPT_EXPERT, {    &video_codec_name }, "force video decoder",    "decoder_name" },
+     { "autorotate", OPT_BOOL, { &autorotate }, "automatically rotate video", "" },
++#if USE_RTK_DIRECT_DISPLAY
++    { "res", HAS_ARG, { .func_arg = opt_res }, "force HDMITx resolution ([0] = 1080p@60, [1] = 1080p@50, [2] = 4k@60, [3] = 4k@50, [4] = 4k@30, [5] = 4k@25, [6] = 720p@60, [7] = 720p@50)", "" },
++    { "rtk_mi_version", OPT_INT | HAS_ARG, { &rtk_mi_version }, "Show verion information about RTK mi", "" },
++#endif
+     { NULL, },
+ };
+ 
+@@ -3691,6 +3926,19 @@ int main(int argc, char **argv)
          do_exit(NULL);
      }
  
@@ -807,6 +858,12 @@ index cf138dc..fbe0ea0 100644
 +    if(!is->rtk_func){
 +        av_log(NULL, AV_LOG_FATAL, "Failed to initialize RTK MI Player!\n");
 +        do_exit(NULL);
++    }
++
++    if(hdmi_resolution != -1)
++    {
++        is->rtk_func->rtk_MI_VO_SetOutput(hdmi_resolution, DP_OUTPUT_NONE);
++        av_usleep(1000000); //wait for hdmi setting
 +    }
 +#endif
      event_loop(is);
@@ -1416,7 +1473,7 @@ index 19b4f33..420e50c 100644
 +
 diff --git a/libavcodec/rma_dec.c b/libavcodec/rma_dec.c
 new file mode 100644
-index 0000000..159ba1f
+index 0000000..3933aaa
 --- /dev/null
 +++ b/libavcodec/rma_dec.c
 @@ -0,0 +1,901 @@
@@ -1474,7 +1531,7 @@ index 0000000..159ba1f
 +
 +#define RTK_VERSION_MAJOR  1
 +#define RTK_VERSION_MINOR  0
-+#define RTK_VERSION_MICRO  8
++#define RTK_VERSION_MICRO  10
 +
 +typedef struct RMALibContext {
 +    void *lib;

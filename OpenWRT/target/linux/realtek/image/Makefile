@@ -74,7 +74,7 @@ ifeq ("$(CONFIG_RTK_NAS_VIDEO)","y")
 	sed -i 's/burn_bootlogo=n/burn_bootlogo=y/g' $(FEED_DIR)/feeds.conf
 else
 	sed -i 's/^bootlogo_file=[^\n]\+/bootlogo_file=/g' $(FEED_DIR)/feeds.conf
-	sed -i 's/^bootlogo_zone=[^\n]\+/bootlogo_zone=\$\(\(0\)\)/g' $(FEED_DIR)/feeds.conf
+	sed -i 's/^bootlogo_zone=[^\n]\+/bootlogo_zone=$$$$\(\(0\)\)/g' $(FEED_DIR)/feeds.conf
 	sed -i 's/burn_bootlogo=y/burn_bootlogo=n/g' $(FEED_DIR)/feeds.conf
 endif
 	$(call Build/kernel-dtb,$(DTS_PREFIX)$(DTS_SUFFIX))
@@ -89,6 +89,12 @@ endif
   endif
 	mv $(FEED_DIR)/bluecore.audio.slim $(FEED_DIR)/bluecore.audio
 	cp $(RESCUE_ROOTFS) $(FEED_DIR)
+ifeq ("$(CONFIG_PACKAGE_libiconv-full)","y")
+	echo -e "\nexport LD_PRELOAD=/usr/lib/preloadable_libiconv.so" >> $(BUILD_DIR)/root-realtek/etc/profile
+endif
+ifeq ("$(CONFIG_PACKAGE_weston)","y")
+	echo -e "\nexport XDG_RUNTIME_DIR=/tmp" >> $(BUILD_DIR)/root-realtek/etc/profile
+endif
 	printf "%s=%s\n" "BUILD_TARGET_PROFILE" "$(SDK)$(CONFIG_TARGET_PROFILE)" >> $(BUILD_DIR)/root-realtek/etc/build_info; \
 		printf "%s='%s'\n" "BUILD_LAYOUT_TYPE" "$(layout_type)" >> $(BUILD_DIR)/root-realtek/etc/build_info; \
 		printf "%s='%s'\n" "BUILD_ARCH" "$(SDK)$(CONFIG_ARCH)" >> $(BUILD_DIR)/root-realtek/etc/build_info; \
@@ -109,7 +115,7 @@ ifeq ("$(CONFIG_RTK_NAS_VIDEO)","y")
 	sed -i 's/burn_bootlogo=n/burn_bootlogo=y/g' $(FEED_DIR)/feeds.conf
 else
 	sed -i 's/^bootlogo_file=[^\n]\+/bootlogo_file=/g' $(FEED_DIR)/feeds.conf
-	sed -i 's/^bootlogo_zone=[^\n]\+/bootlogo_zone=\$\(\(0\)\)/g' $(FEED_DIR)/feeds.conf
+	sed -i 's/^bootlogo_zone=[^\n]\+/bootlogo_zone=$$$$\(\(0\)\)/g' $(FEED_DIR)/feeds.conf
 	sed -i 's/burn_bootlogo=y/burn_bootlogo=n/g' $(FEED_DIR)/feeds.conf
 endif
 	sed -i 's/bluecore_zone=/#bluecore_zone=\nbluecore_zone=0\n#/g'  $(FEED_DIR)/feeds.conf
@@ -139,6 +145,12 @@ ifeq ("$(layout_type)","emmc")
 ifeq ("$(CONFIG_RTK_BLUECORE)","y")
 define Image/Build/rtkimg
  	rm -f $(TOPDIR)/../Toolchain; ln -sf $(TOPDIR)/../Toolchain ./rtk-imagefile/Toolchain
+ifeq ("$(CONFIG_PACKAGE_libiconv-full)","y")
+	echo -e "\nexport LD_PRELOAD=/usr/lib/preloadable_libiconv.so" >> $(BUILD_DIR)/root-realtek/etc/profile
+endif
+ifeq ("$(CONFIG_PACKAGE_weston)","y")
+	echo -e "\nexport XDG_RUNTIME_DIR=/tmp" >> $(BUILD_DIR)/root-realtek/etc/profile
+endif
 	$(TAR) -cjBpf $(FEED_DIR)/root.$(layout_type).tar.bz2  --numeric-owner --owner=0 --group=0 -C $(TARGET_DIR)/ .
 	rm -rf $(FEED_DIR)/root-realtek
 	mkdir $(FEED_DIR)/root-realtek
@@ -159,7 +171,7 @@ ifeq ("$(CONFIG_RTK_NAS_VIDEO)","y")
 	sed -i 's/burn_bootlogo=n/burn_bootlogo=y/g' $(FEED_DIR)/feeds.conf
 else
 	sed -i 's/^bootlogo_file=[^\n]\+/bootlogo_file=/g' $(FEED_DIR)/feeds.conf
-	sed -i 's/^bootlogo_zone=[^\n]\+/bootlogo_zone=\$\(\(0\)\)/g' $(FEED_DIR)/feeds.conf
+	sed -i 's/^bootlogo_zone=[^\n]\+/bootlogo_zone=$$$$\(\(0\)\)/g' $(FEED_DIR)/feeds.conf
 	sed -i 's/burn_bootlogo=y/burn_bootlogo=n/g' $(FEED_DIR)/feeds.conf
 endif
 	$(call Build/kernel-dtb,$(DTS_PREFIX)$(DTS_SUFFIX))
@@ -174,9 +186,12 @@ else
 	ifeq ("$(CONFIG_RTK_NAS_VIDEO)","y")
 		unzip -o $(TOPDIR)/../Packages/fw/bluecore.audio/bluecore.audio.zip  bluecore.audio.CVBS_On -d $(FEED_DIR)
 		mv $(FEED_DIR)/bluecore.audio.CVBS_On $(FEED_DIR)/bluecore.audio
-	else
+	else ifeq ("$(CONFIG_RTK_NAS_TRANSCODE)","y")
 		unzip -o $(TOPDIR)/../Packages/fw/bluecore.audio/bluecore.audio.zip  bluecore.audio.slim -d $(FEED_DIR)
 		mv $(FEED_DIR)/bluecore.audio.slim $(FEED_DIR)/bluecore.audio
+	else
+		unzip -o $(TOPDIR)/../Packages/fw/bluecore.audio/bluecore.audio.zip  bluecore.audio.slim_disable_vo -d $(FEED_DIR)
+		mv $(FEED_DIR)/bluecore.audio.slim_disable_vo $(FEED_DIR)/bluecore.audio
 	endif
 endif
 ifeq ("$(CONFIG_PACKAGE_libiconv-full)","y")
@@ -212,7 +227,7 @@ ifeq ("$(CONFIG_RTK_NAS_VIDEO)","y")
 	sed -i 's/burn_bootlogo=n/burn_bootlogo=y/g' $(FEED_DIR)/feeds.conf
 else
 	sed -i 's/^bootlogo_file=[^\n]\+/bootlogo_file=/g' $(FEED_DIR)/feeds.conf
-	sed -i 's/^bootlogo_zone=[^\n]\+/bootlogo_zone=\$\(\(0\)\)/g' $(FEED_DIR)/feeds.conf
+	sed -i 's/^bootlogo_zone=[^\n]\+/bootlogo_zone=$$$$\(\(0\)\)/g' $(FEED_DIR)/feeds.conf
 	sed -i 's/burn_bootlogo=y/burn_bootlogo=n/g' $(FEED_DIR)/feeds.conf
 endif
 	sed -i 's/bluecore_zone=/#bluecore_zone=\nbluecore_zone=0\n#/g'  $(FEED_DIR)/feeds.conf

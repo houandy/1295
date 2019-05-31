@@ -30,7 +30,7 @@ $(eval $(call KernelPackage,6lowpan))
 define KernelPackage/bluetooth
   SUBMENU:=$(OTHER_MENU)
   TITLE:=Bluetooth support
-  DEPENDS:=@USB_SUPPORT +kmod-usb-core +kmod-crypto-hash +kmod-crypto-ecb +kmod-lib-crc16 +kmod-hid +!LINUX_3_18:kmod-crypto-cmac +!LINUX_3_18:kmod-regmap +LINUX_4_14:kmod-crypto-ecdh
+  DEPENDS:=+kmod-crypto-hash +kmod-crypto-ecb +kmod-lib-crc16 +kmod-hid +!LINUX_3_18:kmod-crypto-cmac +!LINUX_3_18:kmod-regmap +LINUX_4_14:kmod-crypto-ecdh
   KCONFIG:= \
 	CONFIG_BLUEZ \
 	CONFIG_BLUEZ_L2CAP \
@@ -48,14 +48,6 @@ define KernelPackage/bluetooth
 	CONFIG_BT_SCO=y \
 	CONFIG_BT_RFCOMM \
 	CONFIG_BT_BNEP \
-	CONFIG_BT_HCIBTUSB \
-	CONFIG_BT_HCIBTUSB_BCM=n \
-	CONFIG_BT_HCIUSB \
-	CONFIG_BT_HCIUART \
-	CONFIG_BT_HCIUART_BCM=n \
-	CONFIG_BT_HCIUART_INTEL=n \
-	CONFIG_BT_HCIUART_H4 \
-	CONFIG_BT_HCIUART_NOKIA=n \
 	CONFIG_BT_HIDP \
 	CONFIG_HID_SUPPORT=y
   $(call AddDepends/rfkill)
@@ -63,14 +55,8 @@ define KernelPackage/bluetooth
 	$(LINUX_DIR)/net/bluetooth/bluetooth.ko \
 	$(LINUX_DIR)/net/bluetooth/rfcomm/rfcomm.ko \
 	$(LINUX_DIR)/net/bluetooth/bnep/bnep.ko \
-	$(LINUX_DIR)/net/bluetooth/hidp/hidp.ko \
-	$(LINUX_DIR)/drivers/bluetooth/hci_uart.ko \
-	$(LINUX_DIR)/drivers/bluetooth/btusb.ko
-ifeq ($(strip $(call CompareKernelPatchVer,$(KERNEL_PATCHVER),ge,4.1.0)),1)
-  FILES+= \
-	$(LINUX_DIR)/drivers/bluetooth/btintel.ko
-endif
-  AUTOLOAD:=$(call AutoProbe,bluetooth rfcomm bnep hidp hci_uart btusb)
+	$(LINUX_DIR)/net/bluetooth/hidp/hidp.ko
+  AUTOLOAD:=$(call AutoProbe,bluetooth rfcomm bnep hidp)
 endef
 
 define KernelPackage/bluetooth/description
@@ -78,6 +64,52 @@ define KernelPackage/bluetooth/description
 endef
 
 $(eval $(call KernelPackage,bluetooth))
+
+define KernelPackage/bluetooth_uart_driver
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=Bluetooth uart driver support
+  DEPENDS:=+kmod-bluetooth
+  KCONFIG:= \
+	CONFIG_BT_HCIUART \
+	CONFIG_BT_HCIUART_BCM=n \
+	CONFIG_BT_HCIUART_INTEL=n \
+	CONFIG_BT_HCIUART_NOKIA=n \
+	CONFIG_BT_HCIUART_H4=y \
+	CONFIG_BT_HCIUART_LL=n \
+	CONFIG_BT_HCIUART_BCSP=n
+  FILES:= \
+	$(LINUX_DIR)/drivers/bluetooth/hci_uart.ko
+  AUTOLOAD:=$(call AutoProbe,hci_uart)
+endef
+
+define KernelPackage/bluetooth_uart_driver/description
+ Kernel support for Bluetooth UART Driver
+endef
+
+$(eval $(call KernelPackage,bluetooth_uart_driver))
+
+define KernelPackage/bluetooth_usb_driver
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=Bluetooth USB driver support
+  DEPENDS:=@USB_SUPPORT +kmod-usb-core +kmod-bluetooth
+  KCONFIG:= \
+	CONFIG_BT_HCIBTUSB \
+	CONFIG_BT_HCIBTUSB_BCM=n \
+	CONFIG_BT_HCIUSB
+  FILES:= \
+	$(LINUX_DIR)/drivers/bluetooth/btusb.ko
+ifeq ($(strip $(call CompareKernelPatchVer,$(KERNEL_PATCHVER),ge,4.1.0)),1)
+  FILES+= \
+	$(LINUX_DIR)/drivers/bluetooth/btintel.ko
+endif
+  AUTOLOAD:=$(call AutoProbe,btusb)
+endef
+
+define KernelPackage/bluetooth_usb_driver/description
+ Kernel support for Bluetooth USB Driver
+endef
+
+$(eval $(call KernelPackage,bluetooth_usb_driver))
 
 define KernelPackage/ath3k
   SUBMENU:=$(OTHER_MENU)
@@ -135,6 +167,35 @@ endef
 
 $(eval $(call KernelPackage,btmrvl))
 
+define KernelPackage/rtk_rfkill
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=Realtek RFKILL driver
+  KCONFIG:=CONFIG_BT_RTKBTRFKILL
+  FILES:= \
+	$(LINUX_DIR)/drivers/bluetooth/rtk_rfkill.ko
+  AUTOLOAD:=$(call AutoProbe,rtk_rfkill)
+  DEPENDS:=@TARGET_realtek +kmod-rfkill
+endef
+
+define KernelPackage/rtk_rfkill/description
+  This package contains the Realtek RFKILL driver
+endef
+
+$(eval $(call KernelPackage,rtk_rfkill))
+
+define KernelPackage/rtk_btuart
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=Realtek bluetooth UART driver for Linux
+  DEPENDS:=@TARGET_realtek +@USE_RFKILL +kmod-rtk_rfkill +kmod-bluetooth +kmod-bluetooth_uart_driver
+  FILES:=
+  AUTOLOAD:=
+endef
+
+define Package/rtk_btuart/description
+  Realtek bluetooth UART driver for Linux
+endef
+
+$(eval $(call KernelPackage,rtk_btuart))
 
 define KernelPackage/dma-buf
   SUBMENU:=$(OTHER_MENU)

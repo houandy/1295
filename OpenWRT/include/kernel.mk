@@ -47,6 +47,9 @@ else
     FILES_DIR ?= $(foreach dir,$(wildcard $(CURDIR)/files $(CURDIR)/files-$(KERNEL_PATCHVER)),"$(dir)")
   endif
     PATCH_SUBTARGET_DIR ?= $(if $(wildcard $(PATCH_DIR)_$(SUBTARGET)),$(PATCH_DIR)_$(SUBTARGET))
+  ifneq ($(CONFIG_PACKAGE_kmod-rtk_btuart),)
+    PATCH_BT_DIR ?= $(if $(wildcard $(PATCH_DIR)_bt),$(PATCH_DIR)_bt)
+  endif
   KERNEL_BUILD_DIR ?= $(BUILD_DIR)/linux-$(BOARD)$(if $(SUBTARGET),_$(SUBTARGET))
   LINUX_DIR ?= $(KERNEL_BUILD_DIR)/linux-$(LINUX_VERSION)
   LINUX_UAPI_DIR=uapi/

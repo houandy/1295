@@ -1,0 +1,3910 @@
+From 8b7f2b69beba9743ea47fb7974f55ab0bd0ee48f Mon Sep 17 00:00:00 2001
+From: ywchen <ywchen@realtek.com>
+Date: Thu, 11 Apr 2019 09:13:24 +0800
+Subject: [PATCH] Linux_BT_UART_v3.10_20181218_8822CS_BTCOEX_20190318-0a0a
+
+---
+ drivers/bluetooth/hci_h4.c     | 308 +++++++++------
+ drivers/bluetooth/hci_ldisc.c  | 642 ++++++++++++++-----------------
+ drivers/bluetooth/hci_rtk_h5.c | 200 +++++-----
+ drivers/bluetooth/hci_uart.h   | 136 ++-----
+ drivers/bluetooth/rtk_coex.c   | 851 ++++++++++++++++++++++++++---------------
+ drivers/bluetooth/rtk_coex.h   | 113 +++---
+ 6 files changed, 1202 insertions(+), 1048 deletions(-)
+
+diff --git a/drivers/bluetooth/hci_h4.c b/drivers/bluetooth/hci_h4.c
+index 635597b..580bdad 100644
+--- a/drivers/bluetooth/hci_h4.c
++++ b/drivers/bluetooth/hci_h4.c
+@@ -24,7 +24,6 @@
+  */
+ 
+ #include <linux/module.h>
+-
+ #include <linux/kernel.h>
+ #include <linux/init.h>
+ #include <linux/types.h>
+@@ -32,7 +31,6 @@
+ #include <linux/interrupt.h>
+ #include <linux/ptrace.h>
+ #include <linux/poll.h>
+-
+ #include <linux/slab.h>
+ #include <linux/tty.h>
+ #include <linux/errno.h>
+@@ -40,18 +38,32 @@
+ #include <linux/signal.h>
+ #include <linux/ioctl.h>
+ #include <linux/skbuff.h>
+-#include <asm/unaligned.h>
+-
+ #include <net/bluetooth/bluetooth.h>
+ #include <net/bluetooth/hci_core.h>
++#include <linux/version.h>
+ 
+ #include "hci_uart.h"
+ 
++#ifdef BTCOEX
++#include "rtk_coex.h"
++#endif
++
++//#define VERSION "1.2"
++
+ struct h4_struct {
++	unsigned long rx_state;
++	unsigned long rx_count;
+ 	struct sk_buff *rx_skb;
+ 	struct sk_buff_head txq;
+ };
+ 
++/* H4 receiver States */
++#define H4_W4_PACKET_TYPE	0
++#define H4_W4_EVENT_HDR		1
++#define H4_W4_ACL_HDR		2
++#define H4_W4_SCO_HDR		3
++#define H4_W4_DATA		4
++
+ /* Initialize protocol */
+ static int h4_open(struct hci_uart *hu)
+ {
+@@ -59,7 +71,7 @@ static int h4_open(struct hci_uart *hu)
+ 
+ 	BT_DBG("hu %p", hu);
+ 
+-	h4 = kzalloc(sizeof(*h4), GFP_KERNEL);
++	h4 = kzalloc(sizeof(*h4), GFP_ATOMIC);
+ 	if (!h4)
+ 		return -ENOMEM;
+ 
+@@ -108,33 +120,174 @@ static int h4_enqueue(struct hci_uart *hu, struct sk_buff *skb)
+ 	BT_DBG("hu %p skb %p", hu, skb);
+ 
+ 	/* Prepend skb with frame type */
+-	memcpy(skb_push(skb, 1), &hci_skb_pkt_type(skb), 1);
++	memcpy(skb_push(skb, 1), &bt_cb(skb)->pkt_type, 1);
+ 	skb_queue_tail(&h4->txq, skb);
+ 
+ 	return 0;
+ }
+ 
+-static const struct h4_recv_pkt h4_recv_pkts[] = {
+-	{ H4_RECV_ACL,   .recv = hci_recv_frame },
+-	{ H4_RECV_SCO,   .recv = hci_recv_frame },
+-	{ H4_RECV_EVENT, .recv = hci_recv_frame },
+-};
++#if HCI_VERSION_CODE < KERNEL_VERSION(3, 13, 0)
++static inline int h4_check_data_len(struct h4_struct *h4, int len)
++#else
++static inline int h4_check_data_len(struct hci_dev *hdev, struct h4_struct *h4, int len)
++#endif
++{
++	register int room = skb_tailroom(h4->rx_skb);
++
++	BT_DBG("len %d room %d", len, room);
++
++	if (!len) {
++#if HCI_VERSION_CODE < KERNEL_VERSION(3, 13, 0)
++		hci_recv_frame(h4->rx_skb);
++#else
++		hci_recv_frame(hdev, h4->rx_skb);
++#endif
++	} else if (len > room) {
++		BT_ERR("Data length is too large");
++		kfree_skb(h4->rx_skb);
++	} else {
++		h4->rx_state = H4_W4_DATA;
++		h4->rx_count = len;
++		return len;
++	}
++
++	h4->rx_state = H4_W4_PACKET_TYPE;
++	h4->rx_skb   = NULL;
++	h4->rx_count = 0;
++
++	return 0;
++}
+ 
+ /* Recv data */
+-static int h4_recv(struct hci_uart *hu, const void *data, int count)
++static int h4_recv(struct hci_uart *hu, void *data, int count)
+ {
+ 	struct h4_struct *h4 = hu->priv;
++	register char *ptr;
++	struct hci_event_hdr *eh;
++	struct hci_acl_hdr   *ah;
++	struct hci_sco_hdr   *sh;
++	register int len, type, dlen;
+ 
+-	if (!test_bit(HCI_UART_REGISTERED, &hu->flags))
+-		return -EUNATCH;
++	BT_DBG("hu %p count %d rx_state %ld rx_count %ld", 
++			hu, count, h4->rx_state, h4->rx_count);
+ 
+-	h4->rx_skb = h4_recv_buf(hu->hdev, h4->rx_skb, data, count,
+-				 h4_recv_pkts, ARRAY_SIZE(h4_recv_pkts));
+-	if (IS_ERR(h4->rx_skb)) {
+-		int err = PTR_ERR(h4->rx_skb);
+-		BT_ERR("%s: Frame reassembly failed (%d)", hu->hdev->name, err);
+-		h4->rx_skb = NULL;
+-		return err;
++	ptr = data;
++	while (count) {
++		if (h4->rx_count) {
++			len = min_t(unsigned int, h4->rx_count, count);
++			memcpy(skb_put(h4->rx_skb, len), ptr, len);
++			h4->rx_count -= len; count -= len; ptr += len;
++
++			if (h4->rx_count)
++				continue;
++
++			switch (h4->rx_state) {
++			case H4_W4_DATA:
++				BT_DBG("Complete data");
++#ifdef BTCOEX
++				if(bt_cb(h4->rx_skb)->pkt_type == HCI_EVENT_PKT)
++					rtk_btcoex_parse_event(
++							h4->rx_skb->data,
++							h4->rx_skb->len);
++
++				if(bt_cb(h4->rx_skb)->pkt_type == HCI_ACLDATA_PKT)
++					rtk_btcoex_parse_l2cap_data_rx(
++							h4->rx_skb->data,
++							h4->rx_skb->len);
++#endif
++
++#if HCI_VERSION_CODE < KERNEL_VERSION(3, 13, 0)
++				hci_recv_frame(h4->rx_skb);
++#else
++				hci_recv_frame(hu->hdev, h4->rx_skb);
++#endif
++
++				h4->rx_state = H4_W4_PACKET_TYPE;
++				h4->rx_skb = NULL;
++				continue;
++
++			case H4_W4_EVENT_HDR:
++				eh = hci_event_hdr(h4->rx_skb);
++
++				BT_DBG("Event header: evt 0x%2.2x plen %d", eh->evt, eh->plen);
++
++#if HCI_VERSION_CODE < KERNEL_VERSION(3, 13, 0)
++				h4_check_data_len(h4, eh->plen);
++#else
++				h4_check_data_len(hu->hdev, h4, eh->plen);
++#endif
++				continue;
++
++			case H4_W4_ACL_HDR:
++				ah = hci_acl_hdr(h4->rx_skb);
++				dlen = __le16_to_cpu(ah->dlen);
++
++				BT_DBG("ACL header: dlen %d", dlen);
++
++#if HCI_VERSION_CODE < KERNEL_VERSION(3, 13, 0)
++				h4_check_data_len(h4, dlen);
++#else
++				h4_check_data_len(hu->hdev, h4, dlen);
++#endif
++				continue;
++
++			case H4_W4_SCO_HDR:
++				sh = hci_sco_hdr(h4->rx_skb);
++
++				BT_DBG("SCO header: dlen %d", sh->dlen);
++
++#if HCI_VERSION_CODE < KERNEL_VERSION(3, 13, 0)
++				h4_check_data_len(h4, sh->dlen);
++#else
++				h4_check_data_len(hu->hdev, h4, sh->dlen);
++#endif
++				continue;
++			}
++		}
++
++		/* H4_W4_PACKET_TYPE */
++		switch (*ptr) {
++		case HCI_EVENT_PKT:
++			BT_DBG("Event packet");
++			h4->rx_state = H4_W4_EVENT_HDR;
++			h4->rx_count = HCI_EVENT_HDR_SIZE;
++			type = HCI_EVENT_PKT;
++			break;
++
++		case HCI_ACLDATA_PKT:
++			BT_DBG("ACL packet");
++			h4->rx_state = H4_W4_ACL_HDR;
++			h4->rx_count = HCI_ACL_HDR_SIZE;
++			type = HCI_ACLDATA_PKT;
++			break;
++
++		case HCI_SCODATA_PKT:
++			BT_DBG("SCO packet");
++			h4->rx_state = H4_W4_SCO_HDR;
++			h4->rx_count = HCI_SCO_HDR_SIZE;
++			type = HCI_SCODATA_PKT;
++			break;
++
++		default:
++			BT_ERR("Unknown HCI packet type %2.2x", (__u8)*ptr);
++			hu->hdev->stat.err_rx++;
++			ptr++; count--;
++			continue;
++		};
++
++		ptr++; count--;
++
++		/* Allocate packet */
++		h4->rx_skb = bt_skb_alloc(HCI_MAX_FRAME_SIZE, GFP_ATOMIC);
++		if (!h4->rx_skb) {
++			BT_ERR("Can't allocate mem for new packet");
++			h4->rx_state = H4_W4_PACKET_TYPE;
++			h4->rx_count = 0;
++			return -ENOMEM;
++		}
++
++		h4->rx_skb->dev = (void *) hu->hdev;
++		bt_cb(h4->rx_skb)->pkt_type = type;
+ 	}
+ 
+ 	return count;
+@@ -146,9 +299,8 @@ static struct sk_buff *h4_dequeue(struct hci_uart *hu)
+ 	return skb_dequeue(&h4->txq);
+ }
+ 
+-static const struct hci_uart_proto h4p = {
++static struct hci_uart_proto h4p = {
+ 	.id		= HCI_UART_H4,
+-	.name		= "H4",
+ 	.open		= h4_open,
+ 	.close		= h4_close,
+ 	.recv		= h4_recv,
+@@ -159,111 +311,17 @@ static const struct hci_uart_proto h4p = {
+ 
+ int __init h4_init(void)
+ {
+-	return hci_uart_register_proto(&h4p);
++	int err = hci_uart_register_proto(&h4p);
++
++	if (!err)
++		BT_INFO("HCI H4 protocol initialized");
++	else
++		BT_ERR("HCI H4 protocol registration failed");
++
++	return err;
+ }
+ 
+ int __exit h4_deinit(void)
+ {
+ 	return hci_uart_unregister_proto(&h4p);
+ }
+-
+-struct sk_buff *h4_recv_buf(struct hci_dev *hdev, struct sk_buff *skb,
+-			    const unsigned char *buffer, int count,
+-			    const struct h4_recv_pkt *pkts, int pkts_count)
+-{
+-	while (count) {
+-		int i, len;
+-
+-		if (!skb) {
+-			for (i = 0; i < pkts_count; i++) {
+-				if (buffer[0] != (&pkts[i])->type)
+-					continue;
+-
+-				skb = bt_skb_alloc((&pkts[i])->maxlen,
+-						   GFP_ATOMIC);
+-				if (!skb)
+-					return ERR_PTR(-ENOMEM);
+-
+-				hci_skb_pkt_type(skb) = (&pkts[i])->type;
+-				hci_skb_expect(skb) = (&pkts[i])->hlen;
+-				break;
+-			}
+-
+-			/* Check for invalid packet type */
+-			if (!skb)
+-				return ERR_PTR(-EILSEQ);
+-
+-			count -= 1;
+-			buffer += 1;
+-		}
+-
+-		len = min_t(uint, hci_skb_expect(skb) - skb->len, count);
+-		memcpy(skb_put(skb, len), buffer, len);
+-
+-		count -= len;
+-		buffer += len;
+-
+-		/* Check for partial packet */
+-		if (skb->len < hci_skb_expect(skb))
+-			continue;
+-
+-		for (i = 0; i < pkts_count; i++) {
+-			if (hci_skb_pkt_type(skb) == (&pkts[i])->type)
+-				break;
+-		}
+-
+-		if (i >= pkts_count) {
+-			kfree_skb(skb);
+-			return ERR_PTR(-EILSEQ);
+-		}
+-
+-		if (skb->len == (&pkts[i])->hlen) {
+-			u16 dlen;
+-
+-			switch ((&pkts[i])->lsize) {
+-			case 0:
+-				/* No variable data length */
+-				dlen = 0;
+-				break;
+-			case 1:
+-				/* Single octet variable length */
+-				dlen = skb->data[(&pkts[i])->loff];
+-				hci_skb_expect(skb) += dlen;
+-
+-				if (skb_tailroom(skb) < dlen) {
+-					kfree_skb(skb);
+-					return ERR_PTR(-EMSGSIZE);
+-				}
+-				break;
+-			case 2:
+-				/* Double octet variable length */
+-				dlen = get_unaligned_le16(skb->data +
+-							  (&pkts[i])->loff);
+-				hci_skb_expect(skb) += dlen;
+-
+-				if (skb_tailroom(skb) < dlen) {
+-					kfree_skb(skb);
+-					return ERR_PTR(-EMSGSIZE);
+-				}
+-				break;
+-			default:
+-				/* Unsupported variable length */
+-				kfree_skb(skb);
+-				return ERR_PTR(-EILSEQ);
+-			}
+-
+-			if (!dlen) {
+-				/* No more data, complete frame */
+-				(&pkts[i])->recv(hdev, skb);
+-				skb = NULL;
+-			}
+-		} else {
+-			/* Complete frame */
+-			(&pkts[i])->recv(hdev, skb);
+-			skb = NULL;
+-		}
+-	}
+-
+-	return skb;
+-}
+-EXPORT_SYMBOL_GPL(h4_recv_buf);
+diff --git a/drivers/bluetooth/hci_ldisc.c b/drivers/bluetooth/hci_ldisc.c
+index 2230f93..40c4350 100644
+--- a/drivers/bluetooth/hci_ldisc.c
++++ b/drivers/bluetooth/hci_ldisc.c
+@@ -24,7 +24,6 @@
+  */
+ 
+ #include <linux/module.h>
+-
+ #include <linux/kernel.h>
+ #include <linux/init.h>
+ #include <linux/types.h>
+@@ -32,7 +31,6 @@
+ #include <linux/interrupt.h>
+ #include <linux/ptrace.h>
+ #include <linux/poll.h>
+-
+ #include <linux/slab.h>
+ #include <linux/tty.h>
+ #include <linux/errno.h>
+@@ -40,20 +38,31 @@
+ #include <linux/signal.h>
+ #include <linux/ioctl.h>
+ #include <linux/skbuff.h>
+-#include <linux/firmware.h>
+-
++#include <linux/version.h>
+ #include <net/bluetooth/bluetooth.h>
+ #include <net/bluetooth/hci_core.h>
+ 
+-#include "btintel.h"
+-#include "btbcm.h"
+ #include "hci_uart.h"
+ 
+-#define VERSION "2.3"
++#ifdef BTCOEX
++#include "rtk_coex.h"
++#endif
++
++#define VERSION "2.2.d448471.20181218-163903"
++
++#if HCI_VERSION_CODE > KERNEL_VERSION(3, 4, 0)
++#define GET_DRV_DATA(x)		hci_get_drvdata(x)
++#else
++#define GET_DRV_DATA(x)		(struct hci_uart *)(x->driver_data)
++#endif
++
++#if HCI_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
++static int reset = 0;
++#endif
+ 
+-static const struct hci_uart_proto *hup[HCI_UART_MAX_PROTO];
++static struct hci_uart_proto *hup[HCI_UART_MAX_PROTO];
+ 
+-int hci_uart_register_proto(const struct hci_uart_proto *p)
++int hci_uart_register_proto(struct hci_uart_proto *p)
+ {
+ 	if (p->id >= HCI_UART_MAX_PROTO)
+ 		return -EINVAL;
+@@ -63,12 +72,10 @@ int hci_uart_register_proto(const struct hci_uart_proto *p)
+ 
+ 	hup[p->id] = p;
+ 
+-	BT_INFO("HCI UART protocol %s registered", p->name);
+-
+ 	return 0;
+ }
+ 
+-int hci_uart_unregister_proto(const struct hci_uart_proto *p)
++int hci_uart_unregister_proto(struct hci_uart_proto *p)
+ {
+ 	if (p->id >= HCI_UART_MAX_PROTO)
+ 		return -EINVAL;
+@@ -81,7 +88,7 @@ int hci_uart_unregister_proto(const struct hci_uart_proto *p)
+ 	return 0;
+ }
+ 
+-static const struct hci_uart_proto *hci_uart_get_proto(unsigned int id)
++static struct hci_uart_proto *hci_uart_get_proto(unsigned int id)
+ {
+ 	if (id >= HCI_UART_MAX_PROTO)
+ 		return NULL;
+@@ -114,8 +121,12 @@ static inline struct sk_buff *hci_uart_dequeue(struct hci_uart *hu)
+ 	struct sk_buff *skb = hu->tx_skb;
+ 
+ 	if (!skb) {
++		read_lock(&hu->proto_lock);
++
+ 		if (test_bit(HCI_UART_PROTO_READY, &hu->flags))
+ 			skb = hu->proto->dequeue(hu);
++
++		read_unlock(&hu->proto_lock);
+ 	} else {
+ 		hu->tx_skb = NULL;
+ 	}
+@@ -123,20 +134,48 @@ static inline struct sk_buff *hci_uart_dequeue(struct hci_uart *hu)
+ 	return skb;
+ }
+ 
++/* This may be called in an IRQ context */
+ int hci_uart_tx_wakeup(struct hci_uart *hu)
+ {
+-	if (!test_bit(HCI_UART_PROTO_READY, &hu->flags))
+-		return 0;
++	/* If acquiring lock fails we assume the tty is being closed because
++	 * that is the only time the write lock is acquired. If, however,
++	 * at some point in the future the write lock is also acquired in
++	 * other situations, then this must be revisited.
++	 */
++	if (!read_trylock(&hu->proto_lock)) {
++		if (in_interrupt())
++			return 0;
++		read_lock(&hu->proto_lock);
++	}
+ 
++	/* proto_lock is locked */
++	if (!test_bit(HCI_UART_PROTO_READY, &hu->flags))
++		goto no_schedule;
++
++	if (!spin_trylock(&hu->tx_lock)) {
++		if (in_interrupt()) {
++			schedule_work(&hu->write_work);
++			read_unlock(&hu->proto_lock);
++			return 0;
++		} else {
++			spin_lock(&hu->tx_lock);
++		}
++	}
++	/* tx_lock is locked */
+ 	if (test_and_set_bit(HCI_UART_SENDING, &hu->tx_state)) {
+ 		set_bit(HCI_UART_TX_WAKEUP, &hu->tx_state);
+-		return 0;
++		spin_unlock(&hu->tx_lock);
++		goto no_schedule;
+ 	}
++	spin_unlock(&hu->tx_lock);
+ 
+ 	BT_DBG("");
+ 
+ 	schedule_work(&hu->write_work);
+ 
++no_schedule:
++	read_unlock(&hu->proto_lock);
++
+ 	return 0;
+ }
+ 
+@@ -151,7 +190,7 @@ static void hci_uart_write_work(struct work_struct *work)
+ 	 * and error value ?
+ 	 */
+ 
+-restart:
++ restart:
+ 	clear_bit(HCI_UART_TX_WAKEUP, &hu->tx_state);
+ 
+ 	while ((skb = hci_uart_dequeue(hu))) {
+@@ -167,43 +206,19 @@ restart:
+ 			break;
+ 		}
+ 
+-		hci_uart_tx_complete(hu, hci_skb_pkt_type(skb));
++		hci_uart_tx_complete(hu, bt_cb(skb)->pkt_type);
+ 		kfree_skb(skb);
+ 	}
+ 
+-	if (test_bit(HCI_UART_TX_WAKEUP, &hu->tx_state))
++	spin_lock(&hu->tx_lock);
++	if (test_bit(HCI_UART_TX_WAKEUP, &hu->tx_state)) {
++		spin_unlock(&hu->tx_lock);
+ 		goto restart;
+-
+-	clear_bit(HCI_UART_SENDING, &hu->tx_state);
+-}
+-
+-static void hci_uart_init_work(struct work_struct *work)
+-{
+-	struct hci_uart *hu = container_of(work, struct hci_uart, init_ready);
+-	int err;
+-
+-	if (!test_and_clear_bit(HCI_UART_INIT_PENDING, &hu->hdev_flags))
+-		return;
+-
+-	err = hci_register_dev(hu->hdev);
+-	if (err < 0) {
+-		BT_ERR("Can't register HCI device");
+-		hci_free_dev(hu->hdev);
+-		hu->hdev = NULL;
+-		hu->proto->close(hu);
+ 	}
+ 
+-	set_bit(HCI_UART_REGISTERED, &hu->flags);
+-}
+-
+-int hci_uart_init_ready(struct hci_uart *hu)
+-{
+-	if (!test_bit(HCI_UART_INIT_PENDING, &hu->hdev_flags))
+-		return -EALREADY;
+-
+-	schedule_work(&hu->init_ready);
+-
+-	return 0;
++	clear_bit(HCI_UART_SENDING, &hu->tx_state);
++	spin_unlock(&hu->tx_lock);
++	return;
+ }
+ 
+ /* ------- Interface to HCI layer ------ */
+@@ -213,28 +228,42 @@ static int hci_uart_open(struct hci_dev *hdev)
+ 	BT_DBG("%s %p", hdev->name, hdev);
+ 
+ 	/* Nothing to do for UART driver */
++
++#if HCI_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
++	set_bit(HCI_RUNNING, &hdev->flags);
++#endif
++
++#ifdef BTCOEX
++	rtk_btcoex_open(hdev);
++#endif
++
+ 	return 0;
+ }
+ 
+ /* Reset device */
+ static int hci_uart_flush(struct hci_dev *hdev)
+ {
+-	struct hci_uart *hu  = hci_get_drvdata(hdev);
++	struct hci_uart *hu = GET_DRV_DATA(hdev);	//(struct hci_uart *) hdev->driver_data;
+ 	struct tty_struct *tty = hu->tty;
+ 
+ 	BT_DBG("hdev %p tty %p", hdev, tty);
+ 
+ 	if (hu->tx_skb) {
+-		kfree_skb(hu->tx_skb); hu->tx_skb = NULL;
++		kfree_skb(hu->tx_skb);
++		hu->tx_skb = NULL;
+ 	}
+ 
+ 	/* Flush any pending characters in the driver and discipline. */
+ 	tty_ldisc_flush(tty);
+ 	tty_driver_flush_buffer(tty);
+ 
++	read_lock(&hu->proto_lock);
++
+ 	if (test_bit(HCI_UART_PROTO_READY, &hu->flags))
+ 		hu->proto->flush(hu);
+ 
++	read_unlock(&hu->proto_lock);
++
+ 	return 0;
+ }
+ 
+@@ -243,200 +272,91 @@ static int hci_uart_close(struct hci_dev *hdev)
+ {
+ 	BT_DBG("hdev %p", hdev);
+ 
+-	hci_uart_flush(hdev);
+-	hdev->flush = NULL;
+-	return 0;
+-}
+-
+-/* Send frames from HCI layer */
+-static int hci_uart_send_frame(struct hci_dev *hdev, struct sk_buff *skb)
+-{
+-	struct hci_uart *hu = hci_get_drvdata(hdev);
+ 
+-	BT_DBG("%s: type %d len %d", hdev->name, hci_skb_pkt_type(skb),
+-	       skb->len);
++	/* When in kernel 4.4.0 and greater, the HCI_RUNNING bit is
++	 * cleared in hci_dev_do_close(). */
++#if HCI_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
++	if (!test_and_clear_bit(HCI_RUNNING, &hdev->flags))
++		return 0;
++#else
++	if (test_bit(HCI_RUNNING, &hdev->flags))
++		BT_ERR("HCI_RUNNING is not cleared before.");
++#endif
+ 
+-	hu->proto->enqueue(hu, skb);
++	hci_uart_flush(hdev);
++	hdev->flush = NULL;
+ 
+-	hci_uart_tx_wakeup(hu);
++#ifdef BTCOEX
++	rtk_btcoex_close();
++#endif
+ 
+ 	return 0;
+ }
+ 
+-/* Flow control or un-flow control the device */
+-void hci_uart_set_flow_control(struct hci_uart *hu, bool enable)
+-{
+-	struct tty_struct *tty = hu->tty;
+-	struct ktermios ktermios;
+-	int status;
+-	unsigned int set = 0;
+-	unsigned int clear = 0;
+-
+-	if (enable) {
+-		/* Disable hardware flow control */
+-		ktermios = tty->termios;
+-		ktermios.c_cflag &= ~CRTSCTS;
+-		status = tty_set_termios(tty, &ktermios);
+-		BT_DBG("Disabling hardware flow control: %s",
+-		       status ? "failed" : "success");
+-
+-		/* Clear RTS to prevent the device from sending */
+-		/* Most UARTs need OUT2 to enable interrupts */
+-		status = tty->driver->ops->tiocmget(tty);
+-		BT_DBG("Current tiocm 0x%x", status);
+-
+-		set &= ~(TIOCM_OUT2 | TIOCM_RTS);
+-		clear = ~set;
+-		set &= TIOCM_DTR | TIOCM_RTS | TIOCM_OUT1 |
+-		       TIOCM_OUT2 | TIOCM_LOOP;
+-		clear &= TIOCM_DTR | TIOCM_RTS | TIOCM_OUT1 |
+-			 TIOCM_OUT2 | TIOCM_LOOP;
+-		status = tty->driver->ops->tiocmset(tty, set, clear);
+-		BT_DBG("Clearing RTS: %s", status ? "failed" : "success");
+-	} else {
+-		/* Set RTS to allow the device to send again */
+-		status = tty->driver->ops->tiocmget(tty);
+-		BT_DBG("Current tiocm 0x%x", status);
+-
+-		set |= (TIOCM_OUT2 | TIOCM_RTS);
+-		clear = ~set;
+-		set &= TIOCM_DTR | TIOCM_RTS | TIOCM_OUT1 |
+-		       TIOCM_OUT2 | TIOCM_LOOP;
+-		clear &= TIOCM_DTR | TIOCM_RTS | TIOCM_OUT1 |
+-			 TIOCM_OUT2 | TIOCM_LOOP;
+-		status = tty->driver->ops->tiocmset(tty, set, clear);
+-		BT_DBG("Setting RTS: %s", status ? "failed" : "success");
+-
+-		/* Re-enable hardware flow control */
+-		ktermios = tty->termios;
+-		ktermios.c_cflag |= CRTSCTS;
+-		status = tty_set_termios(tty, &ktermios);
+-		BT_DBG("Enabling hardware flow control: %s",
+-		       status ? "failed" : "success");
+-	}
+-}
+-
+-void hci_uart_set_speeds(struct hci_uart *hu, unsigned int init_speed,
+-			 unsigned int oper_speed)
+-{
+-	hu->init_speed = init_speed;
+-	hu->oper_speed = oper_speed;
+-}
+-
+-void hci_uart_init_tty(struct hci_uart *hu)
+-{
+-	struct tty_struct *tty = hu->tty;
+-	struct ktermios ktermios;
+-
+-	/* Bring the UART into a known 8 bits no parity hw fc state */
+-	ktermios = tty->termios;
+-	ktermios.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP |
+-			      INLCR | IGNCR | ICRNL | IXON);
+-	ktermios.c_oflag &= ~OPOST;
+-	ktermios.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+-	ktermios.c_cflag &= ~(CSIZE | PARENB);
+-	ktermios.c_cflag |= CS8;
+-	ktermios.c_cflag |= CRTSCTS;
+-
+-	/* tty_set_termios() return not checked as it is always 0 */
+-	tty_set_termios(tty, &ktermios);
+-}
+-
+-void hci_uart_set_baudrate(struct hci_uart *hu, unsigned int speed)
++/* Send frames from HCI layer */
++#if HCI_VERSION_CODE < KERNEL_VERSION(3, 13, 0)
++int hci_uart_send_frame(struct sk_buff *skb)
++#else
++int hci_uart_send_frame(struct hci_dev *hdev, struct sk_buff *skb)
++#endif
+ {
+-	struct tty_struct *tty = hu->tty;
+-	struct ktermios ktermios;
+-
+-	ktermios = tty->termios;
+-	ktermios.c_cflag &= ~CBAUD;
+-	tty_termios_encode_baud_rate(&ktermios, speed, speed);
++#if HCI_VERSION_CODE < KERNEL_VERSION(3, 13, 0)
++	struct hci_dev *hdev = (struct hci_dev *)skb->dev;
++#endif
++	struct hci_uart *hu;
+ 
+-	/* tty_set_termios() return not checked as it is always 0 */
+-	tty_set_termios(tty, &ktermios);
++	if (!hdev) {
++		BT_ERR("Frame for unknown device (hdev=NULL)");
++		return -ENODEV;
++	}
+ 
+-	BT_DBG("%s: New tty speeds: %d/%d", hu->hdev->name,
+-	       tty->termios.c_ispeed, tty->termios.c_ospeed);
+-}
++#if HCI_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
++	if (!test_bit(HCI_RUNNING, &hdev->flags))
++		return -EBUSY;
++#endif
+ 
+-static int hci_uart_setup(struct hci_dev *hdev)
+-{
+-	struct hci_uart *hu = hci_get_drvdata(hdev);
+-	struct hci_rp_read_local_version *ver;
+-	struct sk_buff *skb;
+-	unsigned int speed;
+-	int err;
++	hu = GET_DRV_DATA(hdev);	//(struct hci_uart *) hdev->driver_data;
+ 
+-	/* Init speed if any */
+-	if (hu->init_speed)
+-		speed = hu->init_speed;
+-	else if (hu->proto->init_speed)
+-		speed = hu->proto->init_speed;
+-	else
+-		speed = 0;
++	BT_DBG("%s: type %d len %d", hdev->name, bt_cb(skb)->pkt_type,
++	       skb->len);
+ 
+-	if (speed)
+-		hci_uart_set_baudrate(hu, speed);
++#ifdef BTCOEX
++	if (bt_cb(skb)->pkt_type == HCI_COMMAND_PKT)
++		rtk_btcoex_parse_cmd(skb->data, skb->len);
++	if (bt_cb(skb)->pkt_type == HCI_ACLDATA_PKT)
++		rtk_btcoex_parse_l2cap_data_tx(skb->data, skb->len);
++#endif
+ 
+-	/* Operational speed if any */
+-	if (hu->oper_speed)
+-		speed = hu->oper_speed;
+-	else if (hu->proto->oper_speed)
+-		speed = hu->proto->oper_speed;
+-	else
+-		speed = 0;
++	read_lock(&hu->proto_lock);
+ 
+-	if (hu->proto->set_baudrate && speed) {
+-		err = hu->proto->set_baudrate(hu, speed);
+-		if (!err)
+-			hci_uart_set_baudrate(hu, speed);
++	if (!test_bit(HCI_UART_PROTO_READY, &hu->flags)) {
++		read_unlock(&hu->proto_lock);
++		return -EUNATCH;
+ 	}
+ 
+-	if (hu->proto->setup)
+-		return hu->proto->setup(hu);
+-
+-	if (!test_bit(HCI_UART_VND_DETECT, &hu->hdev_flags))
+-		return 0;
+-
+-	skb = __hci_cmd_sync(hdev, HCI_OP_READ_LOCAL_VERSION, 0, NULL,
+-			     HCI_INIT_TIMEOUT);
+-	if (IS_ERR(skb)) {
+-		BT_ERR("%s: Reading local version information failed (%ld)",
+-		       hdev->name, PTR_ERR(skb));
+-		return 0;
+-	}
++	hu->proto->enqueue(hu, skb);
++	read_unlock(&hu->proto_lock);
+ 
+-	if (skb->len != sizeof(*ver)) {
+-		BT_ERR("%s: Event length mismatch for version information",
+-		       hdev->name);
+-		goto done;
+-	}
++	hci_uart_tx_wakeup(hu);
+ 
+-	ver = (struct hci_rp_read_local_version *)skb->data;
++	return 0;
++}
+ 
+-	switch (le16_to_cpu(ver->manufacturer)) {
+-#ifdef CONFIG_BT_HCIUART_INTEL
+-	case 2:
+-		hdev->set_bdaddr = btintel_set_bdaddr;
+-		btintel_check_bdaddr(hdev);
+-		break;
+-#endif
+-#ifdef CONFIG_BT_HCIUART_BCM
+-	case 15:
+-		hdev->set_bdaddr = btbcm_set_bdaddr;
+-		btbcm_check_bdaddr(hdev);
+-		break;
+-#endif
+-	}
++#if HCI_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
++static void hci_uart_destruct(struct hci_dev *hdev)
++{
++	if (!hdev)
++		return;
+ 
+-done:
+-	kfree_skb(skb);
+-	return 0;
++	BT_DBG("%s", hdev->name);
++	kfree(hdev->driver_data);
+ }
++#endif
+ 
+ /* ------ LDISC part ------ */
+ /* hci_uart_tty_open
+  *
+- *     Called when line discipline changed to HCI_UART.
++ * Called when line discipline changed to HCI_UART.
+  *
+  * Arguments:
+  *     tty    pointer to tty info structure
+@@ -445,17 +365,33 @@ done:
+  */
+ static int hci_uart_tty_open(struct tty_struct *tty)
+ {
+-	struct hci_uart *hu;
++	struct hci_uart *hu = (void *)tty->disc_data;
+ 
+ 	BT_DBG("tty %p", tty);
+ 
++	/* But nothing ensures disc_data to be NULL. And since ld->ops->open
++	 * shall be called only once, we do not need the check at all.
++	 * So remove it.
++	 *
++	 * Note that this is not an issue now, but n_tty will start using the
++	 * disc_data pointer and this invalid 'if' would trigger then rendering
++	 * TTYs over BT unusable.
++	 */
++#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0)
++	/* FIXME: This btw is bogus, nothing requires the old ldisc to clear
++	 * the pointer
++	 */
++	if (hu)
++		return -EEXIST;
++#endif
++
+ 	/* Error if the tty has no write op instead of leaving an exploitable
+-	   hole */
++	 * hole
++	 */
+ 	if (tty->ops->write == NULL)
+ 		return -EOPNOTSUPP;
+ 
+-	hu = kzalloc(sizeof(struct hci_uart), GFP_KERNEL);
+-	if (!hu) {
++	if (!(hu = kzalloc(sizeof(struct hci_uart), GFP_KERNEL))) {
+ 		BT_ERR("Can't allocate control structure");
+ 		return -ENFILE;
+ 	}
+@@ -464,10 +400,18 @@ static int hci_uart_tty_open(struct tty_struct *tty)
+ 	hu->tty = tty;
+ 	tty->receive_room = 65536;
+ 
+-	INIT_WORK(&hu->init_ready, hci_uart_init_work);
+ 	INIT_WORK(&hu->write_work, hci_uart_write_work);
+ 
+-	/* Flush any pending characters in the driver */
++	rwlock_init(&hu->proto_lock);
++	spin_lock_init(&hu->tx_lock);
++
++	/* Flush any pending characters in the driver and line discipline. */
++
++	/* FIXME: why is this needed. Note don't use ldisc_ref here as the
++	   open path is before the ldisc is referencable */
++
++	if (tty->ldisc->ops->flush_buffer)
++		tty->ldisc->ops->flush_buffer(tty);
+ 	tty_driver_flush_buffer(tty);
+ 
+ 	return 0;
+@@ -475,13 +419,14 @@ static int hci_uart_tty_open(struct tty_struct *tty)
+ 
+ /* hci_uart_tty_close()
+  *
+- *    Called when the line discipline is changed to something
+- *    else, the tty is closed, or the tty detects a hangup.
++ * Called when the line discipline is changed to something
++ * else, the tty is closed, or the tty detects a hangup.
+  */
+ static void hci_uart_tty_close(struct tty_struct *tty)
+ {
+-	struct hci_uart *hu = tty->disc_data;
++	struct hci_uart *hu = (void *)tty->disc_data;
+ 	struct hci_dev *hdev;
++	unsigned long flags;
+ 
+ 	BT_DBG("tty %p", tty);
+ 
+@@ -495,9 +440,13 @@ static void hci_uart_tty_close(struct tty_struct *tty)
+ 	if (hdev)
+ 		hci_uart_close(hdev);
+ 
+-	cancel_work_sync(&hu->write_work);
++	if (test_bit(HCI_UART_PROTO_READY, &hu->flags)) {
++		write_lock_irqsave(&hu->proto_lock, flags);
++		clear_bit(HCI_UART_PROTO_READY, &hu->flags);
++		write_unlock_irqrestore(&hu->proto_lock, flags);
++
++		cancel_work_sync(&hu->write_work);
+ 
+-	if (test_and_clear_bit(HCI_UART_PROTO_READY, &hu->flags)) {
+ 		if (hdev) {
+ 			if (test_bit(HCI_UART_REGISTERED, &hu->flags))
+ 				hci_unregister_dev(hdev);
+@@ -512,15 +461,15 @@ static void hci_uart_tty_close(struct tty_struct *tty)
+ 
+ /* hci_uart_tty_wakeup()
+  *
+- *    Callback for transmit wakeup. Called when low level
+- *    device driver can accept more send data.
++ * Callback for transmit wakeup. Called when low level
++ * device driver can accept more send data.
+  *
+  * Arguments:        tty    pointer to associated tty instance data
+  * Return Value:    None
+  */
+ static void hci_uart_tty_wakeup(struct tty_struct *tty)
+ {
+-	struct hci_uart *hu = tty->disc_data;
++	struct hci_uart *hu = (void *)tty->disc_data;
+ 
+ 	BT_DBG("");
+ 
+@@ -538,8 +487,8 @@ static void hci_uart_tty_wakeup(struct tty_struct *tty)
+ 
+ /* hci_uart_tty_receive()
+  *
+- *     Called by tty low level driver when receive data is
+- *     available.
++ * Called by tty low level driver when receive data is
++ * available.
+  *
+  * Arguments:  tty          pointer to tty isntance data
+  *             data         pointer to received data
+@@ -548,21 +497,23 @@ static void hci_uart_tty_wakeup(struct tty_struct *tty)
+  *
+  * Return Value:    None
+  */
+-static void hci_uart_tty_receive(struct tty_struct *tty, const u8 *data,
++static void hci_uart_tty_receive(struct tty_struct *tty, const u8 * data,
+ 				 char *flags, int count)
+ {
+-	struct hci_uart *hu = tty->disc_data;
++	struct hci_uart *hu = (void *)tty->disc_data;
+ 
+ 	if (!hu || tty != hu->tty)
+ 		return;
+ 
+-	if (!test_bit(HCI_UART_PROTO_READY, &hu->flags))
++	read_lock(&hu->proto_lock);
++
++	if (!test_bit(HCI_UART_PROTO_READY, &hu->flags)) {
++		read_unlock(&hu->proto_lock);
+ 		return;
++	}
+ 
+-	/* It does not need a lock here as it is already protected by a mutex in
+-	 * tty caller
+-	 */
+-	hu->proto->recv(hu, data, count);
++	hu->proto->recv(hu, (void *)data, count);
++	read_unlock(&hu->proto_lock);
+ 
+ 	if (hu->hdev)
+ 		hu->hdev->stat.byte_rx += count;
+@@ -574,7 +525,7 @@ static int hci_uart_register_dev(struct hci_uart *hu)
+ {
+ 	struct hci_dev *hdev;
+ 
+-	BT_DBG("");
++	BT_INFO("hci_uart_register_dev");
+ 
+ 	/* Initialize and register HCI device */
+ 	hdev = hci_alloc_dev();
+@@ -585,39 +536,73 @@ static int hci_uart_register_dev(struct hci_uart *hu)
+ 
+ 	hu->hdev = hdev;
+ 
++#if HCI_VERSION_CODE > KERNEL_VERSION(2, 6, 33)
+ 	hdev->bus = HCI_UART;
+-	hci_set_drvdata(hdev, hu);
++#else
++	hdev->type = HCI_UART;
++#endif
+ 
+-	/* Only when vendor specific setup callback is provided, consider
+-	 * the manufacturer information valid. This avoids filling in the
+-	 * value for Ericsson when nothing is specified.
+-	 */
+-	if (hu->proto->setup)
+-		hdev->manufacturer = hu->proto->manufacturer;
++#if HCI_VERSION_CODE >= KERNEL_VERSION(3, 4, 0)
++	hci_set_drvdata(hdev, hu);
++#else
++	hdev->driver_data = hu;
++#endif
+ 
+-	hdev->open  = hci_uart_open;
++	hdev->open = hci_uart_open;
+ 	hdev->close = hci_uart_close;
+ 	hdev->flush = hci_uart_flush;
+-	hdev->send  = hci_uart_send_frame;
+-	hdev->setup = hci_uart_setup;
++	hdev->send = hci_uart_send_frame;
++
++	/* NOTE: No hdev->setup setting for Realtek BTUART because
++	 * the download procedure is done with rtk_hciattach in userspace
++	 * before this function called in hci_uart_set_proto()
++	 */
++
+ 	SET_HCIDEV_DEV(hdev, hu->tty->dev);
+ 
++#if HCI_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
++	hdev->destruct = hci_uart_destruct;
++	hdev->owner = THIS_MODULE;
++#endif
++
++#if HCI_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
++	if (!reset)
++		set_bit(HCI_QUIRK_NO_RESET, &hdev->quirks);
++#endif
++
++#if HCI_VERSION_CODE >= KERNEL_VERSION(2, 6, 36)
+ 	if (test_bit(HCI_UART_RAW_DEVICE, &hu->hdev_flags))
+ 		set_bit(HCI_QUIRK_RAW_DEVICE, &hdev->quirks);
++#endif
+ 
++#if HCI_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
+ 	if (test_bit(HCI_UART_EXT_CONFIG, &hu->hdev_flags))
+ 		set_bit(HCI_QUIRK_EXTERNAL_CONFIG, &hdev->quirks);
++#endif
+ 
++#if HCI_VERSION_CODE >= KERNEL_VERSION(3, 4, 0)
+ 	if (!test_bit(HCI_UART_RESET_ON_INIT, &hu->hdev_flags))
++#if HCI_VERSION_CODE >= KERNEL_VERSION(3, 6, 0)
+ 		set_bit(HCI_QUIRK_RESET_ON_CLOSE, &hdev->quirks);
++#else
++		set_bit(HCI_QUIRK_NO_RESET, &hdev->quirks);
++#endif
++#endif
+ 
++#if HCI_VERSION_CODE >= KERNEL_VERSION(3, 4, 0)
+ 	if (test_bit(HCI_UART_CREATE_AMP, &hu->hdev_flags))
+ 		hdev->dev_type = HCI_AMP;
+ 	else
++#if HCI_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
++		hdev->dev_type = HCI_BREDR;
++#else
+ 		hdev->dev_type = HCI_PRIMARY;
++#endif
++#endif
+ 
+-	if (test_bit(HCI_UART_INIT_PENDING, &hu->hdev_flags))
+-		return 0;
++#if HCI_VERSION_CODE >= KERNEL_VERSION(4, 1, 0)
++	set_bit(HCI_QUIRK_SIMULTANEOUS_DISCOVERY, &hdev->quirks);
++#endif
+ 
+ 	if (hci_register_dev(hdev) < 0) {
+ 		BT_ERR("Can't register HCI device");
+@@ -627,12 +612,16 @@ static int hci_uart_register_dev(struct hci_uart *hu)
+ 
+ 	set_bit(HCI_UART_REGISTERED, &hu->flags);
+ 
++#ifdef BTCOEX
++	rtk_btcoex_probe(hdev);
++#endif
++
+ 	return 0;
+ }
+ 
+ static int hci_uart_set_proto(struct hci_uart *hu, int id)
+ {
+-	const struct hci_uart_proto *p;
++	struct hci_uart_proto *p;
+ 	int err;
+ 
+ 	p = hci_uart_get_proto(id);
+@@ -646,6 +635,7 @@ static int hci_uart_set_proto(struct hci_uart *hu, int id)
+ 	hu->proto = p;
+ 	set_bit(HCI_UART_PROTO_READY, &hu->flags);
+ 
++	/* Initialize and register HCI dev */
+ 	err = hci_uart_register_dev(hu);
+ 	if (err) {
+ 		clear_bit(HCI_UART_PROTO_READY, &hu->flags);
+@@ -656,14 +646,14 @@ static int hci_uart_set_proto(struct hci_uart *hu, int id)
+ 	return 0;
+ }
+ 
++#if HCI_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
+ static int hci_uart_set_flags(struct hci_uart *hu, unsigned long flags)
+ {
++	/* TODO: Add HCI_UART_INIT_PENDING, HCI_UART_VND_DETECT check  */
+ 	unsigned long valid_flags = BIT(HCI_UART_RAW_DEVICE) |
+ 				    BIT(HCI_UART_RESET_ON_INIT) |
+ 				    BIT(HCI_UART_CREATE_AMP) |
+-				    BIT(HCI_UART_INIT_PENDING) |
+-				    BIT(HCI_UART_EXT_CONFIG) |
+-				    BIT(HCI_UART_VND_DETECT);
++				    BIT(HCI_UART_EXT_CONFIG);
+ 
+ 	if (flags & ~valid_flags)
+ 		return -EINVAL;
+@@ -672,6 +662,7 @@ static int hci_uart_set_flags(struct hci_uart *hu, unsigned long flags)
+ 
+ 	return 0;
+ }
++#endif
+ 
+ /* hci_uart_tty_ioctl()
+  *
+@@ -689,7 +680,7 @@ static int hci_uart_set_flags(struct hci_uart *hu, unsigned long flags)
+ static int hci_uart_tty_ioctl(struct tty_struct *tty, struct file *file,
+ 			      unsigned int cmd, unsigned long arg)
+ {
+-	struct hci_uart *hu = tty->disc_data;
++	struct hci_uart *hu = (void *)tty->disc_data;
+ 	int err = 0;
+ 
+ 	BT_DBG("");
+@@ -702,41 +693,43 @@ static int hci_uart_tty_ioctl(struct tty_struct *tty, struct file *file,
+ 	case HCIUARTSETPROTO:
+ 		if (!test_and_set_bit(HCI_UART_PROTO_SET, &hu->flags)) {
+ 			err = hci_uart_set_proto(hu, arg);
+-			if (err)
++			if (err) {
+ 				clear_bit(HCI_UART_PROTO_SET, &hu->flags);
++				return err;
++			}
+ 		} else
+-			err = -EBUSY;
++			return -EBUSY;
+ 		break;
+ 
+ 	case HCIUARTGETPROTO:
+ 		if (test_bit(HCI_UART_PROTO_SET, &hu->flags))
+-			err = hu->proto->id;
+-		else
+-			err = -EUNATCH;
+-		break;
++			return hu->proto->id;
++		return -EUNATCH;
+ 
+ 	case HCIUARTGETDEVICE:
+ 		if (test_bit(HCI_UART_REGISTERED, &hu->flags))
+-			err = hu->hdev->id;
+-		else
+-			err = -EUNATCH;
+-		break;
++			return hu->hdev->id;
++		return -EUNATCH;
+ 
+ 	case HCIUARTSETFLAGS:
+ 		if (test_bit(HCI_UART_PROTO_SET, &hu->flags))
+-			err = -EBUSY;
+-		else
+-			err = hci_uart_set_flags(hu, arg);
++			return -EBUSY;
++#if HCI_VERSION_CODE >= KERNEL_VERSION(3, 17, 0)
++		err = hci_uart_set_flags(hu, arg);
++		if (err)
++			return err;
++#else
++		hu->hdev_flags = arg;
++#endif
+ 		break;
+ 
+ 	case HCIUARTGETFLAGS:
+-		err = hu->hdev_flags;
+-		break;
++		return hu->hdev_flags;
+ 
+ 	default:
+ 		err = n_tty_ioctl_helper(tty, file, cmd, arg);
+ 		break;
+-	}
++	};
+ 
+ 	return err;
+ }
+@@ -745,7 +738,7 @@ static int hci_uart_tty_ioctl(struct tty_struct *tty, struct file *file,
+  * We don't provide read/write/poll interface for user space.
+  */
+ static ssize_t hci_uart_tty_read(struct tty_struct *tty, struct file *file,
+-				 unsigned char __user *buf, size_t nr)
++				 unsigned char __user * buf, size_t nr)
+ {
+ 	return 0;
+ }
+@@ -757,7 +750,7 @@ static ssize_t hci_uart_tty_write(struct tty_struct *tty, struct file *file,
+ }
+ 
+ static unsigned int hci_uart_tty_poll(struct tty_struct *tty,
+-				      struct file *filp, poll_table *wait)
++				      struct file *filp, poll_table * wait)
+ {
+ 	return 0;
+ }
+@@ -772,53 +765,30 @@ static int __init hci_uart_init(void)
+ 	/* Register the tty discipline */
+ 
+ 	memset(&hci_uart_ldisc, 0, sizeof(hci_uart_ldisc));
+-	hci_uart_ldisc.magic		= TTY_LDISC_MAGIC;
+-	hci_uart_ldisc.name		= "n_hci";
+-	hci_uart_ldisc.open		= hci_uart_tty_open;
+-	hci_uart_ldisc.close		= hci_uart_tty_close;
+-	hci_uart_ldisc.read		= hci_uart_tty_read;
+-	hci_uart_ldisc.write		= hci_uart_tty_write;
+-	hci_uart_ldisc.ioctl		= hci_uart_tty_ioctl;
+-	hci_uart_ldisc.poll		= hci_uart_tty_poll;
+-	hci_uart_ldisc.receive_buf	= hci_uart_tty_receive;
+-	hci_uart_ldisc.write_wakeup	= hci_uart_tty_wakeup;
+-	hci_uart_ldisc.owner		= THIS_MODULE;
+-
+-	err = tty_register_ldisc(N_HCI, &hci_uart_ldisc);
+-	if (err) {
++	hci_uart_ldisc.magic = TTY_LDISC_MAGIC;
++	hci_uart_ldisc.name = "n_hci";
++	hci_uart_ldisc.open = hci_uart_tty_open;
++	hci_uart_ldisc.close = hci_uart_tty_close;
++	hci_uart_ldisc.read = hci_uart_tty_read;
++	hci_uart_ldisc.write = hci_uart_tty_write;
++	hci_uart_ldisc.ioctl = hci_uart_tty_ioctl;
++	hci_uart_ldisc.poll = hci_uart_tty_poll;
++	hci_uart_ldisc.receive_buf = hci_uart_tty_receive;
++	hci_uart_ldisc.write_wakeup = hci_uart_tty_wakeup;
++	hci_uart_ldisc.owner = THIS_MODULE;
++
++	if ((err = tty_register_ldisc(N_HCI, &hci_uart_ldisc))) {
+ 		BT_ERR("HCI line discipline registration failed. (%d)", err);
+ 		return err;
+ 	}
+-
+ #ifdef CONFIG_BT_HCIUART_H4
+ 	h4_init();
+ #endif
+-#ifdef CONFIG_BT_HCIUART_BCSP
+-	bcsp_init();
+-#endif
+-#ifdef CONFIG_BT_HCIUART_LL
+-	ll_init();
+-#endif
+-#ifdef CONFIG_BT_HCIUART_ATH3K
+-	ath_init();
+-#endif
+-#ifdef CONFIG_BT_HCIUART_3WIRE
++	/* Add realtek h5 support */
+ 	h5_init();
+-#endif
+-#ifdef CONFIG_BT_HCIUART_INTEL
+-	intel_init();
+-#endif
+-#ifdef CONFIG_BT_HCIUART_BCM
+-	bcm_init();
+-#endif
+-#ifdef CONFIG_BT_HCIUART_QCA
+-	qca_init();
+-#endif
+-#ifdef CONFIG_BT_HCIUART_AG6XX
+-	ag6xx_init();
+-#endif
+-#ifdef CONFIG_BT_HCIUART_MRVL
+-	mrvl_init();
++
++#ifdef BTCOEX
++	rtk_btcoex_init();
+ #endif
+ 
+ 	return 0;
+@@ -831,43 +801,25 @@ static void __exit hci_uart_exit(void)
+ #ifdef CONFIG_BT_HCIUART_H4
+ 	h4_deinit();
+ #endif
+-#ifdef CONFIG_BT_HCIUART_BCSP
+-	bcsp_deinit();
+-#endif
+-#ifdef CONFIG_BT_HCIUART_LL
+-	ll_deinit();
+-#endif
+-#ifdef CONFIG_BT_HCIUART_ATH3K
+-	ath_deinit();
+-#endif
+-#ifdef CONFIG_BT_HCIUART_3WIRE
+ 	h5_deinit();
+-#endif
+-#ifdef CONFIG_BT_HCIUART_INTEL
+-	intel_deinit();
+-#endif
+-#ifdef CONFIG_BT_HCIUART_BCM
+-	bcm_deinit();
+-#endif
+-#ifdef CONFIG_BT_HCIUART_QCA
+-	qca_deinit();
+-#endif
+-#ifdef CONFIG_BT_HCIUART_AG6XX
+-	ag6xx_deinit();
+-#endif
+-#ifdef CONFIG_BT_HCIUART_MRVL
+-	mrvl_deinit();
+-#endif
+ 
+ 	/* Release tty registration of line discipline */
+-	err = tty_unregister_ldisc(N_HCI);
+-	if (err)
++	if ((err = tty_unregister_ldisc(N_HCI)))
+ 		BT_ERR("Can't unregister HCI line discipline (%d)", err);
++
++#ifdef BTCOEX
++	rtk_btcoex_exit();
++#endif
+ }
+ 
+ module_init(hci_uart_init);
+ module_exit(hci_uart_exit);
+ 
++#if HCI_VERSION_CODE < KERNEL_VERSION(3, 4, 0)
++module_param(reset, bool, 0644);
++MODULE_PARM_DESC(reset, "Send HCI reset command on initialization");
++#endif
++
+ MODULE_AUTHOR("Marcel Holtmann <marcel@holtmann.org>");
+ MODULE_DESCRIPTION("Bluetooth HCI UART driver ver " VERSION);
+ MODULE_VERSION(VERSION);
+diff --git a/drivers/bluetooth/hci_rtk_h5.c b/drivers/bluetooth/hci_rtk_h5.c
+index 3e746f0..c14bb99 100644
+--- a/drivers/bluetooth/hci_rtk_h5.c
++++ b/drivers/bluetooth/hci_rtk_h5.c
+@@ -65,9 +65,10 @@ struct h5_struct {
+ 
+ 	unsigned long rx_count;
+ 	struct sk_buff *rx_skb;
+-	u8 rxseq_txack;	/* rxseq == txack. */
+-	u8 rxack;	/* Last packet sent by us that the peer ack'ed */
+-	struct timer_list th5;
++	u8 rxseq_txack;		/* rxseq == txack. */
++	u8 rxack;		/* Last packet sent by us that the peer ack'ed */
++	struct delayed_work	retrans_work;
++	struct hci_uart		*hu;		/* Parent HCI UART */
+ 
+ 	enum {
+ 		H5_W4_PKT_DELIMITER,
+@@ -86,17 +87,14 @@ struct h5_struct {
+ 	u16 message_crc;
+ 	u8 txack_req;		/* Do we need to send ack's to the peer? */
+ 
+-	/* Reliable packet sequence number -
+-	 *used to assign seq to each rel pkt.
+-	 */
++	/* Reliable packet sequence number - used to assign seq to each rel pkt. */
+ 	u8 msgq_txseq;
+ };
+ 
+ /* ---- H5 CRC calculation ---- */
+ 
+ /* Table for calculating CRC for polynomial 0x1021, LSB processed first,
+- *initial value 0xffff, bits shifted in reverse order.
+- */
++initial value 0xffff, bits shifted in reverse order. */
+ 
+ static const u16 crc_table[] = {
+ 	0x0000, 0x1081, 0x2102, 0x3183,
+@@ -106,16 +104,16 @@ static const u16 crc_table[] = {
+ };
+ 
+ /* Initialise the crc calculator */
+-#define H5_CRC_INIT(x) (x = 0xffff)
++#define H5_CRC_INIT(x) x = 0xffff
+ 
+ /*
+- *  Update crc with next data byte
+- *
+- *  Implementation note
+- *       The data byte is treated as two nibbles.  The crc is generated
+- *       in reverse, i.e., bits are fed into the register from the top.
+- */
+-static void h5_crc_update(u16 *crc, u8 d)
++   Update crc with next data byte
++
++   Implementation note
++        The data byte is treated as two nibbles.  The crc is generated
++        in reverse, i.e., bits are fed into the register from the top.
++*/
++static void h5_crc_update(u16 * crc, u8 d)
+ {
+ 	u16 reg = *crc;
+ 
+@@ -181,7 +179,7 @@ static int h5_enqueue(struct hci_uart *hu, struct sk_buff *skb)
+ 	case H5_LE_PKT:
+ 	case H5_ACK_PKT:
+ 	case H5_VDRSPEC_PKT:
+-		skb_queue_tail(&h5->unrel, skb);/* 3-wire LinkEstablishment */
++		skb_queue_tail(&h5->unrel, skb);	/* 3-wire LinkEstablishment */
+ 		break;
+ 
+ 	default:
+@@ -193,15 +191,14 @@ static int h5_enqueue(struct hci_uart *hu, struct sk_buff *skb)
+ 	return 0;
+ }
+ 
+-static struct sk_buff *h5_prepare_pkt(struct h5_struct *h5, u8 *data,
++static struct sk_buff *h5_prepare_pkt(struct h5_struct *h5, u8 * data,
+ 				      int len, int pkt_type)
+ {
+ 	struct sk_buff *nskb;
+ 	u8 hdr[4], chan;
+-	u16 h5_txmsg_crc;
++	u16 H5_CRC_INIT(h5_txmsg_crc);
+ 	int rel, i;
+ 
+-	H5_CRC_INIT(h5_txmsg_crc);
+ 	switch (pkt_type) {
+ 	case HCI_ACLDATA_PKT:
+ 		chan = 2;	/* 3-wire ACL channel */
+@@ -237,10 +234,9 @@ static struct sk_buff *h5_prepare_pkt(struct h5_struct *h5, u8 *data,
+ 	}
+ 
+ 	/* Max len of packet: (original len +4(h5 hdr) +2(crc))*2
+-	 * (because bytes 0xc0 and 0xdb are escaped, worst case is
+-	 * when the packet is all made of 0xc0 and 0xdb :) )
+-	 * + 2 (0xc0 delimiters at start and end).
+-	 */
++	   (because bytes 0xc0 and 0xdb are escaped, worst case is
++	   when the packet is all made of 0xc0 and 0xdb :) )
++	   + 2 (0xc0 delimiters at start and end). */
+ 
+ 	nskb = alloc_skb((len + 6) * 2 + 2, GFP_ATOMIC);
+ 	if (!nskb)
+@@ -302,10 +298,9 @@ static struct sk_buff *h5_dequeue(struct hci_uart *hu)
+ 	struct sk_buff *skb;
+ 
+ 	/* First of all, check for unreliable messages in the queue,
+-	 * since they have priority
+-	 */
+-	skb = skb_dequeue(&h5->unrel);
+-	if (skb != NULL) {
++	   since they have priority */
++
++	if ((skb = skb_dequeue(&h5->unrel)) != NULL) {
+ 		struct sk_buff *nskb =
+ 		    h5_prepare_pkt(h5, skb->data, skb->len,
+ 				   bt_cb(skb)->pkt_type);
+@@ -320,42 +315,37 @@ static struct sk_buff *h5_dequeue(struct hci_uart *hu)
+ 	}
+ 
+ 	/* Now, try to send a reliable pkt. We can only send a
+-	 * reliable packet if the number of packets sent but not yet ack'ed
+-	 * is < than the winsize
+-	 */
++	   reliable packet if the number of packets sent but not yet ack'ed
++	   is < than the winsize */
+ 
+ 	spin_lock_irqsave_nested(&h5->unack.lock, flags, SINGLE_DEPTH_NESTING);
+ 
+-	if (h5->unack.qlen < H5_TXWINSIZE) {
+-		skb = skb_dequeue(&h5->rel);
+-		if (skb != NULL) {
+-			struct sk_buff *nskb =
+-				h5_prepare_pkt(h5, skb->data, skb->len,
+-						bt_cb(skb)->pkt_type);
+-			if (nskb) {
+-				__skb_queue_tail(&h5->unack, skb);
+-				mod_timer(&h5->th5, jiffies + HZ / 4);
+-				spin_unlock_irqrestore(&h5->unack.lock, flags);
+-				return nskb;
+-			} else {
+-				skb_queue_head(&h5->rel, skb);
+-				BT_ERR("Could not dequeue pkt ");
+-				BT_ERR("because alloc_skb failed");
+-			}
++	if (h5->unack.qlen < H5_TXWINSIZE
++	    && (skb = skb_dequeue(&h5->rel)) != NULL) {
++		struct sk_buff *nskb =
++		    h5_prepare_pkt(h5, skb->data, skb->len,
++				   bt_cb(skb)->pkt_type);
++		if (nskb) {
++			__skb_queue_tail(&h5->unack, skb);
++			schedule_delayed_work(&h5->retrans_work, HZ / 4);
++			spin_unlock_irqrestore(&h5->unack.lock, flags);
++			return nskb;
++		} else {
++			skb_queue_head(&h5->rel, skb);
++			BT_ERR
++			    ("Could not dequeue pkt because alloc_skb failed");
+ 		}
+ 	}
+ 
+ 	spin_unlock_irqrestore(&h5->unack.lock, flags);
+ 
+ 	/* We could not send a reliable packet, either because there are
+-	 * none or because there are too many unack'ed pkts. Did we receive
+-	 * any packets we have not acknowledged yet ?
+-	 */
++	   none or because there are too many unack'ed pkts. Did we receive
++	   any packets we have not acknowledged yet ? */
+ 
+ 	if (h5->txack_req) {
+ 		/* if so, craft an empty ACK pkt and send it on H5 unreliable
+-		 * channel 0
+-		 */
++		   channel 0 */
+ 		struct sk_buff *nskb = h5_prepare_pkt(h5, NULL, 0, H5_ACK_PKT);
+ 		return nskb;
+ 	}
+@@ -408,7 +398,7 @@ static void h5_pkt_cull(struct h5_struct *h5)
+ 	}
+ 
+ 	if (skb_queue_empty(&h5->unack))
+-		del_timer(&h5->th5);
++		cancel_delayed_work(&h5->retrans_work);
+ 
+ 	spin_unlock_irqrestore(&h5->unack.lock, flags);
+ 
+@@ -417,9 +407,8 @@ static void h5_pkt_cull(struct h5_struct *h5)
+ }
+ 
+ /* Handle H5 link-establishment packets. When we
+- * detect a "sync" packet, symptom that the BT module has reset,
+- * we do nothing :) (yet)
+- */
++   detect a "sync" packet, symptom that the BT module has reset,
++   we do nothing :) (yet) */
+ #if 0
+ static void h5_handle_le_pkt(struct hci_uart *hu)
+ {
+@@ -442,8 +431,7 @@ static void h5_handle_le_pkt(struct hci_uart *hu)
+ 		if (!nskb)
+ 			return;
+ 
+-		/*crc check enable, version no = 0. needed to be as avariable.*/
+-		conf_rsp_pkt[2] |= txcrc << 0x4;
++		conf_rsp_pkt[2] |= txcrc << 0x4;	//crc check enable, version no = 0. needed to be as avariable.
+ 		memcpy(skb_put(nskb, 3), conf_rsp_pkt, 3);
+ 		bt_cb(nskb)->pkt_type = H5_LE_PKT;
+ 
+@@ -466,8 +454,8 @@ static void h5_handle_le_pkt(struct hci_uart *hu)
+ 	/* Spot "sync resp" pkts. If we find one...disaster! */
+ 	else if (h5->rx_skb->data[1] >> 4 == 2 && h5->rx_skb->data[2] == 0 &&
+ 		 !memcmp(&h5->rx_skb->data[4], sync_rsp_pkt, 2)) {
+-		BT_ERR("Found a LE sync resp pkt, ");
+-		BT_ERR("device go into initialized state");
++		BT_ERR
++		    ("Found a LE sync resp pkt, device go into initialized state");
+ 		//      DO Something here
+ 	}
+ 	/* Spot "wakeup" pkts. reply woken message when in active mode */
+@@ -492,7 +480,7 @@ static void h5_handle_le_pkt(struct hci_uart *hu)
+ 	}
+ 	/* Spot "Sleep" pkts */
+ 	else if (h5->rx_skb->data[1] >> 4 == 2 && h5->rx_skb->data[2] == 0 &&
+-		 !memcmp(&h5->rx_indent : Standard input:620 : Error : Unmatched 'else'
++		 !memcmp(&h5->rx_indent: Standard input:620: Error:Unmatched 'else'
+ skb->data[4], sleep_pkt, 2)) {
+ 		BT_ERR("Found a LE Sleep pkt");
+ 		//      DO Something here
+@@ -618,24 +606,23 @@ static void h5_complete_rx_pkt(struct hci_uart *hu)
+ 
+ 		if (desc != H5_ACK_PKT && desc != H5_LE_PKT) {
+ 			/* if (hciextn) {
+-			 *	desc |= 0xc0;
+-			 *	skb_pull(h5->rx_skb, 4);
+-			 *	memcpy(skb_push(h5->rx_skb, 1), &desc, 1);
+-
+-			 *	hdr.evt = 0xff;
+-			 *	hdr.plen = h5->rx_skb->len;
+-			 *	memcpy(skb_push(h5->rx_skb, HCI_EVENT_HDR_SIZE),
+-			 *	       &hdr, HCI_EVENT_HDR_SIZE);
+-			 *	bt_cb(h5->rx_skb)->pkt_type = HCI_EVENT_PKT;
+-
+-			 *	hci_recv_frame(h5->rx_skb);
+-			 * } else {
+-			 */
+-			BT_ERR("Packet for unknown channel (%u %s)",
++			 * 	desc |= 0xc0;
++			 * 	skb_pull(h5->rx_skb, 4);
++			 * 	memcpy(skb_push(h5->rx_skb, 1), &desc, 1);
++
++			 * 	hdr.evt = 0xff;
++			 * 	hdr.plen = h5->rx_skb->len;
++			 * 	memcpy(skb_push(h5->rx_skb, HCI_EVENT_HDR_SIZE),
++			 * 	       &hdr, HCI_EVENT_HDR_SIZE);
++			 * 	bt_cb(h5->rx_skb)->pkt_type = HCI_EVENT_PKT;
++
++			 * 	hci_recv_frame(h5->rx_skb);
++			 * } else { */
++				BT_ERR("Packet for unknown channel (%u %s)",
+ 				       h5->rx_skb->data[1] & 0x0f,
+ 				       h5->rx_skb->data[0] & 0x80 ?
+ 				       "reliable" : "unreliable");
+-			kfree_skb(h5->rx_skb);
++				kfree_skb(h5->rx_skb);
+ 			/* } */
+ 		} else
+ 			kfree_skb(h5->rx_skb);
+@@ -653,7 +640,7 @@ static void h5_complete_rx_pkt(struct hci_uart *hu)
+ 						       h5->rx_skb->len);
+ #endif
+ 
+-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 13, 0)
++#if HCI_VERSION_CODE < KERNEL_VERSION(3, 13, 0)
+ 		hci_recv_frame(h5->rx_skb);
+ #else
+ 		hci_recv_frame(hu->hdev, h5->rx_skb);
+@@ -664,17 +651,15 @@ static void h5_complete_rx_pkt(struct hci_uart *hu)
+ 	h5->rx_skb = NULL;
+ }
+ 
+-static u16 bscp_get_crc(struct h5_struct *h5)
+-{
++static u16 bscp_get_crc(struct h5_struct *h5) {
+ 	return get_unaligned_be16(&h5->rx_skb->
+ 			data[h5->rx_skb->len - 2]);
+ }
+ 
+ /* Recv data */
+-static int h5_recv(struct hci_uart *hu, const void *data, int count)
++static int h5_recv(struct hci_uart *hu, void *data, int count)
+ {
+ 	struct h5_struct *h5 = hu->priv;
+-
+ 	register unsigned char *ptr;
+ 
+ 	BT_DBG("hu %p count %d rx_state %d rx_count %ld",
+@@ -709,11 +694,9 @@ static int h5_recv(struct hci_uart *hu, const void *data, int count)
+ 				continue;
+ 			}
+ 			if (h5->rx_skb->data[0] & 0x80	/* reliable pkt */
+-			    && (h5->rx_skb->data[0] & 0x07) !=
+-							h5->rxseq_txack) {
++			    && (h5->rx_skb->data[0] & 0x07) != h5->rxseq_txack) {
+ 				BT_ERR
+-				    ("Out-of-order packet arrived, ");
+-				BT_ERR("got %u expected %u",
++				    ("Out-of-order packet arrived, got %u expected %u",
+ 				     h5->rx_skb->data[0] & 0x07,
+ 				     h5->rxseq_txack);
+ 
+@@ -725,12 +708,11 @@ static int h5_recv(struct hci_uart *hu, const void *data, int count)
+ 				continue;
+ 			}
+ 			h5->rx_state = H5_W4_DATA;
+-			h5->rx_count = (h5->rx_skb->data[1] >> 4) +
+-				(h5->rx_skb->data[2] << 4); /* May be 0 */
++			h5->rx_count = (h5->rx_skb->data[1] >> 4) + (h5->rx_skb->data[2] << 4);	/* May be 0 */
+ 			continue;
+ 
+ 		case H5_W4_DATA:
+-			if (h5->rx_skb->data[0] & 0x40) {/* pkt with crc */
++			if (h5->rx_skb->data[0] & 0x40) {	/* pkt with crc */
+ 				h5->rx_state = H5_W4_CRC;
+ 				h5->rx_count = 2;
+ 			} else
+@@ -739,8 +721,8 @@ static int h5_recv(struct hci_uart *hu, const void *data, int count)
+ 
+ 		case H5_W4_CRC:
+ 			if (bitrev16(h5->message_crc) != bscp_get_crc(h5)) {
+-				BT_ERR("Checksum failed: ");
+-				BT_ERR("computed %04x received %04x",
++				BT_ERR
++				    ("Checksum failed: computed %04x received %04x",
+ 				     bitrev16(h5->message_crc),
+ 				     bscp_get_crc(h5));
+ 
+@@ -780,14 +762,13 @@ static int h5_recv(struct hci_uart *hu, const void *data, int count)
+ 				H5_CRC_INIT(h5->message_crc);
+ 
+ 				/* Do not increment ptr or decrement count
+-				 * Allocate packet. Max len of a H5 pkt=
+-				 * 0xFFF (payload) +4 (header) +2 (crc)
+-				 */
++				 * Allocate packet. Max len of a H5 pkt= 
++				 * 0xFFF (payload) +4 (header) +2 (crc) */
+ 
+ 				h5->rx_skb = bt_skb_alloc(0x1005, GFP_ATOMIC);
+ 				if (!h5->rx_skb) {
+-					BT_ERR("Can't allocate mem for ");
+-					BT_ERR("new packet");
++					BT_ERR
++					    ("Can't allocate mem for new packet");
+ 					h5->rx_state = H5_W4_PKT_DELIMITER;
+ 					h5->rx_count = 0;
+ 					return 0;
+@@ -802,17 +783,23 @@ static int h5_recv(struct hci_uart *hu, const void *data, int count)
+ }
+ 
+ /* Arrange to retransmit all messages in the relq. */
+-static void h5_timed_event(unsigned long arg)
++static void h5_timed_event(struct work_struct *work)
+ {
+-	struct hci_uart *hu = (struct hci_uart *)arg;
+-	struct h5_struct *h5 = hu->priv;
+-	struct sk_buff *skb;
++	struct h5_struct *h5;
++	struct hci_uart *hu;
+ 	unsigned long flags;
++	struct sk_buff *skb;
++
++	h5 = container_of(work, struct h5_struct, retrans_work.work);
++	hu = h5->hu;
+ 
+-	BT_DBG("hu %p retransmitting %u pkts", hu, h5->unack.qlen);
++	BT_WARN("hu %p retransmitting %u pkts", hu, h5->unack.qlen);
+ 
+ 	spin_lock_irqsave_nested(&h5->unack.lock, flags, SINGLE_DEPTH_NESTING);
+ 
++	/* Move the pkt from unack queue to the head of reliable tx queue and
++	 * roll back the tx seq number
++	 */
+ 	while ((skb = __skb_dequeue_tail(&h5->unack)) != NULL) {
+ 		h5->msgq_txseq = (h5->msgq_txseq - 1) & 0x07;
+ 		skb_queue_head(&h5->rel, skb);
+@@ -839,9 +826,8 @@ static int h5_open(struct hci_uart *hu)
+ 	skb_queue_head_init(&h5->rel);
+ 	skb_queue_head_init(&h5->unrel);
+ 
+-	init_timer(&h5->th5);
+-	h5->th5.function = h5_timed_event;
+-	h5->th5.data = (u_long) hu;
++	h5->hu = hu;
++	INIT_DELAYED_WORK(&h5->retrans_work, (void *)h5_timed_event);
+ 
+ 	h5->rx_state = H5_W4_PKT_DELIMITER;
+ 
+@@ -855,16 +841,18 @@ static int h5_close(struct hci_uart *hu)
+ {
+ 	struct h5_struct *h5 = hu->priv;
+ 
++	BT_INFO("h5_close");
++
++	cancel_delayed_work_sync(&h5->retrans_work);
++
+ 	hu->priv = NULL;
+ 
+-	BT_DBG("hu %p", hu);
+-	BT_INFO("h5_close");
+ 	skb_queue_purge(&h5->unack);
+ 	skb_queue_purge(&h5->rel);
+ 	skb_queue_purge(&h5->unrel);
+-	del_timer(&h5->th5);
+ 
+ 	kfree(h5);
++
+ 	return 0;
+ }
+ 
+diff --git a/drivers/bluetooth/hci_uart.h b/drivers/bluetooth/hci_uart.h
+index 0701395..ded83b3 100644
+--- a/drivers/bluetooth/hci_uart.h
++++ b/drivers/bluetooth/hci_uart.h
+@@ -22,11 +22,23 @@
+  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+  *
+  */
++#include <linux/version.h>
++#include <net/bluetooth/bluetooth.h>
++#include <net/bluetooth/hci_core.h>
++
++/* #define HCI_VERSION_CODE KERNEL_VERSION(3, 14, 41) */
++#define HCI_VERSION_CODE LINUX_VERSION_CODE
+ 
+ #ifndef N_HCI
+ #define N_HCI	15
+ #endif
+ 
++#ifndef CONFIG_BT_HCIUART_H4
++#define CONFIG_BT_HCIUART_H4
++#endif
++
++#define BTCOEX
++
+ /* Ioctls */
+ #define HCIUARTSETPROTO		_IOW('U', 200, int)
+ #define HCIUARTGETPROTO		_IOR('U', 201, int)
+@@ -35,7 +47,7 @@
+ #define HCIUARTGETFLAGS		_IOR('U', 204, int)
+ 
+ /* UART protocols */
+-#define HCI_UART_MAX_PROTO	12
++#define HCI_UART_MAX_PROTO	6
+ 
+ #define HCI_UART_H4	0
+ #define HCI_UART_BCSP	1
+@@ -43,12 +55,6 @@
+ #define HCI_UART_H4DS	3
+ #define HCI_UART_LL	4
+ #define HCI_UART_ATH3K	5
+-#define HCI_UART_INTEL	6
+-#define HCI_UART_BCM	7
+-#define HCI_UART_QCA	8
+-#define HCI_UART_AG6XX	9
+-#define HCI_UART_NOKIA	10
+-#define HCI_UART_MRVL	11
+ 
+ #define HCI_UART_RAW_DEVICE	0
+ #define HCI_UART_RESET_ON_INIT	1
+@@ -61,16 +67,10 @@ struct hci_uart;
+ 
+ struct hci_uart_proto {
+ 	unsigned int id;
+-	const char *name;
+-	unsigned int manufacturer;
+-	unsigned int init_speed;
+-	unsigned int oper_speed;
+ 	int (*open)(struct hci_uart *hu);
+ 	int (*close)(struct hci_uart *hu);
+ 	int (*flush)(struct hci_uart *hu);
+-	int (*setup)(struct hci_uart *hu);
+-	int (*set_baudrate)(struct hci_uart *hu, unsigned int speed);
+-	int (*recv)(struct hci_uart *hu, const void *data, int len);
++	int (*recv)(struct hci_uart *hu, void *data, int len);
+ 	int (*enqueue)(struct hci_uart *hu, struct sk_buff *skb);
+ 	struct sk_buff *(*dequeue)(struct hci_uart *hu);
+ };
+@@ -81,17 +81,17 @@ struct hci_uart {
+ 	unsigned long		flags;
+ 	unsigned long		hdev_flags;
+ 
+-	struct work_struct	init_ready;
+ 	struct work_struct	write_work;
++	struct workqueue_struct *hci_uart_wq;
+ 
+-	const struct hci_uart_proto *proto;
++	struct hci_uart_proto	*proto;
++	rwlock_t		proto_lock;	/* Stop work for proto close */
+ 	void			*priv;
+ 
++	spinlock_t		tx_lock;
++
+ 	struct sk_buff		*tx_skb;
+ 	unsigned long		tx_state;
+-
+-	unsigned int init_speed;
+-	unsigned int oper_speed;
+ };
+ 
+ /* HCI_UART proto flag bits */
+@@ -103,96 +103,20 @@ struct hci_uart {
+ #define HCI_UART_SENDING	1
+ #define HCI_UART_TX_WAKEUP	2
+ 
+-int hci_uart_register_proto(const struct hci_uart_proto *p);
+-int hci_uart_unregister_proto(const struct hci_uart_proto *p);
+-int hci_uart_tx_wakeup(struct hci_uart *hu);
+-int hci_uart_init_ready(struct hci_uart *hu);
+-void hci_uart_init_tty(struct hci_uart *hu);
+-void hci_uart_set_baudrate(struct hci_uart *hu, unsigned int speed);
+-void hci_uart_set_flow_control(struct hci_uart *hu, bool enable);
+-void hci_uart_set_speeds(struct hci_uart *hu, unsigned int init_speed,
+-			 unsigned int oper_speed);
++extern int hci_uart_register_proto(struct hci_uart_proto *p);
++extern int hci_uart_unregister_proto(struct hci_uart_proto *p);
++extern int hci_uart_tx_wakeup(struct hci_uart *hu);
+ 
+ #ifdef CONFIG_BT_HCIUART_H4
+-int h4_init(void);
+-int h4_deinit(void);
+-
+-struct h4_recv_pkt {
+-	u8  type;	/* Packet type */
+-	u8  hlen;	/* Header length */
+-	u8  loff;	/* Data length offset in header */
+-	u8  lsize;	/* Data length field size */
+-	u16 maxlen;	/* Max overall packet length */
+-	int (*recv)(struct hci_dev *hdev, struct sk_buff *skb);
+-};
+-
+-#define H4_RECV_ACL \
+-	.type = HCI_ACLDATA_PKT, \
+-	.hlen = HCI_ACL_HDR_SIZE, \
+-	.loff = 2, \
+-	.lsize = 2, \
+-	.maxlen = HCI_MAX_FRAME_SIZE \
+-
+-#define H4_RECV_SCO \
+-	.type = HCI_SCODATA_PKT, \
+-	.hlen = HCI_SCO_HDR_SIZE, \
+-	.loff = 2, \
+-	.lsize = 1, \
+-	.maxlen = HCI_MAX_SCO_SIZE
+-
+-#define H4_RECV_EVENT \
+-	.type = HCI_EVENT_PKT, \
+-	.hlen = HCI_EVENT_HDR_SIZE, \
+-	.loff = 1, \
+-	.lsize = 1, \
+-	.maxlen = HCI_MAX_EVENT_SIZE
+-
+-struct sk_buff *h4_recv_buf(struct hci_dev *hdev, struct sk_buff *skb,
+-			    const unsigned char *buffer, int count,
+-			    const struct h4_recv_pkt *pkts, int pkts_count);
+-#endif
+-
+-#ifdef CONFIG_BT_HCIUART_BCSP
+-int bcsp_init(void);
+-int bcsp_deinit(void);
+-#endif
+-
+-#ifdef CONFIG_BT_HCIUART_LL
+-int ll_init(void);
+-int ll_deinit(void);
++extern int h4_init(void);
++extern int h4_deinit(void);
+ #endif
+ 
+-#ifdef CONFIG_BT_HCIUART_ATH3K
+-int ath_init(void);
+-int ath_deinit(void);
+-#endif
+-
+-#ifdef CONFIG_BT_HCIUART_3WIRE
+-int h5_init(void);
+-int h5_deinit(void);
+-#endif
+-
+-#ifdef CONFIG_BT_HCIUART_INTEL
+-int intel_init(void);
+-int intel_deinit(void);
+-#endif
+-
+-#ifdef CONFIG_BT_HCIUART_BCM
+-int bcm_init(void);
+-int bcm_deinit(void);
+-#endif
+-
+-#ifdef CONFIG_BT_HCIUART_QCA
+-int qca_init(void);
+-int qca_deinit(void);
+-#endif
+-
+-#ifdef CONFIG_BT_HCIUART_AG6XX
+-int ag6xx_init(void);
+-int ag6xx_deinit(void);
+-#endif
++extern int h5_init(void);
++extern int h5_deinit(void);
+ 
+-#ifdef CONFIG_BT_HCIUART_MRVL
+-int mrvl_init(void);
+-int mrvl_deinit(void);
++#if HCI_VERSION_CODE < KERNEL_VERSION(3, 13, 0)
++extern int hci_uart_send_frame(struct sk_buff *skb);
++#else
++extern int hci_uart_send_frame(struct hci_dev *hdev, struct sk_buff *skb);
+ #endif
+diff --git a/drivers/bluetooth/rtk_coex.c b/drivers/bluetooth/rtk_coex.c
+index 10eef43..97eb57a 100644
+--- a/drivers/bluetooth/rtk_coex.c
++++ b/drivers/bluetooth/rtk_coex.c
+@@ -15,6 +15,10 @@
+ 
+ #include "rtk_coex.h"
+ 
++/* Software coex message can be sent to and receive from WiFi driver by
++ * UDP socket or exported symbol */
++/* #define RTK_COEX_OVER_SYMBOL */
++
+ #if BTRTL_HCI_IF == BTRTL_HCIUSB
+ #include <linux/usb.h>
+ #include "rtk_bt.h"
+@@ -33,22 +37,24 @@
+ 
+ #define RTK_VERSION "1.2"
+ 
+-#define RTKBT_DBG(fmt, arg...) pr_info("rtk_btcoex: " fmt "\n", ## arg)
+-#define RTKBT_INFO(fmt, arg...) pr_info("rtk_btcoex: " fmt "\n", ## arg)
+-#define RTKBT_WARN(fmt, arg...) pr_warn("rtk_btcoex: " fmt "\n", ## arg)
+-#define RTKBT_ERR(fmt, arg...) pr_warn("rtk_btcoex: " fmt "\n", ## arg)
++#define RTKBT_DBG(fmt, arg...) printk(KERN_INFO "rtk_btcoex: " fmt "\n" , ## arg)
++#define RTKBT_INFO(fmt, arg...) printk(KERN_INFO "rtk_btcoex: " fmt "\n" , ## arg)
++#define RTKBT_WARN(fmt, arg...) printk(KERN_WARNING "rtk_btcoex: " fmt "\n", ## arg)
++#define RTKBT_ERR(fmt, arg...) printk(KERN_WARNING "rtk_btcoex: " fmt "\n", ## arg)
+ 
+ static struct rtl_coex_struct btrtl_coex;
+ 
+-#define is_profile_connected(profile)\
+-	((btrtl_coex.profile_bitmap & BIT(profile)) > 0)
+-#define is_profile_busy(profile)\
+-	((btrtl_coex.profile_status & BIT(profile)) > 0)
++#ifdef RTK_COEX_OVER_SYMBOL
++static struct sk_buff_head rtw_q;
++static struct workqueue_struct *rtw_wq;
++static struct work_struct rtw_work;
++static u8 rtw_coex_on;
++#endif
++
++#define is_profile_connected(profile)   ((btrtl_coex.profile_bitmap & BIT(profile)) > 0)
++#define is_profile_busy(profile)        ((btrtl_coex.profile_status & BIT(profile)) > 0)
+ 
+-static void rtk_handle_event_from_wifi(uint8_t *msg);
+-static void count_a2dp_packet_timeout(unsigned long data);
+-static void count_pan_packet_timeout(unsigned long data);
+-static void count_hogp_packet_timeout(unsigned long data);
++static void rtk_handle_event_from_wifi(uint8_t * msg);
+ 
+ static int rtl_alloc_buff(struct rtl_coex_struct *coex)
+ {
+@@ -187,7 +193,7 @@ static struct rtl_l2_buff *rtl_l2_node_get(struct rtl_coex_struct *coex)
+ 
+ 	spin_lock_irqsave(&coex->buff_lock, flags);
+ 
+-	if (!list_empty(&coex->l2_free_list)) {
++	if(!list_empty(&coex->l2_free_list)) {
+ 		l2 = list_entry(coex->l2_free_list.next, struct rtl_l2_buff,
+ 				list);
+ 		list_del(&l2->list);
+@@ -236,7 +242,81 @@ static int8_t psm_to_profile_index(uint16_t psm)
+ 	}
+ }
+ 
+-static rtk_conn_prof *find_connection_by_handle(struct rtl_coex_struct *coex,
++static rtk_prof_info *find_by_psm(u16 psm)
++{
++	struct list_head *head = &btrtl_coex.profile_list;
++	struct list_head *iter = NULL;
++	struct list_head *temp = NULL;
++	rtk_prof_info *desc = NULL;
++
++	list_for_each_safe(iter, temp, head) {
++		desc = list_entry(iter, rtk_prof_info, list);
++		if (desc->psm == psm)
++			return desc;
++	}
++
++	return NULL;
++}
++
++static void rtk_check_setup_timer(int8_t profile_index)
++{
++	if (profile_index == profile_a2dp) {
++		btrtl_coex.a2dp_packet_count = 0;
++		btrtl_coex.a2dp_count_timer.expires =
++		    jiffies + msecs_to_jiffies(1000);
++		mod_timer(&btrtl_coex.a2dp_count_timer,
++			  btrtl_coex.a2dp_count_timer.expires);
++	}
++
++	if (profile_index == profile_pan) {
++		btrtl_coex.pan_packet_count = 0;
++		btrtl_coex.pan_count_timer.expires =
++		    jiffies + msecs_to_jiffies(1000);
++		mod_timer(&btrtl_coex.pan_count_timer,
++			  btrtl_coex.pan_count_timer.expires);
++	}
++
++	/* hogp & voice share one timer now */
++	if ((profile_index == profile_hogp) || (profile_index == profile_voice)) {
++		if ((0 == btrtl_coex.profile_refcount[profile_hogp])
++		    && (0 == btrtl_coex.profile_refcount[profile_voice])) {
++			btrtl_coex.hogp_packet_count = 0;
++			btrtl_coex.voice_packet_count = 0;
++			btrtl_coex.hogp_count_timer.expires =
++			    jiffies + msecs_to_jiffies(1000);
++			mod_timer(&btrtl_coex.hogp_count_timer,
++				  btrtl_coex.hogp_count_timer.expires);
++		}
++	}
++}
++
++static void rtk_check_del_timer(int8_t profile_index)
++{
++	if (profile_a2dp == profile_index) {
++		btrtl_coex.a2dp_packet_count = 0;
++		del_timer_sync(&btrtl_coex.a2dp_count_timer);
++	}
++	if (profile_pan == profile_index) {
++		btrtl_coex.pan_packet_count = 0;
++		del_timer_sync(&btrtl_coex.pan_count_timer);
++	}
++	if (profile_hogp == profile_index) {
++		btrtl_coex.hogp_packet_count = 0;
++		if (btrtl_coex.profile_refcount[profile_voice] == 0) {
++			del_timer_sync(&btrtl_coex.hogp_count_timer);
++		}
++	}
++	if (profile_voice == profile_index) {
++		btrtl_coex.voice_packet_count = 0;
++		if (btrtl_coex.profile_refcount[profile_hogp] == 0) {
++			del_timer_sync(&btrtl_coex.hogp_count_timer);
++		}
++	}
++}
++
++
++
++static rtk_conn_prof *find_connection_by_handle(struct rtl_coex_struct * coex,
+ 						uint16_t handle)
+ {
+ 	struct list_head *head = &coex->conn_hash;
+@@ -245,8 +325,9 @@ static rtk_conn_prof *find_connection_by_handle(struct rtl_coex_struct *coex,
+ 
+ 	list_for_each_safe(iter, temp, head) {
+ 		desc = list_entry(iter, rtk_conn_prof, list);
+-		if ((handle & 0xEFF) == desc->handle)
++		if ((handle & 0xEFF) == desc->handle) {
+ 			return desc;
++		}
+ 	}
+ 	return NULL;
+ }
+@@ -254,7 +335,6 @@ static rtk_conn_prof *find_connection_by_handle(struct rtl_coex_struct *coex,
+ static rtk_conn_prof *allocate_connection_by_handle(uint16_t handle)
+ {
+ 	rtk_conn_prof *phci_conn = NULL;
+-
+ 	phci_conn = kmalloc(sizeof(rtk_conn_prof), GFP_ATOMIC);
+ 	if (phci_conn)
+ 		phci_conn->handle = handle;
+@@ -262,22 +342,20 @@ static rtk_conn_prof *allocate_connection_by_handle(uint16_t handle)
+ 	return phci_conn;
+ }
+ 
+-static void init_connection_hash(struct rtl_coex_struct *coex)
++static void init_connection_hash(struct rtl_coex_struct * coex)
+ {
+ 	struct list_head *head = &coex->conn_hash;
+-
+ 	INIT_LIST_HEAD(head);
+ }
+ 
+-static void add_connection_to_hash(struct rtl_coex_struct *coex,
+-				   rtk_conn_prof *desc)
++static void add_connection_to_hash(struct rtl_coex_struct * coex,
++				   rtk_conn_prof * desc)
+ {
+ 	struct list_head *head = &coex->conn_hash;
+-
+ 	list_add_tail(&desc->list, head);
+ }
+ 
+-static void delete_connection_from_hash(rtk_conn_prof *desc)
++static void delete_connection_from_hash(rtk_conn_prof * desc)
+ {
+ 	if (desc) {
+ 		list_del(&desc->list);
+@@ -285,7 +363,7 @@ static void delete_connection_from_hash(rtk_conn_prof *desc)
+ 	}
+ }
+ 
+-static void flush_connection_hash(struct rtl_coex_struct *coex)
++static void flush_connection_hash(struct rtl_coex_struct * coex)
+ {
+ 	struct list_head *head = &coex->conn_hash;
+ 	struct list_head *iter = NULL, *temp = NULL;
+@@ -301,10 +379,9 @@ static void flush_connection_hash(struct rtl_coex_struct *coex)
+ 	//INIT_LIST_HEAD(head);
+ }
+ 
+-static void init_profile_hash(struct rtl_coex_struct *coex)
++static void init_profile_hash(struct rtl_coex_struct * coex)
+ {
+ 	struct list_head *head = &coex->profile_list;
+-
+ 	INIT_LIST_HEAD(head);
+ }
+ 
+@@ -315,17 +392,31 @@ static uint8_t list_allocate_add(uint16_t handle, uint16_t psm,
+ 	rtk_prof_info *pprof_info = NULL;
+ 
+ 	if (profile_index < 0) {
+-		RTKBT_ERR("PSM(0x%x) do not need parse", psm);
++		RTKBT_ERR("PSM 0x%x do not need parse", psm);
+ 		return FALSE;
+ 	}
+ 
+ 	pprof_info = kmalloc(sizeof(rtk_prof_info), GFP_ATOMIC);
+ 
+-	if (pprof_info == NULL) {
++	if (NULL == pprof_info) {
+ 		RTKBT_ERR("list_allocate_add: allocate error");
+ 		return FALSE;
+ 	}
+ 
++	/* Check if it is the second l2cap connection for a2dp
++	 * a2dp signal channel will be created first than media channel.
++	 */
++	if (psm == PSM_AVDTP) {
++		rtk_prof_info *pinfo = find_by_psm(psm);
++		if (!pinfo) {
++			pprof_info->flags = A2DP_SIGNAL;
++			RTKBT_INFO("%s: Add a2dp signal channel", __func__);
++		} else {
++			pprof_info->flags = A2DP_MEDIA;
++			RTKBT_INFO("%s: Add a2dp media channel", __func__);
++		}
++	}
++
+ 	pprof_info->handle = handle;
+ 	pprof_info->psm = psm;
+ 	pprof_info->scid = scid;
+@@ -336,11 +427,11 @@ static uint8_t list_allocate_add(uint16_t handle, uint16_t psm,
+ 	return TRUE;
+ }
+ 
+-static void delete_profile_from_hash(rtk_prof_info *desc)
++static void delete_profile_from_hash(rtk_prof_info * desc)
+ {
+-	RTKBT_DBG("Delete profile: hndl 0x%04x, psm 0x%04x, ",
+-			desc->handle, desc->psm);
+-	RTKBT_DBG("dcid 0x%04x, scid 0x%04x", desc->dcid, desc->scid);
++	RTKBT_DBG("Delete profile: hndl 0x%04x, psm 0x%04x, dcid 0x%04x, "
++		  "scid 0x%04x", desc->handle, desc->psm, desc->dcid,
++		  desc->scid);
+ 	if (desc) {
+ 		list_del(&desc->list);
+ 		kfree(desc);
+@@ -348,7 +439,7 @@ static void delete_profile_from_hash(rtk_prof_info *desc)
+ 	}
+ }
+ 
+-static void flush_profile_hash(struct rtl_coex_struct *coex)
++static void flush_profile_hash(struct rtl_coex_struct * coex)
+ {
+ 	struct list_head *head = &coex->profile_list;
+ 	struct list_head *iter = NULL, *temp = NULL;
+@@ -363,9 +454,9 @@ static void flush_profile_hash(struct rtl_coex_struct *coex)
+ 	spin_unlock(&btrtl_coex.spin_lock_profile);
+ }
+ 
+-static rtk_prof_info *find_profile_by_handle_scid(
+-	struct rtl_coex_struct *coex, uint16_t handle,
+-	uint16_t scid)
++static rtk_prof_info *find_profile_by_handle_scid(struct rtl_coex_struct *
++						  coex, uint16_t handle,
++						  uint16_t scid)
+ {
+ 	struct list_head *head = &coex->profile_list;
+ 	struct list_head *iter = NULL, *temp = NULL;
+@@ -373,9 +464,9 @@ static rtk_prof_info *find_profile_by_handle_scid(
+ 
+ 	list_for_each_safe(iter, temp, head) {
+ 		desc = list_entry(iter, rtk_prof_info, list);
+-		if (((handle & 0xFFF) == desc->handle) &&
+-					(scid == desc->scid))
++		if (((handle & 0xFFF) == desc->handle) && (scid == desc->scid)) {
+ 			return desc;
++		}
+ 	}
+ 	return NULL;
+ }
+@@ -390,15 +481,15 @@ static rtk_prof_info *find_profile_by_handle_dcid(struct rtl_coex_struct *
+ 
+ 	list_for_each_safe(iter, temp, head) {
+ 		desc = list_entry(iter, rtk_prof_info, list);
+-		if (((handle & 0xFFF) == desc->handle) &&
+-					(dcid == desc->dcid))
++		if (((handle & 0xFFF) == desc->handle) && (dcid == desc->dcid)) {
+ 			return desc;
++		}
+ 	}
+ 	return NULL;
+ }
+ 
+ static rtk_prof_info *find_profile_by_handle_dcid_scid(struct rtl_coex_struct
+-						       *coex, uint16_t handle,
++						       * coex, uint16_t handle,
+ 						       uint16_t dcid,
+ 						       uint16_t scid)
+ {
+@@ -417,7 +508,7 @@ static rtk_prof_info *find_profile_by_handle_dcid_scid(struct rtl_coex_struct
+ }
+ 
+ static void rtk_vendor_cmd_to_fw(uint16_t opcode, uint8_t parameter_len,
+-				 uint8_t *parameter)
++				 uint8_t * parameter)
+ {
+ 	int len = HCI_CMD_PREAMBLE_SIZE + parameter_len;
+ 	uint8_t *p;
+@@ -454,19 +545,21 @@ static void rtk_vendor_cmd_to_fw(uint16_t opcode, uint8_t parameter_len,
+ #if HCI_VERSION_CODE < KERNEL_VERSION(4, 4, 0)
+ 	bt_cb(skb)->req.start = true;
+ #else
+-#if HCI_VERSION_CODE < KERNEL_VERSION(4, 9, 0)
++
++#if HCI_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
+ 	bt_cb(skb)->hci.req_start = true;
+ #else
++
+ 	bt_cb(skb)->hci.req_flags |= HCI_REQ_START;
+ #endif
+-#endif
+-#endif
++
++#endif /* 4.4.0 */
++#endif /* 3.10.0 */
+ 	RTKBT_DBG("%s: opcode 0x%x", __func__, opcode);
+ 
+ 	/* It is harmless if set skb->dev twice. The dev will be used in
+ 	 * btusb_send_frame() after or equal to kernel/hci 3.13.0,
+-	 * the hdev will not come from skb->dev.
+-	 */
++	 * the hdev will not come from skb->dev. */
+ #if HCI_VERSION_CODE < KERNEL_VERSION(3, 13, 0)
+ 	skb->dev = (void *)btrtl_coex.hdev;
+ #endif
+@@ -478,6 +571,8 @@ static void rtk_vendor_cmd_to_fw(uint16_t opcode, uint8_t parameter_len,
+ #else
+ 	queue_work(hdev->workqueue, &hdev->cmd_work);
+ #endif
++
++	return;
+ }
+ 
+ static void rtk_notify_profileinfo_to_fw(void)
+@@ -502,7 +597,7 @@ static void rtk_notify_profileinfo_to_fw(void)
+ 
+ 	p_buf = kmalloc(buffer_size, GFP_ATOMIC);
+ 
+-	if (p_buf == NULL) {
++	if (NULL == p_buf) {
+ 		RTKBT_ERR("%s: alloc error", __func__);
+ 		return;
+ 	}
+@@ -523,7 +618,7 @@ static void rtk_notify_profileinfo_to_fw(void)
+ 					hci_conn->profile_bitmap);
+ 			handle_number--;
+ 		}
+-		if (handle_number == 0)
++		if (0 == handle_number)
+ 			break;
+ 	}
+ 
+@@ -535,64 +630,7 @@ static void rtk_notify_profileinfo_to_fw(void)
+ 			     p_buf);
+ 
+ 	kfree(p_buf);
+-}
+-
+-static void rtk_check_setup_timer(int8_t profile_index)
+-{
+-	if (profile_index == profile_a2dp) {
+-		btrtl_coex.a2dp_packet_count = 0;
+-		setup_timer(&(btrtl_coex.a2dp_count_timer),
+-			    count_a2dp_packet_timeout, 0);
+-		btrtl_coex.a2dp_count_timer.expires =
+-		    jiffies + msecs_to_jiffies(1000);
+-		add_timer(&(btrtl_coex.a2dp_count_timer));
+-	}
+-
+-	if (profile_index == profile_pan) {
+-		btrtl_coex.pan_packet_count = 0;
+-		setup_timer(&(btrtl_coex.pan_count_timer),
+-			    count_pan_packet_timeout, 0);
+-		btrtl_coex.pan_count_timer.expires =
+-		    jiffies + msecs_to_jiffies(1000);
+-		add_timer(&(btrtl_coex.pan_count_timer));
+-	}
+-
+-	/* hogp & voice share one timer now */
+-	if ((profile_index == profile_hogp) ||
+-		(profile_index == profile_voice)) {
+-		if ((btrtl_coex.profile_refcount[profile_hogp] == 0)
+-		    && (btrtl_coex.profile_refcount[profile_voice] == 0)) {
+-			btrtl_coex.hogp_packet_count = 0;
+-			btrtl_coex.voice_packet_count = 0;
+-			setup_timer(&(btrtl_coex.hogp_count_timer),
+-				    count_hogp_packet_timeout, 0);
+-			btrtl_coex.hogp_count_timer.expires =
+-			    jiffies + msecs_to_jiffies(1000);
+-			add_timer(&(btrtl_coex.hogp_count_timer));
+-		}
+-	}
+-}
+-
+-static void rtk_check_del_timer(int8_t profile_index)
+-{
+-	if (profile_a2dp == profile_index) {
+-		btrtl_coex.a2dp_packet_count = 0;
+-		del_timer(&(btrtl_coex.a2dp_count_timer));
+-	}
+-	if (profile_pan == profile_index) {
+-		btrtl_coex.pan_packet_count = 0;
+-		del_timer(&(btrtl_coex.pan_count_timer));
+-	}
+-	if (profile_hogp == profile_index) {
+-		btrtl_coex.hogp_packet_count = 0;
+-		if (btrtl_coex.profile_refcount[profile_voice] == 0)
+-			del_timer(&(btrtl_coex.hogp_count_timer));
+-	}
+-	if (profile_voice == profile_index) {
+-		btrtl_coex.voice_packet_count = 0;
+-		if (btrtl_coex.profile_refcount[profile_hogp] == 0)
+-			del_timer(&(btrtl_coex.hogp_count_timer));
+-	}
++	return;
+ }
+ 
+ static void update_profile_state(uint8_t profile_index, uint8_t is_busy)
+@@ -626,7 +664,7 @@ static void update_profile_state(uint8_t profile_index, uint8_t is_busy)
+ 	}
+ }
+ 
+-static void update_profile_connection(rtk_conn_prof *phci_conn,
++static void update_profile_connection(rtk_conn_prof * phci_conn,
+ 				      int8_t profile_index, uint8_t is_add)
+ {
+ 	uint8_t need_update = FALSE;
+@@ -651,7 +689,7 @@ static void update_profile_connection(rtk_conn_prof *phci_conn,
+ 		}
+ 		btrtl_coex.profile_refcount[profile_index]++;
+ 
+-		if (phci_conn->profile_refcount[profile_index] == 0) {
++		if (0 == phci_conn->profile_refcount[profile_index]) {
+ 			need_update = TRUE;
+ 			phci_conn->profile_bitmap |= BIT(profile_index);
+ 		}
+@@ -671,7 +709,7 @@ static void update_profile_connection(rtk_conn_prof *phci_conn,
+ 		}
+ 
+ 		phci_conn->profile_refcount[profile_index]--;
+-		if (phci_conn->profile_refcount[profile_index] == 0) {
++		if (0 == phci_conn->profile_refcount[profile_index]) {
+ 			need_update = TRUE;
+ 			phci_conn->profile_bitmap &= ~(BIT(profile_index));
+ 
+@@ -826,7 +864,6 @@ static uint8_t handle_l2cap_discon_req(uint16_t handle, uint16_t dcid,
+ {
+ 	rtk_prof_info *prof_info = NULL;
+ 	rtk_conn_prof *phci_conn = NULL;
+-
+ 	RTKBT_DBG("%s: handle 0x%04x, dcid 0x%04x, scid 0x%04x, dir %u",
+ 			__func__, handle, dcid, scid, direction);
+ 
+@@ -853,12 +890,43 @@ static uint8_t handle_l2cap_discon_req(uint16_t handle, uint16_t dcid,
+ 	}
+ 
+ 	update_profile_connection(phci_conn, prof_info->profile_index, FALSE);
++	if (prof_info->profile_index == profile_a2dp &&
++	    (phci_conn->profile_bitmap & BIT(profile_sink)))
++		update_profile_connection(phci_conn, profile_sink, FALSE);
++
+ 	delete_profile_from_hash(prof_info);
+ 	spin_unlock(&btrtl_coex.spin_lock_profile);
+ 
+ 	return 1;
+ }
+ 
++static const char sample_freqs[4][8] = {
++	"16", "32", "44.1", "48"
++};
++
++static const uint8_t sbc_blocks[4] = { 4, 8, 12, 16 };
++
++static const char chan_modes[4][16] = {
++	"MONO", "DUAL_CHANNEL", "STEREO", "JOINT_STEREO"
++};
++
++static const char alloc_methods[2][12] = {
++	"LOUDNESS", "SNR"
++};
++
++static const uint8_t subbands[2] = { 4, 8 };
++
++void print_sbc_header(struct sbc_frame_hdr *hdr)
++{
++	RTKBT_DBG("syncword: %02x", hdr->syncword);
++	RTKBT_DBG("freq %skHz", sample_freqs[hdr->sampling_frequency]);
++	RTKBT_DBG("blocks %u", sbc_blocks[hdr->blocks]);
++	RTKBT_DBG("channel mode %s", chan_modes[hdr->channel_mode]);
++	RTKBT_DBG("allocation method %s",
++		  alloc_methods[hdr->allocation_method]);
++	RTKBT_DBG("subbands %u", subbands[hdr->subbands]);
++}
++
+ static void packets_count(uint16_t handle, uint16_t scid, uint16_t length,
+ 			  uint8_t direction, u8 *user_data)
+ {
+@@ -866,10 +934,10 @@ static void packets_count(uint16_t handle, uint16_t scid, uint16_t length,
+ 
+ 	rtk_conn_prof *hci_conn =
+ 	    find_connection_by_handle(&btrtl_coex, handle);
+-	if (hci_conn == NULL)
++	if (NULL == hci_conn)
+ 		return;
+ 
+-	if (hci_conn->type == 0) {
++	if (0 == hci_conn->type) {
+ 		if (!direction)	//0: in
+ 			prof_info =
+ 			    find_profile_by_handle_scid(&btrtl_coex, handle,
+@@ -883,30 +951,47 @@ static void packets_count(uint16_t handle, uint16_t scid, uint16_t length,
+ 			//RTKBT_DBG("packets_count: prof_info Not Find!");
+ 			return;
+ 		}
+-		/*avdtp media data*/
+-		if ((prof_info->profile_index == profile_a2dp) &&
+-							(length > 100)) {
++
++		/* avdtp media data */
++		if (prof_info->profile_index == profile_a2dp &&
++		    prof_info->flags == A2DP_MEDIA) {
+ 			if (!is_profile_busy(profile_a2dp)) {
+ 				struct sbc_frame_hdr *sbc_header;
+ 				struct rtp_header *rtph;
+ 				u8 bitpool;
+ 
+ 				update_profile_state(profile_a2dp, TRUE);
+-				rtph = (struct rtp_header *)user_data;
++				if (!direction) {
++					btrtl_coex.profile_bitmap |= BIT(profile_sink);
++					hci_conn->profile_bitmap |= BIT(profile_sink);
++					update_profile_connection(hci_conn, profile_sink, 1);
++					update_profile_state(profile_sink, TRUE);
++				}
++
++				/* We assume it is SBC if the packet length
++				 * is bigger than 100 bytes
++				 */
++				if (length > 100) {
++					RTKBT_INFO("Length %u", length);
++					rtph = (struct rtp_header *)user_data;
+ 
+-				RTKBT_DBG("cc %u", rtph->cc);
+-				/* move forward */
+-				user_data += sizeof(struct rtp_header) +
+-					rtph->cc * 4 + 1;
++					RTKBT_DBG("rtp: v %u, cc %u, pt %u",
++						  rtph->v, rtph->cc, rtph->pt);
++					/* move forward */
++					user_data += sizeof(struct rtp_header) +
++						rtph->cc * 4 + 1;
+ 
+-				/* point to the sbc frame header */
+-				sbc_header = (struct sbc_frame_hdr *)user_data;
+-				bitpool = sbc_header->bitpool;
++					/* point to the sbc frame header */
++					sbc_header = (struct sbc_frame_hdr *)user_data;
++					bitpool = sbc_header->bitpool;
+ 
+-				RTKBT_DBG("bitpool %u", bitpool);
++					print_sbc_header(sbc_header);
+ 
+-				rtk_vendor_cmd_to_fw(HCI_VENDOR_SET_BITPOOL,
+-						1, &bitpool);
++					RTKBT_DBG("bitpool %u", bitpool);
++
++					rtk_vendor_cmd_to_fw(HCI_VENDOR_SET_BITPOOL,
++							1, &bitpool);
++				}
+ 			}
+ 			btrtl_coex.a2dp_packet_count++;
+ 		}
+@@ -916,25 +1001,37 @@ static void packets_count(uint16_t handle, uint16_t scid, uint16_t length,
+ 	}
+ }
+ 
++#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0)
++static void count_a2dp_packet_timeout(struct timer_list *unused)
++#else
+ static void count_a2dp_packet_timeout(unsigned long data)
++#endif
+ {
+-	RTKBT_DBG("%s: a2dp_packet_count %d", __func__,
+-			btrtl_coex.a2dp_packet_count);
++	if (btrtl_coex.a2dp_packet_count)
++		RTKBT_DBG("%s: a2dp_packet_count %d", __func__,
++			  btrtl_coex.a2dp_packet_count);
+ 	if (btrtl_coex.a2dp_packet_count == 0) {
+ 		if (is_profile_busy(profile_a2dp)) {
+ 			RTKBT_DBG("%s: a2dp busy->idle!", __func__);
+ 			update_profile_state(profile_a2dp, FALSE);
++			if (btrtl_coex.profile_bitmap & BIT(profile_sink))
++				update_profile_state(profile_sink, FALSE);
+ 		}
+ 	}
+ 	btrtl_coex.a2dp_packet_count = 0;
+-	mod_timer(&(btrtl_coex.a2dp_count_timer),
++	mod_timer(&btrtl_coex.a2dp_count_timer,
+ 		  jiffies + msecs_to_jiffies(1000));
+ }
+ 
++#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0)
++static void count_pan_packet_timeout(struct timer_list *unused)
++#else
+ static void count_pan_packet_timeout(unsigned long data)
++#endif
+ {
+-	RTKBT_DBG("%s: pan_packet_count %d", __func__,
+-			btrtl_coex.pan_packet_count);
++	if (btrtl_coex.pan_packet_count)
++		RTKBT_DBG("%s: pan_packet_count %d", __func__,
++			  btrtl_coex.pan_packet_count);
+ 	if (btrtl_coex.pan_packet_count < PAN_PACKET_COUNT) {
+ 		if (is_profile_busy(profile_pan)) {
+ 			RTKBT_DBG("%s: pan busy->idle!", __func__);
+@@ -947,14 +1044,19 @@ static void count_pan_packet_timeout(unsigned long data)
+ 		}
+ 	}
+ 	btrtl_coex.pan_packet_count = 0;
+-	mod_timer(&(btrtl_coex.pan_count_timer),
++	mod_timer(&btrtl_coex.pan_count_timer,
+ 		  jiffies + msecs_to_jiffies(1000));
+ }
+ 
++#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0)
++static void count_hogp_packet_timeout(struct timer_list *unused)
++#else
+ static void count_hogp_packet_timeout(unsigned long data)
++#endif
+ {
+-	RTKBT_DBG("%s: hogp_packet_count %d", __func__,
+-			btrtl_coex.hogp_packet_count);
++	if (btrtl_coex.hogp_packet_count)
++		RTKBT_DBG("%s: hogp_packet_count %d", __func__,
++			  btrtl_coex.hogp_packet_count);
+ 	if (btrtl_coex.hogp_packet_count == 0) {
+ 		if (is_profile_busy(profile_hogp)) {
+ 			RTKBT_DBG("%s: hogp busy->idle!", __func__);
+@@ -963,8 +1065,9 @@ static void count_hogp_packet_timeout(unsigned long data)
+ 	}
+ 	btrtl_coex.hogp_packet_count = 0;
+ 
+-	RTKBT_DBG("%s: voice_packet_count %d", __func__,
+-			btrtl_coex.voice_packet_count);
++	if (btrtl_coex.voice_packet_count)
++		RTKBT_DBG("%s: voice_packet_count %d", __func__,
++			  btrtl_coex.voice_packet_count);
+ 	if (btrtl_coex.voice_packet_count == 0) {
+ 		if (is_profile_busy(profile_voice)) {
+ 			RTKBT_DBG("%s: voice busy->idle!", __func__);
+@@ -972,10 +1075,11 @@ static void count_hogp_packet_timeout(unsigned long data)
+ 		}
+ 	}
+ 	btrtl_coex.voice_packet_count = 0;
+-	mod_timer(&(btrtl_coex.hogp_count_timer),
++	mod_timer(&btrtl_coex.hogp_count_timer,
+ 		  jiffies + msecs_to_jiffies(1000));
+ }
+ 
++#ifndef RTK_COEX_OVER_SYMBOL
+ static int udpsocket_send(char *tx_msg, int msg_size)
+ {
+ 	u8 error = 0;
+@@ -1014,7 +1118,88 @@ static int udpsocket_send(char *tx_msg, int msg_size)
+ 
+ 	return error;
+ }
++#endif
+ 
++#ifdef RTK_COEX_OVER_SYMBOL
++/* Receive message from WiFi */
++u8 rtw_btcoex_wifi_to_bt(u8 *msg, u8 msg_size)
++{
++	struct sk_buff *nskb;
++
++	if (!rtw_coex_on) {
++		RTKBT_WARN("Bluetooth is closed");
++		return 0;
++	}
++
++	nskb = alloc_skb(msg_size, GFP_ATOMIC);
++	if (!nskb) {
++		RTKBT_ERR("Couldnt alloc skb for WiFi coex message");
++		return 0;
++	}
++
++	memcpy(skb_put(nskb, msg_size), msg, msg_size);
++	skb_queue_tail(&rtw_q, nskb);
++
++	queue_work(rtw_wq, &rtw_work);
++
++	return 1;
++}
++EXPORT_SYMBOL(rtw_btcoex_wifi_to_bt);
++
++static int rtk_send_coexmsg2wifi(u8 *msg, u8 size)
++{
++	u8 result;
++	u8 (*btmsg_to_wifi)(u8 *, u8);
++
++	btmsg_to_wifi = __symbol_get(VMLINUX_SYMBOL_STR(rtw_btcoex_bt_to_wifi));
++
++	if (!btmsg_to_wifi) {
++		/* RTKBT_ERR("Couldnt get symbol"); */
++		return -1;
++	}
++
++	result = btmsg_to_wifi(msg, size);
++	__symbol_put(VMLINUX_SYMBOL_STR(rtw_btcoex_bt_to_wifi));
++	if (!result) {
++		RTKBT_ERR("Couldnt send coex msg to WiFi");
++		return -1;
++	} else if (result == 1){
++		/* successful to send message */
++		return 0;
++	} else {
++		RTKBT_ERR("Unknown result %d", result);
++		return -1;
++	}
++}
++
++static int rtkbt_process_coexskb(struct sk_buff *skb)
++{
++	rtk_handle_event_from_wifi(skb->data);
++	return 0;
++}
++
++static void rtw_work_func(struct work_struct *work)
++{
++	struct sk_buff *skb;
++
++	while ((skb = skb_dequeue(&rtw_q))) {
++		rtkbt_process_coexskb(skb);
++		kfree_skb(skb);
++	}
++}
++
++#endif
++
++static int rtkbt_coexmsg_send(char *tx_msg, int msg_size)
++{
++#ifdef RTK_COEX_OVER_SYMBOL
++	return rtk_send_coexmsg2wifi((uint8_t *)tx_msg, (u8)msg_size);
++#else
++	return udpsocket_send(tx_msg, msg_size);
++#endif
++}
++
++#ifndef RTK_COEX_OVER_SYMBOL
+ static void udpsocket_recv_data(void)
+ {
+ 	u8 recv_data[512];
+@@ -1030,14 +1215,11 @@ static void udpsocket_recv_data(void)
+ 	while (len > 0) {
+ 		skb = skb_dequeue(&btrtl_coex.sk->sk_receive_queue);
+ 
+-		/* important: cut the udp header from skb->data!
+-		 * header length is 8 byte
+-		 */
++		/*important: cut the udp header from skb->data! header length is 8 byte */
+ 		recv_length = skb->len - 8;
+ 		memset(recv_data, 0, sizeof(recv_data));
+ 		memcpy(recv_data, skb->data + 8, recv_length);
+-		//RTKBT_DBG("received data: %s :with len %u",
+-		//			recv_data, recv_length);
++		//RTKBT_DBG("received data: %s :with len %u", recv_data, recv_length);
+ 
+ 		rtk_handle_event_from_wifi(recv_data);
+ 
+@@ -1063,9 +1245,7 @@ static void udpsocket_recv(struct sock *sk)
+ static void create_udpsocket(void)
+ {
+ 	int err;
+-
+ 	RTKBT_DBG("%s: connect_port: %d", __func__, CONNECT_PORT);
+-
+ 	btrtl_coex.sock_open = 0;
+ 
+ 	err = sock_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP,
+@@ -1091,13 +1271,14 @@ static void create_udpsocket(void)
+ 					     addr, sizeof(struct sockaddr));
+ 	if (err < 0) {
+ 		sock_release(btrtl_coex.udpsock);
+-		RTKBT_ERR("%s: sock bind error, err = %d", __func__,  err);
++		RTKBT_ERR("%s: sock bind error, err = %d",__func__,  err);
+ 		return;
+ 	}
+ 
+ 	btrtl_coex.sock_open = 1;
+ 	btrtl_coex.udpsock->sk->sk_data_ready = udpsocket_recv;
+ }
++#endif /* !RTK_COEX_OVER_SYMBOL */
+ 
+ static void rtk_notify_extension_version_to_wifi(void)
+ {
+@@ -1112,7 +1293,7 @@ static void rtk_notify_extension_version_to_wifi(void)
+ 	*p++ = para_length;
+ 	UINT16_TO_STREAM(p, HCI_EXTENSION_VERSION);
+ 	RTKBT_DBG("extension version is 0x%x", HCI_EXTENSION_VERSION);
+-	if (udpsocket_send(p_buf, para_length + HCI_CMD_PREAMBLE_SIZE) < 0)
++	if (rtkbt_coexmsg_send(p_buf, para_length + HCI_CMD_PREAMBLE_SIZE) < 0)
+ 		RTKBT_ERR("%s: sock send error", __func__);
+ }
+ 
+@@ -1133,7 +1314,7 @@ static void rtk_notify_btpatch_version_to_wifi(void)
+ 			para_length, btrtl_coex.hci_reversion,
+ 			btrtl_coex.lmp_subversion);
+ 
+-	if (udpsocket_send(p_buf, para_length + HCI_CMD_PREAMBLE_SIZE) < 0)
++	if (rtkbt_coexmsg_send(p_buf, para_length + HCI_CMD_PREAMBLE_SIZE) < 0)
+ 		RTKBT_ERR("%s: sock send error", __func__);
+ }
+ 
+@@ -1160,7 +1341,7 @@ static void rtk_notify_afhmap_to_wifi(void)
+ 		RTKBT_DBG("afhmap data[%d] is 0x%x", kk,
+ 			  btrtl_coex.afh_map[kk]);
+ 
+-	if (udpsocket_send(p_buf, para_length + HCI_CMD_PREAMBLE_SIZE) < 0)
++	if (rtkbt_coexmsg_send(p_buf, para_length + HCI_CMD_PREAMBLE_SIZE) < 0)
+ 		RTKBT_ERR("%s: sock send error", __func__);
+ }
+ 
+@@ -1183,13 +1364,13 @@ static void rtk_notify_btcoex_to_wifi(uint8_t opcode, uint8_t status)
+ 
+ 	RTKBT_DBG("btcoex, opcode is 0x%x, status is 0x%x", opcode, status);
+ 
+-	if (udpsocket_send(p_buf, para_length + HCI_CMD_PREAMBLE_SIZE) < 0)
++	if (rtkbt_coexmsg_send(p_buf, para_length + HCI_CMD_PREAMBLE_SIZE) < 0)
+ 		RTKBT_ERR("%s: sock send error", __func__);
+ }
+ 
+ static void rtk_notify_btoperation_to_wifi(uint8_t operation,
+ 					   uint8_t append_data_length,
+-					   uint8_t *append_data)
++					   uint8_t * append_data)
+ {
+ 	uint8_t para_length = 3 + append_data_length;
+ 	char p_buf[para_length + HCI_CMD_PREAMBLE_SIZE];
+@@ -1213,7 +1394,7 @@ static void rtk_notify_btoperation_to_wifi(uint8_t operation,
+ 			RTKBT_DBG("append data is 0x%x", *(append_data + kk));
+ 	}
+ 
+-	if (udpsocket_send(p_buf, para_length + HCI_CMD_PREAMBLE_SIZE) < 0)
++	if (rtkbt_coexmsg_send(p_buf, para_length + HCI_CMD_PREAMBLE_SIZE) < 0)
+ 		RTKBT_ERR("%s: sock send error", __func__);
+ }
+ 
+@@ -1251,11 +1432,11 @@ static void rtk_notify_info_to_wifi(uint8_t reason, uint8_t length,
+ 	     para_length, btrtl_coex.polling_enable,
+ 	     btrtl_coex.polling_interval);
+ 	/* send BT INFO to Wi-Fi driver */
+-	if (udpsocket_send(buf, para_length + HCI_CMD_PREAMBLE_SIZE) < 0)
++	if (rtkbt_coexmsg_send(buf, para_length + HCI_CMD_PREAMBLE_SIZE) < 0)
+ 		RTKBT_ERR("%s: sock send error", __func__);
+ }
+ 
+-static void rtk_notify_regester_to_wifi(uint8_t *reg_value)
++static void rtk_notify_regester_to_wifi(uint8_t * reg_value)
+ {
+ 	uint8_t para_length = 9;
+ 	char p_buf[para_length + HCI_CMD_PREAMBLE_SIZE];
+@@ -1273,7 +1454,7 @@ static void rtk_notify_regester_to_wifi(uint8_t *reg_value)
+ 	RTKBT_DBG("bt register, register offset is %x", reg->offset);
+ 	RTKBT_DBG("bt register, register value is %x", reg->value);
+ 
+-	if (udpsocket_send(p_buf, para_length + HCI_CMD_PREAMBLE_SIZE) < 0)
++	if (rtkbt_coexmsg_send(p_buf, para_length + HCI_CMD_PREAMBLE_SIZE) < 0)
+ 		RTKBT_ERR("%s: sock send error", __func__);
+ }
+ 
+@@ -1281,11 +1462,16 @@ void rtk_btcoex_parse_cmd(uint8_t *buffer, int count)
+ {
+ 	u16 opcode = (buffer[0]) + (buffer[1] << 8);
+ 
++	if (!test_bit(RTL_COEX_RUNNING, &btrtl_coex.flags)) {
++		RTKBT_INFO("%s: Coex is closed, ignore", __func__);
++		return;
++	}
++
+ 	if ((opcode == HCI_OP_INQUIRY) || (opcode == HCI_OP_PERIODIC_INQ)) {
+ 		if (!btrtl_coex.isinquirying) {
+ 			btrtl_coex.isinquirying = 1;
+-			RTKBT_DBG("hci (periodic)inq, ");
+-			RTKBT_DBG("notify wifi inquiry start");
++			RTKBT_DBG("hci (periodic)inq, notify wifi "
++				  "inquiry start");
+ 			rtk_notify_btoperation_to_wifi(BT_OPCODE_INQUIRY_START,
+ 						       0, NULL);
+ 		}
+@@ -1295,8 +1481,8 @@ void rtk_btcoex_parse_cmd(uint8_t *buffer, int count)
+ 	    || (opcode == HCI_OP_EXIT_PERIODIC_INQ)) {
+ 		if (btrtl_coex.isinquirying) {
+ 			btrtl_coex.isinquirying = 0;
+-			RTKBT_DBG("hci (periodic)inq cancel/exit, ");
+-			RTKBT_DBG("notify wifi inquiry stop");
++			RTKBT_DBG("hci (periodic)inq cancel/exit, notify wifi "
++				  "inquiry stop");
+ 			rtk_notify_btoperation_to_wifi(BT_OPCODE_INQUIRY_END, 0,
+ 						       NULL);
+ 		}
+@@ -1357,7 +1543,7 @@ static void rtk_handle_link_key_notify(void)
+ 	}
+ }
+ 
+-static void rtk_handle_mode_change_evt(u8 *p)
++static void rtk_handle_mode_change_evt(u8 * p)
+ {
+ 	u16 mode_change_handle, mode_interval;
+ 
+@@ -1368,7 +1554,7 @@ static void rtk_handle_mode_change_evt(u8 *p)
+ 	update_hid_active_state(mode_change_handle, mode_interval);
+ }
+ 
+-static void rtk_parse_vendor_mailbox_cmd_evt(u8 *p, u8 total_len)
++static void rtk_parse_vendor_mailbox_cmd_evt(u8 * p, u8 total_len)
+ {
+ 	u8 status, subcmd;
+ 	u8 temp_cmd[10];
+@@ -1420,8 +1606,7 @@ static void rtk_parse_vendor_mailbox_cmd_evt(u8 *p, u8 total_len)
+ 
+ 	case HCI_VENDOR_SUB_CMD_GET_AFH_MAP_L:
+ 		if (status == 0) {
+-			/* cmd_idx, length, piconet_id, mode */
+-			memcpy(btrtl_coex.afh_map, p + 4, 4);
++			memcpy(btrtl_coex.afh_map, p + 4, 4);	/* cmd_idx, length, piconet_id, mode */
+ 			temp_cmd[0] = HCI_VENDOR_SUB_CMD_GET_AFH_MAP_M;
+ 			temp_cmd[1] = 2;
+ 			temp_cmd[2] = btrtl_coex.piconet_id;
+@@ -1460,8 +1645,7 @@ static void rtk_parse_vendor_mailbox_cmd_evt(u8 *p, u8 total_len)
+ 
+ 	case HCI_VENDOR_SUB_CMD_RD_REG_REQ:
+ 		if (status == 0)
+-			/* cmd_idx,length,regist type */
+-			rtk_notify_regester_to_wifi(p + 3);
++			rtk_notify_regester_to_wifi(p + 3);	/* cmd_idx,length,regist type */
+ 		break;
+ 
+ 	case HCI_VENDOR_SUB_CMD_WR_REG_REQ:
+@@ -1473,7 +1657,7 @@ static void rtk_parse_vendor_mailbox_cmd_evt(u8 *p, u8 total_len)
+ 	}
+ }
+ 
+-static void rtk_handle_cmd_complete_evt(u8 total_len, u8 *p)
++static void rtk_handle_cmd_complete_evt(u8 total_len, u8 * p)
+ {
+ 	u16 opcode;
+ 
+@@ -1484,8 +1668,8 @@ static void rtk_handle_cmd_complete_evt(u8 total_len, u8 *p)
+ 	if (opcode == HCI_OP_PERIODIC_INQ) {
+ 		if (*p++ && btrtl_coex.isinquirying) {
+ 			btrtl_coex.isinquirying = 0;
+-			RTKBT_DBG("hci period inq, start error, ");
+-			RTKBT_DBG("notify wifi inquiry stop");
++			RTKBT_DBG("hci period inq, start error, notify wifi "
++				  "inquiry stop");
+ 			rtk_notify_btoperation_to_wifi(BT_OPCODE_INQUIRY_END, 0,
+ 						       NULL);
+ 		}
+@@ -1504,11 +1688,12 @@ static void rtk_handle_cmd_complete_evt(u8 total_len, u8 *p)
+ 		}
+ 	}
+ 
+-	if (opcode == HCI_VENDOR_MAILBOX_CMD)
++	if (opcode == HCI_VENDOR_MAILBOX_CMD) {
+ 		rtk_parse_vendor_mailbox_cmd_evt(p, total_len);
++	}
+ }
+ 
+-static void rtk_handle_cmd_status_evt(u8 *p)
++static void rtk_handle_cmd_status_evt(u8 * p)
+ {
+ 	u16 opcode;
+ 	u8 status;
+@@ -1536,7 +1721,7 @@ static void rtk_handle_cmd_status_evt(u8 *p)
+ 	}
+ }
+ 
+-static void rtk_handle_connection_complete_evt(u8 *p)
++static void rtk_handle_connection_complete_evt(u8 * p)
+ {
+ 	u16 handle;
+ 	u8 status, link_type;
+@@ -1563,8 +1748,7 @@ static void rtk_handle_connection_complete_evt(u8 *p)
+ 						       hci_conn);
+ 				hci_conn->profile_bitmap = 0;
+ 				memset(hci_conn->profile_refcount, 0, 8);
+-				/*sco or esco*/
+-				if ((link_type == 0) || (link_type == 2)) {
++				if ((0 == link_type) || (2 == link_type)) {	//sco or esco
+ 					hci_conn->type = 1;
+ 					update_profile_connection(hci_conn,
+ 								  profile_sco,
+@@ -1579,8 +1763,7 @@ static void rtk_handle_connection_complete_evt(u8 *p)
+ 				  handle);
+ 			hci_conn->profile_bitmap = 0;
+ 			memset(hci_conn->profile_refcount, 0, 8);
+-			/*sco or esco*/
+-			if ((link_type == 0) || (link_type == 2)) {
++			if ((0 == link_type) || (2 == link_type)) {	//sco or esco
+ 				hci_conn->type = 1;
+ 				update_profile_connection(hci_conn, profile_sco,
+ 							  TRUE);
+@@ -1595,7 +1778,7 @@ static void rtk_handle_connection_complete_evt(u8 *p)
+ 	}
+ }
+ 
+-static void rtk_handle_le_connection_complete_evt(u8 *p)
++static void rtk_handle_le_connection_complete_evt(u8 * p)
+ {
+ 	u16 handle, interval;
+ 	u8 status;
+@@ -1623,9 +1806,7 @@ static void rtk_handle_le_connection_complete_evt(u8 *p)
+ 				hci_conn->profile_bitmap = 0;
+ 				memset(hci_conn->profile_refcount, 0, 8);
+ 				hci_conn->type = 2;
+-				/*for coex, le is the same as hid*/
+-				update_profile_connection(hci_conn,
+-							profile_hid, TRUE);
++				update_profile_connection(hci_conn, profile_hid, TRUE);	//for coex, le is the same as hid
+ 				update_hid_active_state(handle, interval);
+ 			} else {
+ 				RTKBT_ERR("hci connection allocate fail");
+@@ -1647,7 +1828,7 @@ static void rtk_handle_le_connection_complete_evt(u8 *p)
+ 	}
+ }
+ 
+-static void rtk_handle_le_connection_update_complete_evt(u8 *p)
++static void rtk_handle_le_connection_update_complete_evt(u8 * p)
+ {
+ 	u16 handle, interval;
+ 	/* u8 status; */
+@@ -1660,10 +1841,9 @@ static void rtk_handle_le_connection_update_complete_evt(u8 *p)
+ 	update_hid_active_state(handle, interval);
+ }
+ 
+-static void rtk_handle_le_meta_evt(u8 *p)
++static void rtk_handle_le_meta_evt(u8 * p)
+ {
+ 	u8 sub_event = *p++;
+-
+ 	switch (sub_event) {
+ 	case HCI_EV_LE_CONN_COMPLETE:
+ 		rtk_handle_le_connection_complete_evt(p);
+@@ -1690,10 +1870,10 @@ static void disconn_acl(u16 handle, struct rtl_hci_conn *conn)
+ 		prof_info = list_entry(iter, rtk_prof_info, list);
+ 		if (handle == prof_info->handle && prof_info->scid
+ 		    && prof_info->dcid) {
+-			RTKBT_DBG("hci disconn, hndl %x, psm %x, ",
+-				prof_info->handle, prof_info->psm);
+-			RTKBT_DBG("dcid %x, scid %x",
+-				prof_info->dcid, prof_info->scid);
++			RTKBT_DBG("hci disconn, hndl %x, psm %x, dcid %x, "
++				  "scid %x", prof_info->handle,
++				  prof_info->psm, prof_info->dcid,
++				  prof_info->scid);
+ 			//If both scid and dcid > 0, L2cap connection is exist.
+ 			update_profile_connection(conn,
+ 					prof_info->profile_index, FALSE);
+@@ -1703,15 +1883,14 @@ static void disconn_acl(u16 handle, struct rtl_hci_conn *conn)
+ 	spin_unlock(&coex->spin_lock_profile);
+ }
+ 
+-static void rtk_handle_disconnect_complete_evt(u8 *p)
++static void rtk_handle_disconnect_complete_evt(u8 * p)
+ {
+ 	u16 handle;
+ 	u8 status;
+-	/* u8 reason; */
++	u8 reason;
+ 	rtk_conn_prof *hci_conn = NULL;
+ 
+-	/*for slave: connection will be disconnected if authentication fail*/
+-	if (btrtl_coex.ispairing) {
++	if (btrtl_coex.ispairing) {	//for slave: connection will be disconnected if authentication fail
+ 		btrtl_coex.ispairing = 0;
+ 		RTKBT_DBG("hci disc complete, notify wifi pair end");
+ 		rtk_notify_btoperation_to_wifi(BT_OPCODE_PAIR_END, 0, NULL);
+@@ -1719,8 +1898,10 @@ static void rtk_handle_disconnect_complete_evt(u8 *p)
+ 
+ 	status = *p++;
+ 	STREAM_TO_UINT16(handle, p);
++	reason = *p;
+ 
+-	/* reason = *p; */
++	RTKBT_INFO("disconn cmpl evt: status 0x%02x, handle %04x, reason 0x%02x",
++		   status, handle, reason);
+ 
+ 	if (status == 0) {
+ 		RTKBT_DBG("process disconn complete event.");
+@@ -1729,8 +1910,7 @@ static void rtk_handle_disconnect_complete_evt(u8 *p)
+ 			switch (hci_conn->type) {
+ 			case 0:
+ 				/* FIXME: If this is interrupted by l2cap rx,
+-				 * there may be deadlock on spin_lock_profile
+-				 */
++				 * there may be deadlock on spin_lock_profile */
+ 				disconn_acl(handle, hci_conn);
+ 				break;
+ 
+@@ -1753,7 +1933,7 @@ static void rtk_handle_disconnect_complete_evt(u8 *p)
+ 	}
+ }
+ 
+-static void rtk_handle_specific_evt(u8 *p)
++static void rtk_handle_specific_evt(u8 * p)
+ {
+ 	u16 subcode;
+ 
+@@ -1854,8 +2034,7 @@ void rtl_process_l2_sig(struct rtl_l2_buff *l2)
+ 	pp += 2; /* data total length */
+ 
+ 	/* STREAM_TO_UINT16(pdu_len, pp);
+-	 * STREAM_TO_UINT16(channel_id, pp);
+-	 */
++	 * STREAM_TO_UINT16(channel_id, pp); */
+ 	pp += 4; /* l2 len and channel id */
+ 
+ 	code = *pp++;
+@@ -1867,9 +2046,9 @@ void rtl_process_l2_sig(struct rtl_l2_buff *l2)
+ 		pp += 2;
+ 		STREAM_TO_UINT16(psm, pp);
+ 		STREAM_TO_UINT16(scid, pp);
+-		RTKBT_DBG("%s l2cap conn req, hndl 0x%04x, ",
+-				l2_dir_str[l2->out], handle);
+-		RTKBT_DBG("PSM 0x%04x, scid 0x%04x", psm, scid);
++		RTKBT_DBG("%s l2cap conn req, hndl 0x%04x, PSM 0x%04x, "
++			  "scid 0x%04x", l2_dir_str[l2->out], handle, psm,
++			  scid);
+ 		handle_l2cap_con_req(handle, psm, scid, l2->out);
+ 		break;
+ 
+@@ -1883,9 +2062,9 @@ void rtl_process_l2_sig(struct rtl_l2_buff *l2)
+ 		STREAM_TO_UINT16(result, pp);
+ 		/* STREAM_TO_UINT16(status, pp); */
+ 		pp += 2;
+-		RTKBT_DBG("%s l2cap conn rsp, ", l2_dir_str[l2->out]);
+-		RTKBT_DBG("hndl 0x%04x, dcid 0x%04x, ", handle, dcid);
+-		RTKBT_DBG("scid 0x%04x, result 0x%04x", scid, result);
++		RTKBT_DBG("%s l2cap conn rsp, hndl 0x%04x, dcid 0x%04x, "
++			  "scid 0x%04x, result 0x%04x", l2_dir_str[l2->out],
++			  handle, dcid, scid, result);
+ 		handle_l2cap_con_rsp(handle, dcid, scid, l2->out, result);
+ 		break;
+ 
+@@ -1896,9 +2075,8 @@ void rtl_process_l2_sig(struct rtl_l2_buff *l2)
+ 		pp += 2;
+ 		STREAM_TO_UINT16(dcid, pp);
+ 		STREAM_TO_UINT16(scid, pp);
+-		RTKBT_DBG("%s l2cap disconn req, ", l2_dir_str[l2->out]);
+-		RTKBT_DBG("hndl 0x%04x, dcid 0x%04x, scid 0x%04x",
+-			handle, dcid, scid);
++		RTKBT_DBG("%s l2cap disconn req, hndl 0x%04x, dcid 0x%04x, "
++			  "scid 0x%04x", l2_dir_str[l2->out], handle, dcid, scid);
+ 		handle_l2cap_discon_req(handle, dcid, scid, l2->out);
+ 		break;
+ 	default:
+@@ -1938,7 +2116,6 @@ static void rtl_l2_data_process(u8 *pp, u16 len, int dir)
+ 			l2 = rtl_l2_node_get(&btrtl_coex);
+ 			if (l2) {
+ 				u16 n;
+-
+ 				n = min_t(uint, len, L2_MAX_SUBSEC_LEN);
+ 				memcpy(l2->data, hd, n);
+ 				l2->out = dir;
+@@ -1960,6 +2137,7 @@ static void rtl_l2_data_process(u8 *pp, u16 len, int dir)
+ 			/* Do not count the continuous packets */
+ 			packets_count(handle, channel_id, pdu_len, dir, pp);
+ 	}
++	return;
+ }
+ 
+ 
+@@ -1986,6 +2164,8 @@ static void rtl_l2_work(struct work_struct *work)
+ 		list_add_tail(&l2->list, &coex->l2_free_list);
+ 	}
+ 	spin_unlock_irqrestore(&coex->buff_lock, flags);
++
++	return;
+ }
+ 
+ static void rtl_ev_work(struct work_struct *work)
+@@ -2033,99 +2213,113 @@ int ev_filter_out(u8 ev_code)
+ 	}
+ }
+ 
++static void rtk_btcoex_evt_enqueue(__u8 *s, __u16 count)
++{
++	struct rtl_hci_ev *ev;
++
++	if (ev_filter_out(s[0]))
++		return;
++
++	ev = rtl_ev_node_get(&btrtl_coex);
++	if (!ev) {
++		RTKBT_ERR("%s: no free ev node.", __func__);
++		return;
++	}
++
++	if (count > MAX_LEN_OF_HCI_EV) {
++		memcpy(ev->data, s, MAX_LEN_OF_HCI_EV);
++		ev->len = MAX_LEN_OF_HCI_EV;
++	} else {
++		memcpy(ev->data, s, count);
++		ev->len = count;
++	}
++
++	rtl_ev_node_to_used(&btrtl_coex, ev);
++
++	queue_delayed_work(btrtl_coex.fw_wq, &btrtl_coex.fw_work, 0);
++}
++
+ /* Context: in_interrupt() */
+ void rtk_btcoex_parse_event(uint8_t *buffer, int count)
+ {
+ 	struct rtl_coex_struct *coex = &btrtl_coex;
+-	struct rtl_hci_ev *ev;
+-	u8 *s;
+-	struct sk_buff *skb;
+-	struct sk_buff *ev_sk = NULL;
++	__u8 *tbuff;
++	__u16 elen = 0;
+ 
+ 	/* RTKBT_DBG("%s: parse ev.", __func__); */
++	if (!test_bit(RTL_COEX_RUNNING, &btrtl_coex.flags)) {
++		/* RTKBT_INFO("%s: Coex is closed, ignore", __func__); */
++		RTKBT_INFO("%s: Coex is closed, ignore %x, %x",
++			   __func__, buffer[0], buffer[1]);
++		return;
++	}
+ 
+ 	spin_lock(&coex->rxlock);
+-	skb = coex->evt_skb;
++
++	/* coex->tbuff will be set to NULL when initializing or
++	 * there is a complete frame or there is start of a frame */
++	tbuff = coex->tbuff;
+ 
+ 	while (count) {
+ 		int len;
+ 
+-		if (!skb) {
+-			skb = bt_skb_alloc(HCI_MAX_EVENT_SIZE, GFP_ATOMIC);
+-			if (!skb) {
+-				RTKBT_ERR("failed to alloc skb");
+-				break;
+-			}
++		/* Start of a frame */
++		if (!tbuff) {
++			tbuff = coex->back_buff;
++			coex->tbuff = NULL;
++			coex->elen = 0;
+ 
+ 			coex->pkt_type = HCI_EVENT_PKT;
+ 			coex->expect = HCI_EVENT_HDR_SIZE;
+ 		}
+ 
+ 		len = min_t(uint, coex->expect, count);
+-		memcpy(skb_put(skb, len), buffer, len);
++		memcpy(tbuff, buffer, len);
++		tbuff += len;
++		coex->elen += len;
+ 
+ 		count -= len;
+ 		buffer += len;
+ 		coex->expect -= len;
+ 
+-		if (skb->len == HCI_EVENT_HDR_SIZE) {
++		if (coex->elen == HCI_EVENT_HDR_SIZE) {
+ 			/* Complete event header */
+-			coex->expect = hci_event_hdr(skb)->plen;
+-
+-			if (skb_tailroom(skb) < coex->expect) {
+-				kfree_skb(skb);
+-				skb = NULL;
+-
+-				RTKBT_ERR("skb room is not enough");
++			coex->expect =
++				((struct hci_event_hdr *)coex->back_buff)->plen;
++			if (coex->expect > HCI_MAX_EVENT_SIZE - coex->elen) {
++				tbuff = NULL;
++				coex->elen = 0;
++				RTKBT_ERR("tbuff room is not enough");
+ 				break;
+ 			}
+ 		}
+ 
+ 		if (coex->expect == 0) {
+ 			/* Complete frame */
+-			ev_sk = skb;
+-			skb = NULL;
++			elen = coex->elen;
++			spin_unlock(&coex->rxlock);
++			rtk_btcoex_evt_enqueue(coex->back_buff, elen);
++			spin_lock(&coex->rxlock);
++
++			tbuff = NULL;
++			coex->elen = 0;
+ 		}
+ 	}
+ 
+-	/* evt_skb would be NULL only there is a complete frame found. */
+-	coex->evt_skb = skb;
++	/* coex->tbuff would be non-NULL if there isn't a complete frame
++	 * And it will be updated next time */
++	coex->tbuff = tbuff;
+ 	spin_unlock(&coex->rxlock);
+-
+-	/* no complete frame */
+-	if (!ev_sk)
+-		return;
+-
+-	s = (u8 *)ev_sk->data;
+-
+-	if (ev_filter_out(s[0]))
+-		return;
+-
+-	ev = rtl_ev_node_get(&btrtl_coex);
+-	if (!ev) {
+-		RTKBT_ERR("%s: no free ev node.", __func__);
+-		return;
+-	}
+-
+-	if (ev_sk->len > MAX_LEN_OF_HCI_EV) {
+-		memcpy(ev->data, ev_sk->data, MAX_LEN_OF_HCI_EV);
+-		ev->len = MAX_LEN_OF_HCI_EV;
+-	} else {
+-		memcpy(ev->data, ev_sk->data, ev_sk->len);
+-		ev->len = ev_sk->len;
+-	}
+-
+-	rtl_ev_node_to_used(&btrtl_coex, ev);
+-
+-	queue_delayed_work(btrtl_coex.fw_wq, &btrtl_coex.fw_work, 0);
+-
+-	/* free complete frame here */
+-	kfree_skb(ev_sk);
+ }
+ 
+ 
+ void rtk_btcoex_parse_l2cap_data_tx(uint8_t *buffer, int count)
+ {
++	if (!test_bit(RTL_COEX_RUNNING, &btrtl_coex.flags)) {
++		RTKBT_INFO("%s: Coex is closed, ignore", __func__);
++		return;
++	}
++
+ 	rtl_l2_data_process(buffer, count, 1);
+ 	//u16 handle, total_len, pdu_len, channel_ID, command_len, psm, scid,
+ 	//    dcid, result, status;
+@@ -2181,15 +2375,18 @@ void rtk_btcoex_parse_l2cap_data_tx(uint8_t *buffer, int count)
+ 	//		break;
+ 	//	}
+ 	//} else {
+-	//	/*Do not count the continuous packets*/
+-	//	if ((flag != 0x01) && (is_profile_connected(profile_a2dp) ||
+-	//		is_profile_connected(profile_pan)))
++	//	if ((flag != 0x01) && (is_profile_connected(profile_a2dp) || is_profile_connected(profile_pan)))	//Do not count the continuous packets
+ 	//		packets_count(handle, channel_ID, pdu_len, 1, pp);
+ 	//}
+ }
+ 
+ void rtk_btcoex_parse_l2cap_data_rx(uint8_t *buffer, int count)
+ {
++	if (!test_bit(RTL_COEX_RUNNING, &btrtl_coex.flags)) {
++		RTKBT_INFO("%s: Coex is closed, ignore", __func__);
++		return;
++	}
++
+ 	rtl_l2_data_process(buffer, count, 0);
+ 	//u16 handle, total_len, pdu_len, channel_ID, command_len, psm, scid,
+ 	//    dcid, result, status;
+@@ -2245,50 +2442,49 @@ void rtk_btcoex_parse_l2cap_data_rx(uint8_t *buffer, int count)
+ 	//		break;
+ 	//	}
+ 	//} else {
+-	//      /*Do not count the continuous packets*/
+-	//	if ((flag != 0x01) && (is_profile_connected(profile_a2dp)
+-	//			|| is_profile_connected(profile_pan)))
++	//	if ((flag != 0x01) && (is_profile_connected(profile_a2dp) || is_profile_connected(profile_pan)))	//Do not count the continuous packets
+ 	//		packets_count(handle, channel_ID, pdu_len, 0, pp);
+ 	//}
+ }
+ 
++#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0)
++static void polling_bt_info(struct timer_list *unused)
++#else
+ static void polling_bt_info(unsigned long data)
++#endif
+ {
+ 	uint8_t temp_cmd[1];
+-
+ 	RTKBT_DBG("polling timer");
+ 	if (btrtl_coex.polling_enable) {
+ 		//temp_cmd[0] = HCI_VENDOR_SUB_CMD_BT_REPORT_CONN_SCO_INQ_INFO;
+ 		temp_cmd[0] = HCI_VENDOR_SUB_CMD_BT_AUTO_REPORT_STATUS_INFO;
+ 		rtk_vendor_cmd_to_fw(HCI_VENDOR_MAILBOX_CMD, 1, temp_cmd);
+ 	}
+-	mod_timer(&(btrtl_coex.polling_timer),
+-		  jiffies +
+-		  msecs_to_jiffies(1000 * btrtl_coex.polling_interval));
++	mod_timer(&btrtl_coex.polling_timer,
++		  jiffies + msecs_to_jiffies(1000 * btrtl_coex.polling_interval));
+ }
+ 
+ static void rtk_handle_bt_info_control(uint8_t *p)
+ {
+ 	uint8_t temp_cmd[20];
+-	struct rtl_btinfo_ctl *ctl = (struct rtl_btinfo_ctl *)p;
+-
+-	RTKBT_DBG("Received polling_enable %u, ", ctl->polling_enable);
+-	RTKBT_DBG("polling_time %u, ", ctl->polling_time);
+-	RTKBT_DBG("autoreport_enable %u", ctl->autoreport_enable);
++	struct rtl_btinfo_ctl *ctl = (struct rtl_btinfo_ctl*)p;
++	RTKBT_DBG("Received polling_enable %u, polling_time %u, "
++		  "autoreport_enable %u", ctl->polling_enable,
++		  ctl->polling_time, ctl->autoreport_enable);
+ 	RTKBT_DBG("coex: original polling_enable %u",
+ 		  btrtl_coex.polling_enable);
+ 
+ 	if (ctl->polling_enable && !btrtl_coex.polling_enable) {
+ 		/* setup polling timer for getting bt info from firmware */
+-		setup_timer(&(btrtl_coex.polling_timer), polling_bt_info, 0);
+ 		btrtl_coex.polling_timer.expires =
+ 		    jiffies + msecs_to_jiffies(ctl->polling_time * 1000);
+-		add_timer(&(btrtl_coex.polling_timer));
++		mod_timer(&btrtl_coex.polling_timer,
++			  btrtl_coex.polling_timer.expires);
+ 	}
+ 
+ 	/* Close bt info polling timer */
+ 	if (!ctl->polling_enable && btrtl_coex.polling_enable)
+-		del_timer(&(btrtl_coex.polling_timer));
++		del_timer(&btrtl_coex.polling_timer);
+ 
+ 	if (btrtl_coex.autoreport != ctl->autoreport_enable) {
+ 		temp_cmd[0] = HCI_VENDOR_SUB_CMD_BT_AUTO_REPORT_ENABLE;
+@@ -2304,7 +2500,7 @@ static void rtk_handle_bt_info_control(uint8_t *p)
+ 	rtk_notify_info_to_wifi(HOST_RESPONSE, 0, NULL);
+ }
+ 
+-static void rtk_handle_bt_coex_control(uint8_t *p)
++static void rtk_handle_bt_coex_control(uint8_t * p)
+ {
+ 	uint8_t temp_cmd[20];
+ 	uint8_t opcode, opcode_len, value, power_decrease, psd_mode,
+@@ -2358,8 +2554,7 @@ static void rtk_handle_bt_coex_control(uint8_t *p)
+ 		opcode_len = *p++;
+ 		temp_cmd[0] = HCI_VENDOR_SUB_CMD_WIFI_CHANNEL_AND_BANDWIDTH_CMD;
+ 		temp_cmd[1] = 3;
+-		/*wifi_state, wifi_centralchannel, chnnels_btnotuse*/
+-		memcpy(temp_cmd + 2, p, 3);
++		memcpy(temp_cmd + 2, p, 3);	//wifi_state, wifi_centralchannel, chnnels_btnotuse
+ 		rtk_vendor_cmd_to_fw(HCI_VENDOR_MAILBOX_CMD, 5, temp_cmd);
+ 		break;
+ 
+@@ -2399,7 +2594,7 @@ static void rtk_handle_bt_coex_control(uint8_t *p)
+ 	}
+ }
+ 
+-static void rtk_handle_event_from_wifi(uint8_t *msg)
++static void rtk_handle_event_from_wifi(uint8_t * msg)
+ {
+ 	uint8_t *p = msg;
+ 	uint8_t event_code = *p++;
+@@ -2418,22 +2613,23 @@ static void rtk_handle_event_from_wifi(uint8_t *msg)
+ 	if (memcmp(msg, attend_req, sizeof(attend_req)) == 0) {
+ 		RTKBT_DBG("receive attend req from wifi, wifi turn on");
+ 		btrtl_coex.wifi_on = 1;
+-		udpsocket_send(attend_ack, sizeof(attend_ack));
++		rtkbt_coexmsg_send(attend_ack, sizeof(attend_ack));
+ 		rtk_notify_extension_version_to_wifi();
+ 	}
+ 
+ 	if (memcmp(msg, wifi_leave, sizeof(wifi_leave)) == 0) {
+ 		RTKBT_DBG("receive wifi leave from wifi, wifi turn off");
+ 		btrtl_coex.wifi_on = 0;
+-		udpsocket_send(leave_ack, sizeof(leave_ack));
++		rtkbt_coexmsg_send(leave_ack, sizeof(leave_ack));
+ 		if (btrtl_coex.polling_enable) {
+ 			btrtl_coex.polling_enable = 0;
+-			del_timer(&(btrtl_coex.polling_timer));
++			del_timer(&btrtl_coex.polling_timer);
+ 		}
+ 	}
+ 
+-	if (memcmp(msg, leave_ack, sizeof(leave_ack)) == 0)
++	if (memcmp(msg, leave_ack, sizeof(leave_ack)) == 0) {
+ 		RTKBT_DBG("receive leave ack from wifi");
++	}
+ 
+ 	if (event_code == 0xFE) {
+ 		total_length = *p++;
+@@ -2441,8 +2637,8 @@ static void rtk_handle_event_from_wifi(uint8_t *msg)
+ 		switch (extension_event) {
+ 		case RTK_HS_EXTENSION_EVENT_WIFI_SCAN:
+ 			operation = *p;
+-			RTKBT_DBG("Recv WiFi scan notify event from");
+-			RTKBT_DBG(" WiFi, op 0x%02x", operation);
++			RTKBT_DBG("Recv WiFi scan notify event from WiFi, "
++				  "op 0x%02x", operation);
+ 			break;
+ 
+ 		case RTK_HS_EXTENSION_EVENT_HCI_BT_INFO_CONTROL:
+@@ -2462,9 +2658,8 @@ static void rtk_handle_event_from_wifi(uint8_t *msg)
+ 		p += 2;		//length, number of complete packets
+ 		STREAM_TO_UINT16(wifi_opcode, p);
+ 		op_status = *p;
+-		RTKBT_DBG("Recv cmd complete event from WiFi, ");
+-		RTKBT_DBG("op 0x%02x, status 0x%02x",
+-			wifi_opcode, op_status);
++		RTKBT_DBG("Recv cmd complete event from WiFi, op 0x%02x, "
++			  "status 0x%02x", wifi_opcode, op_status);
+ 	}
+ }
+ 
+@@ -2474,8 +2669,8 @@ static inline void rtl_free_frags(struct rtl_coex_struct *coex)
+ 
+ 	spin_lock_irqsave(&coex->rxlock, flags);
+ 
+-	kfree_skb(coex->evt_skb);
+-	coex->evt_skb = NULL;
++	coex->elen = 0;
++	coex->tbuff = NULL;
+ 
+ 	spin_unlock_irqrestore(&coex->rxlock, flags);
+ }
+@@ -2493,10 +2688,28 @@ void rtk_btcoex_open(struct hci_dev *hdev)
+ 	//struct rtl_btinfo_ctl ctl;
+ 
+ 	INIT_DELAYED_WORK(&btrtl_coex.fw_work, (void *)rtl_ev_work);
++#ifdef RTK_COEX_OVER_SYMBOL
++	INIT_WORK(&rtw_work, rtw_work_func);
++	skb_queue_head_init(&rtw_q);
++	rtw_coex_on = 1;
++#else
+ 	INIT_DELAYED_WORK(&btrtl_coex.sock_work,
+ 			  (void *)udpsocket_recv_data);
++#endif
+ 	INIT_DELAYED_WORK(&btrtl_coex.l2_work, (void *)rtl_l2_work);
+ 
++#if LINUX_VERSION_CODE > KERNEL_VERSION(4, 14, 0)
++	timer_setup(&btrtl_coex.polling_timer, polling_bt_info, 0);
++	timer_setup(&btrtl_coex.a2dp_count_timer, count_a2dp_packet_timeout, 0);
++	timer_setup(&btrtl_coex.pan_count_timer, count_pan_packet_timeout, 0);
++	timer_setup(&btrtl_coex.hogp_count_timer, count_hogp_packet_timeout, 0);
++#else
++	setup_timer(&btrtl_coex.polling_timer, polling_bt_info, 0);
++	setup_timer(&btrtl_coex.a2dp_count_timer, count_a2dp_packet_timeout, 0);
++	setup_timer(&btrtl_coex.pan_count_timer, count_pan_packet_timeout, 0);
++	setup_timer(&btrtl_coex.hogp_count_timer, count_hogp_packet_timeout, 0);
++#endif
++
+ 	btrtl_coex.hdev = hdev;
+ 	btrtl_coex.wifi_on = 0;
+ 
+@@ -2505,10 +2718,13 @@ void rtk_btcoex_open(struct hci_dev *hdev)
+ 
+ 	btrtl_coex.pkt_type = 0;
+ 	btrtl_coex.expect = 0;
+-	btrtl_coex.evt_skb = NULL;
++	btrtl_coex.elen = 0;
++	btrtl_coex.tbuff = NULL;
+ 
++#ifndef RTK_COEX_OVER_SYMBOL
+ 	create_udpsocket();
+-	udpsocket_send(invite_req, sizeof(invite_req));
++#endif
++	rtkbt_coexmsg_send(invite_req, sizeof(invite_req));
+ 
+ 	/* Just for test */
+ 	//ctl.polling_enable = 1;
+@@ -2528,26 +2744,33 @@ void rtk_btcoex_close(void)
+ 
+ 	RTKBT_INFO("Close BTCOEX");
+ 
++	/* Close coex socket */
+ 	if (btrtl_coex.wifi_on)
+-		udpsocket_send(bt_leave, sizeof(bt_leave));
+-
+-	if (btrtl_coex.polling_enable) {
+-		btrtl_coex.polling_enable = 0;
+-		del_timer(&(btrtl_coex.polling_timer));
+-	}
+-
+-	del_timer(&(btrtl_coex.a2dp_count_timer));
+-	del_timer(&(btrtl_coex.pan_count_timer));
+-
+-	cancel_delayed_work(&btrtl_coex.sock_work);
+-	cancel_delayed_work(&btrtl_coex.fw_work);
+-	cancel_delayed_work(&btrtl_coex.l2_work);
+-
++		rtkbt_coexmsg_send(bt_leave, sizeof(bt_leave));
++#ifdef RTK_COEX_OVER_SYMBOL
++	rtw_coex_on = 0;
++	skb_queue_purge(&rtw_q);
++	cancel_work_sync(&rtw_work);
++#else
++	cancel_delayed_work_sync(&btrtl_coex.sock_work);
+ 	if (btrtl_coex.sock_open) {
+ 		btrtl_coex.sock_open = 0;
+ 		RTKBT_DBG("release udp socket");
+ 		sock_release(btrtl_coex.udpsock);
+ 	}
++#endif
++
++	/* Delete all timers */
++	if (btrtl_coex.polling_enable) {
++		btrtl_coex.polling_enable = 0;
++		del_timer_sync(&(btrtl_coex.polling_timer));
++	}
++	del_timer_sync(&btrtl_coex.a2dp_count_timer);
++	del_timer_sync(&btrtl_coex.pan_count_timer);
++	del_timer_sync(&btrtl_coex.hogp_count_timer);
++
++	cancel_delayed_work_sync(&btrtl_coex.fw_work);
++	cancel_delayed_work_sync(&btrtl_coex.l2_work);
+ 
+ 	flush_connection_hash(&btrtl_coex);
+ 	flush_profile_hash(&btrtl_coex);
+@@ -2571,7 +2794,14 @@ void rtk_btcoex_init(void)
+ {
+ 	RTKBT_DBG("%s: version: %s", __func__, RTK_VERSION);
+ 	RTKBT_DBG("create workqueue");
++#ifdef RTK_COEX_OVER_SYMBOL
++	RTKBT_INFO("Coex over Symbol");
++	rtw_wq = create_workqueue("btcoexwork");
++	skb_queue_head_init(&rtw_q);
++#else
++	RTKBT_INFO("Coex over UDP");
+ 	btrtl_coex.sock_wq = create_workqueue("btudpwork");
++#endif
+ 	btrtl_coex.fw_wq = create_workqueue("btfwwork");
+ 	rtl_alloc_buff(&btrtl_coex);
+ 	spin_lock_init(&btrtl_coex.rxlock);
+@@ -2580,8 +2810,13 @@ void rtk_btcoex_init(void)
+ void rtk_btcoex_exit(void)
+ {
+ 	RTKBT_DBG("%s: destroy workqueue", __func__);
++#ifdef RTK_COEX_OVER_SYMBOL
++	flush_workqueue(rtw_wq);
++	destroy_workqueue(rtw_wq);
++#else
+ 	flush_workqueue(btrtl_coex.sock_wq);
+ 	destroy_workqueue(btrtl_coex.sock_wq);
++#endif
+ 	flush_workqueue(btrtl_coex.fw_wq);
+ 	destroy_workqueue(btrtl_coex.fw_wq);
+ 	rtl_free_buff(&btrtl_coex);
+diff --git a/drivers/bluetooth/rtk_coex.h b/drivers/bluetooth/rtk_coex.h
+index 085a505..d6087a0 100644
+--- a/drivers/bluetooth/rtk_coex.h
++++ b/drivers/bluetooth/rtk_coex.h
+@@ -1,9 +1,9 @@
+ #include <net/bluetooth/hci_core.h>
+ #include <linux/list.h>
+ 
+-/*
+- * Realtek - For coexistence
+- */
++/***********************************
++** Realtek - For coexistence **
++***********************************/
+ #define BTRTL_HCIUSB    0
+ #define BTRTL_HCIUART   1
+ 
+@@ -23,7 +23,7 @@
+ #define leave_ack           "LEAVE_ACK"
+ #define bt_leave            "BT_LEAVE"
+ 
+-#define HCI_OP_PERIODIC_INQ		0x0403
++#define HCI_OP_PERIODIC_INQ								0x0403
+ #define HCI_EV_LE_META			                        0x3e
+ #define HCI_EV_LE_CONN_COMPLETE		                    0x01
+ #define HCI_EV_LE_CONN_UPDATE_COMPLETE	                0x03
+@@ -68,14 +68,10 @@
+ #define HCI_OP_HCI_BT_REGISTER_VALUE_NOTIFY (0x010a | HCI_GRP_VENDOR_SPECIFIC)
+ 
+ //bt info reason to wifi
+-/*Host response when receive the BT Info Control Event*/
+-#define HOST_RESPONSE                   0
+-/*The BT Info response for polling by BT firmware.*/
+-#define POLLING_RESPONSE                1
+-/*BT auto report by BT firmware.*/
+-#define AUTO_REPORT                     2
+-/*Stack report when BT firmware is under power save state(ex:D2)*/
+-#define STACK_REPORT_WHILE_DEVICE_D2    3
++#define HOST_RESPONSE                   0	//Host response when receive the BT Info Control Event
++#define POLLING_RESPONSE                1	//The BT Info response for polling by BT firmware.
++#define AUTO_REPORT                     2	//BT auto report by BT firmware.
++#define STACK_REPORT_WHILE_DEVICE_D2    3	//Stack report when BT firmware is under power save state(ex:D2)
+ 
+ // vendor event from wifi
+ #define RTK_HS_EXTENSION_EVENT_WIFI_SCAN            0x01
+@@ -109,10 +105,8 @@
+ #define HCI_CMD_PREAMBLE_SIZE           3
+ #define PAN_PACKET_COUNT                5
+ 
+-#define STREAM_TO_UINT16(u16, p)\
+-	{u16 = ((uint16_t)(*(p)) + (((uint16_t)(*((p) + 1))) << 8)); (p) += 2; }
+-#define UINT16_TO_STREAM(p, u16)\
+-	{*(p)++ = (uint8_t)(u16); *(p)++ = (uint8_t)((u16) >> 8); }
++#define STREAM_TO_UINT16(u16, p) {u16 = ((uint16_t)(*(p)) + (((uint16_t)(*((p) + 1))) << 8)); (p) += 2;}
++#define UINT16_TO_STREAM(p, u16) {*(p)++ = (uint8_t)(u16); *(p)++ = (uint8_t)((u16) >> 8);}
+ 
+ #define PSM_SDP     0x0001
+ #define PSM_RFCOMM  0x0003
+@@ -134,9 +128,12 @@ enum {
+ 	profile_hid_interval = 4,
+ 	profile_hogp = 5,
+ 	profile_voice = 6,
+-	profile_max = 7
++	profile_sink = 7,
++	profile_max = 8
+ };
+ 
++#define A2DP_SIGNAL	0x01
++#define A2DP_MEDIA	0x02
+ //profile info data
+ typedef struct {
+ 	struct list_head list;
+@@ -145,6 +142,7 @@ typedef struct {
+ 	uint16_t dcid;
+ 	uint16_t scid;
+ 	uint8_t profile_index;
++	uint8_t flags;
+ } rtk_prof_info, *prtk_prof_info;
+ 
+ //profile info for each connection
+@@ -163,15 +161,14 @@ struct rtl_btinfo {
+ };
+ #define RTL_BTINFO_LEN	(sizeof(struct rtl_btinfo))
+ /* typedef struct {
+- *	uint8_t cmd_index;
+- *	uint8_t cmd_length;
+- *	uint8_t link_status;
+- *	uint8_t retry_cnt;
+- *	uint8_t rssi;
+- *	uint8_t mailbox_info;
+- *	uint16_t acl_throughput;
+- * } hci_linkstatus_report;
+- */
++ * 	uint8_t cmd_index;
++ * 	uint8_t cmd_length;
++ * 	uint8_t link_status;
++ * 	uint8_t retry_cnt;
++ * 	uint8_t rssi;
++ * 	uint8_t mailbox_info;
++ * 	uint16_t acl_throughput;
++ * } hci_linkstatus_report; */
+ 
+ typedef struct {
+ 	uint8_t type;
+@@ -252,7 +249,9 @@ struct rtl_coex_struct {
+ 	spinlock_t rxlock;
+ 	__u8 pkt_type;
+ 	__u16 expect;
+-	struct sk_buff *evt_skb;
++	__u8 *tbuff;
++	__u16 elen;
++	__u8 back_buff[HCI_MAX_EVENT_SIZE];
+ 
+ 	/* l2cap rx buff */
+ 	struct list_head l2_used_list;
+@@ -268,8 +267,7 @@ struct rtl_coex_struct {
+ 
+ };
+ 
+-/* #if __BYTE_ORDER == __LITTLE_ENDIAN */
+-/* Little endian */
++#ifdef __LITTLE_ENDIAN
+ struct sbc_frame_hdr {
+ 	uint8_t syncword:8;		/* Sync word */
+ 	uint8_t subbands:1;		/* Subbands */
+@@ -300,35 +298,34 @@ struct rtp_header {
+ 	uint32_t csrc[0];
+ } __attribute__ ((packed));
+ 
+-/* #elif __BYTE_ORDER == __BIG_ENDIAN
+- * struct sbc_frame_hdr {
+- *	uint8_t syncword;
+- *	uint8_t sampling_frequency:2;
+- *	uint8_t blocks:2;
+- *	uint8_t channel_mode:2;
+- *	uint8_t allocation_method:1;
+- *	uint8_t subbands:1;
+- *	uint8_t bitpool:8;
+- *	uint8_t crc_check:8;
+- * } __attribute__ ((packed));
+- *
+- * struct rtp_header {
+- *	unsigned v:2;
+- *	unsigned p:1;
+- *	unsigned x:1;
+- *	unsigned cc:4;
+- *
+- *	unsigned m:1;
+- *	unsigned pt:7;
+- *
+- *	uint16_t sequence_number;
+- *	uint32_t timestamp;
+- *	uint32_t ssrc;
+- *	uint32_t csrc[0];
+- * } __attribute__ ((packed));
+- *
+- * #endif
+- */
++#else
++/* big endian */
++struct sbc_frame_hdr {
++	uint8_t syncword:8;		/* Sync word */
++	uint8_t sampling_frequency:2;	/* Sampling frequency */
++	uint8_t blocks:2;		/* Blocks */
++	uint8_t channel_mode:2;		/* Channel mode */
++	uint8_t allocation_method:1;	/* Allocation method */
++	uint8_t subbands:1;		/* Subbands */
++	uint8_t bitpool:8;		/* Bitpool */
++	uint8_t crc_check:8;		/* CRC check */
++} __attribute__ ((packed));
++
++struct rtp_header {
++	unsigned v:2;
++	unsigned p:1;
++	unsigned x:1;
++	unsigned cc:4;
++
++	unsigned m:1;
++	unsigned pt:7;
++
++	uint16_t sequence_number;
++	uint32_t timestamp;
++	uint32_t ssrc;
++	uint32_t csrc[0];
++} __attribute__ ((packed));
++#endif /* __LITTLE_ENDIAN */
+ 
+ void rtk_btcoex_parse_event(uint8_t *buffer, int count);
+ void rtk_btcoex_parse_cmd(uint8_t *buffer, int count);
+-- 
+2.7.4
+

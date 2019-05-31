@@ -106,6 +106,7 @@ define Kernel/Patch/Default
 	$(call PatchDir,$(PKG_BUILD_DIR),$(GENERIC_HACK_DIR),generic-hack/)
 	$(call PatchDir,$(PKG_BUILD_DIR),$(PATCH_DIR),platform/)
 	$(if $(PATCH_SUBTARGET_DIR),$(call PatchDir,$(PKG_BUILD_DIR),$(PATCH_SUBTARGET_DIR),subtarget/))
+	$(if $(PATCH_BT_DIR),$(call PatchDir,$(PKG_BUILD_DIR),$(PATCH_BT_DIR),bt/))
 endef
 
 define Quilt/RefreshDir
