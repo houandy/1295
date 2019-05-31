@@ -521,6 +521,7 @@ int boot_rescue_from_usb(void)
 
 loading_failed:
 	printf("Loading \"%s\" from USB failed.\n", filename);
+  run_command("reset", 0);
 	return RTK_PLAT_ERR_READ_RESCUE_IMG;
 }
 #endif /* CONFIG_RESCUE_FROM_USB */
