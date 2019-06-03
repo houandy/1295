@@ -16,6 +16,8 @@ CONFIGFOLDER=${FOLDER}/configs/
 binfilefolder=bin/targets/realtek/rtd16xx-glibc/
 dailyimagefolder=${FOLDER}/../../dailyimage
 DEST_FILE=install.img
+DEST_ROOTFS_FILE=root.tar.bz2
+releaseimagefolder="/var/www/html/release/image/${modelname}"
 upgradefwfile=${modelname}-upgradeimage-${now}.zip
 upgradefwbin=${modelname}-upgradeimage-${now}.bin
 MD5SUM=fwmd5
@@ -163,11 +165,11 @@ if [ ! ${build_mode} = "all" ]; then
 	if [ ${build_mode} = "release" ]; then
 		echo "release"
 		checkmodel
-		releaseimagefolder="/var/www/html/release/image/${modelname}"
 		[ -d ${releaseimagefolder}/ ] || mkdir -p ${releaseimagefolder}/
 		[ -d ${releaseimagefolder}/${modelname}-${VERSION_NUMBER}-${now}/ ] || mkdir -p ${releaseimagefolder}/${modelname}-${VERSION_NUMBER}-${now}
 		[ -d ${releaseimagefolder}/${modelname}-${VERSION_NUMBER}-${now}/ ] && {
 			cp ${FOLDER}/${binfilefolder}/${DEST_FILE} ${releaseimagefolder}/${modelname}-${VERSION_NUMBER}-${now}/
+      cp ${FOLDER}/${binfilefolder}/${DEST_ROOTFS_FILE} ${releaseimagefolder}/${modelname}-${VERSION_NUMBER}-${now}/
 		}
 	fi
 fi
