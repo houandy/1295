@@ -1,6 +1,4 @@
 diff --git a/common/main.c b/common/main.c
-old mode 100644
-new mode 100755
 index d4261f4..fe27ca6
 --- a/common/main.c
 +++ b/common/main.c
@@ -24,8 +22,6 @@ index d4261f4..fe27ca6
  
  #if defined(CONFIG_BOARD_WD_MONARCH)||defined(CONFIG_BOARD_WD_PELICAN)
 diff --git a/common/cmd_boot.c b/common/cmd_boot.c
-old mode 100644
-new mode 100755
 index 2f613d1..4eb46ff
 --- a/common/cmd_boot.c
 +++ b/common/cmd_boot.c
