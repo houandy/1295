@@ -2,4 +2,4 @@ ethaddr=00:10:20:30:40:50
 gatewayip=192.168.100.254
 ipaddr=192.168.100.1
 netmask=255.255.255.0
-kernelargs=mtdparts=RtkSFC:1024k(U-Boot)ro,64k(FWtbl)ro,128k(Factory),56k(kernelDT),56k(rescueDT),808k(rescueRootFS),384k(audioKernel),4356k(linuxKernel),56k(kernelDT2),56k(rescueDT2),808k(rescueRootFS2),384k(audioKernel2),4356k(linuxKernel2),268k(bootLogo2),268k(bootLogo),64k(SecureBoot),64k(EncryKey),512k(HASHDATA),2544k(Free),128k(AIT) init=/etc/init root=/dev/sda1 rootfstype=ext4 rootwait loglevel=3 no_console_suspend
+kernelargs=mtdparts=RtkSFC:1024k(U-Boot)ro,64k(FWtbl)ro,128k(Factory),56k(kernelDT),56k(rescueDT),808k(rescueRootFS),384k(audioKernel),4364k(linuxKernel),56k(kernelDT2),56k(rescueDT2),808k(rescueRootFS2),384k(audioKernel2),4364k(linuxKernel2),268k(bootLogo2),268k(bootLogo),64k(SecureBoot),64k(EncryKey),512k(HASHDATA),2528k(Free),128k(oops) init=/etc/init root=/dev/sda1 rootfstype=ext4 rootwait loglevel=3 no_console_suspend
