@@ -68,3 +68,16 @@ index 71499c8..d7029fb 100644
  #endif /* CONFIG_RESCUE_FROM_USB */
  #define CONFIG_ROOTFS_RESCUE_SIZE	0x100000 // 1 MB
  
+diff --git a/include/configs/rtd1295_common.h b/include/configs/rtd1295_common.h
+index dca094b..2f7767e 100644
+--- a/include/configs/rtd1295_common.h
++++ b/include/configs/rtd1295_common.h
+@@ -316,7 +316,7 @@
+ 
+ /* GPIO */
+ #define CONFIG_REALTEK_GPIO
+-#define CONFIG_INSTALL_GPIO_NUM    		8
++#define CONFIG_INSTALL_GPIO_NUM                60
+ #define CONFIG_HDMITx_HPD_IGPIO_NUM		6
+ 
+ /* I2C */
