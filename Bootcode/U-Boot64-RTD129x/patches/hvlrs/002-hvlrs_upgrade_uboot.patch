@@ -25,7 +25,7 @@ diff --git a/common/cmd_boot.c b/common/cmd_boot.c
 index 2f613d1..4eb46ff
 --- a/common/cmd_boot.c
 +++ b/common/cmd_boot.c
-@@ -428,6 +428,30 @@ int boot_rescue_from_usb(void)
+@@ -428,6 +428,31 @@ int boot_rescue_from_usb(void)
  		return RTK_PLAT_ERR_READ_RESCUE_IMG;
  	}
  
@@ -42,6 +42,7 @@ index 2f613d1..4eb46ff
 +    }else{
 +      printf("Loading \"%s\" to 0x1500000 is OK.\n\n", filename);
 +      run_command("mw 0x98007314 0", 0);
++      run_command("mw 0x98007104 0x70000000", 0);
 +      setenv("afterupgradeuboot", "1");
 +      saveenv();
 +      if (run_command("go 0x1500000", 0) != 0) {
