@@ -65,7 +65,8 @@ set_fstab(){
 
 blkdev=`dirname $DEVPATH`
 device=`basename $DEVPATH`
-except=`echo $device | grep -E "mmcblk0|mtdblock"`
+#except=`echo $device | grep -E "mmcblk0|mtdblock"`
+except=`echo $device`
 
 if [ $device != "block" ] && [ -z $except ]; then
 

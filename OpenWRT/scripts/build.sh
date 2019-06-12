@@ -168,8 +168,9 @@ if [ ! ${build_mode} = "all" ]; then
 		[ -d ${releaseimagefolder}/ ] || mkdir -p ${releaseimagefolder}/
 		[ -d ${releaseimagefolder}/${modelname}-${VERSION_NUMBER}-${now}/ ] || mkdir -p ${releaseimagefolder}/${modelname}-${VERSION_NUMBER}-${now}
 		[ -d ${releaseimagefolder}/${modelname}-${VERSION_NUMBER}-${now}/ ] && {
-			cp ${FOLDER}/${binfilefolder}/${DEST_FILE} ${releaseimagefolder}/${modelname}-${VERSION_NUMBER}-${now}/
-      cp ${FOLDER}/${binfilefolder}/${DEST_ROOTFS_FILE} ${releaseimagefolder}/${modelname}-${VERSION_NUMBER}-${now}/
+		cp ${FOLDER}/${binfilefolder}/${DEST_FILE} ${releaseimagefolder}/${modelname}-${VERSION_NUMBER}-${now}/
+		cp ${FOLDER}/${binfilefolder}/${DEST_ROOTFS_FILE} ${releaseimagefolder}/${modelname}-${VERSION_NUMBER}-${now}/
+		cp ${FOLDER}/${binfilefolder}/rescue/* ${releaseimagefolder}/${modelname}-${VERSION_NUMBER}-${now}/
 		}
 	fi
 fi
