@@ -125,7 +125,8 @@ cpimage()
 	[ -d ${dailyimagefolder}/ ] || mkdir -p ${dailyimagefolder}/
 	[ -d ${dailyimagefolder}/${modelname}/ ] || mkdir -p ${dailyimagefolder}/${modelname}/
 	[ -d $2 ] || mkdir -p $2
-  cp $1/${binfilefolder}/${DEST_FILE} $2/
+	cp $1/${binfilefolder}/${DEST_FILE} $2/
+	cp -Rf $1/${binfilefolder}/r* $2/
 #	cp $1/${binfilefolder}/${upgradefwbin} $2/
 # md5sum $2/* > $2/${MD5SUM}
 }

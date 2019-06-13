@@ -8,15 +8,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=libwayland
-PKG_VERSION:=20170221
+PKG_VERSION:=1.12.0
 PKG_RELEASE=$(PKG_SOURCE_VERSION)
 
-PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL:=git://anongit.freedesktop.org/wayland/wayland
-PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
-PKG_SOURCE_VERSION:=1361da9cd5a719b32d978485a29920429a31ed25
-PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
-PKG_MD5SUM:=83690d5b003f1129fc365e6d0802d227
+PKG_SOURCE_URL:=http://wayland.freedesktop.org/releases/
+PKG_SOURCE:=wayland-$(PKG_VERSION).tar.xz
+PKG_MD5SUM:=ee615e2d1e205eec48b02f069327eb96
 PKG_FIXUP:=libtool
 PKG_BUILD_DEPENDS:=\
 	libxml2/host \
@@ -25,8 +22,8 @@ PKG_BUILD_DEPENDS:=\
 HOST_BUILD_DEPENDS:=libxml2/host
 
 PKG_INSTALL:=1
-HOST_BUILD_DIR:=$(BUILD_DIR_HOST)/$(PKG_NAME)-$(PKG_VERSION)
-
+HOST_BUILD_DIR:=$(BUILD_DIR_HOST)/wayland-$(PKG_VERSION)
+PKG_BUILD_DIR:=$(BUILD_DIR)/wayland-$(PKG_VERSION)
 include $(INCLUDE_DIR)/host-build.mk
 include $(INCLUDE_DIR)/package.mk
 
@@ -46,16 +43,16 @@ endef
 
 CONFIGURE_ARGS+= --disable-documentation
 CONFIGURE_ARGS+= --with-host-scanner
+HOST_CONFIGURE_ARGS+=--disable-documentation
+#HOST_CONFIGURE_CMD = $(BASH) ./autogen.sh
 
-HOST_CONFIGURE_CMD = $(BASH) ./autogen.sh
+#define Host/Prepare
+#       $(HOST_UNPACK)
+#endef
 
-define Host/Prepare
-        $(HOST_UNPACK)
-endef
-
-define Host/Configure
-	( cd "$(HOST_BUILD_DIR)"; ./autogen.sh $(HOST_CONFIGURE_ARGS) --disable-documentation)
-endef
+#define Host/Configure
+#	( cd "$(HOST_BUILD_DIR)"; ./configure $(HOST_CONFIGURE_ARGS) --disable-documentation)
+#endef
 
 #define Build/Configure
 #	( cd "$(PKG_BUILD_DIR)"; ./autogen.sh $(TARGET_CONFIGURE_ARGS) --disable-documentation)

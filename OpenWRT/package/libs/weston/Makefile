@@ -29,8 +29,7 @@ define Package/weston
   SUBMENU:=Weston
   TITLE:=Weston
   URL:=http://cgit.freedesktop.org/wayland/weston
-  DEPENDS:=@RTK_BOARD_CHIP_1295 \
-	+kmod-weston +mali-wayland \
+  DEPENDS:=+kmod-weston +mali-wayland \
 	+libdrm +pixman +libinput +libevdev \
 	+libxkbcommon +libxau +eudev +wayland-protocols \
 	+libjpeg +libpng +libpam +WESTON_ENABLE_DBUS:dbus +WESTON_ENABLE_WESTON_LAUNCH:libpam  \
@@ -41,7 +40,18 @@ define Package/weston/description
   The Weston compositor is a minimal and fast compositor and is suitable for many embedded and mobile use cases.
 endef
 
-CONFIGURE_ARGS += --enable-egl --enable-simple-egl-clients --with-cairo=image --disable-x11-compositor --disable-xwayland-test --disable-xwayland --disable-setuid-install
+MALI_WAYLAND_SERVER_STAGING:=$(STAGING_DIR)/usr/local/mali-wayland-server
+MALI_WAYLAND_CLIENT_STAGING:=$(STAGING_DIR)/usr
+
+PKG_CONFIG_PATH:=$(MALI_WAYLAND_SERVER_STAGING)/lib/pkgconfig:$(PKG_CONFIG_PATH)
+TARGET_LDFLAGS:=-L$(MALI_WAYLAND_SERVER_STAGING)/lib $(TARGET_LDFLAGS)
+TARGET_CONFIGURE_OPTS = \
+	EGL_LIBS="-L$(MALI_WAYLAND_SERVER_STAGING)/lib -lEGL -lGLESv2 -lmali" \
+	EGL_CFLAGS="-I$(MALI_WAYLAND_SERVER_STAGING)/include" \
+	EGL_TESTS_LIBS="-L$(MALI_WAYLAND_CLIENT_STAGING)/lib -lEGL -lGLESv2 -lmali" \
+	EGL_TESTS_CFLAGS="-I$(MALI_WAYLAND_CLIENT_STAGING)/include"
+
+CONFIGURE_ARGS += --enable-egl --with-cairo=image --disable-x11-compositor --disable-xwayland-test --disable-xwayland --disable-setuid-install --disable-simple-egl-clients
 
 TARGET_CFLAGS += -DGL_GLEXT_PROTOTYPES -DWL_EGL_PLATFORM
 EXTRA_LDFLAGS+= -Wl,-rpath-link=$(STAGING_DIR)/lib
