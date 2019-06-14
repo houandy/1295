@@ -170,6 +170,7 @@
 	};
 
 	rtk_iso_gpio: rtk_iso_gpio@98007100 {
+		gpios = <&rtk_iso_gpio 1 1 1>;
 		/*gpios = <&rtk_iso_gpio 21 1 0>;
 		 igpio21, output, default low */
 	};

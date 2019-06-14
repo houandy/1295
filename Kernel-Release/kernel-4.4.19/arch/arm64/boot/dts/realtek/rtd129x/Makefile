@@ -17,6 +17,7 @@ dtb-$(CONFIG_ARCH_RTD129X) += rtd-1296-nas-saola-2GB.dtb
 dtb-$(CONFIG_ARCH_RTD129X) += rtd-1296-nas-qa-rescue.dtb
 dtb-$(CONFIG_ARCH_RTD129X) += rtd-1295-mmnas-giraffe-2GB.dtb
 dtb-$(CONFIG_ARCH_RTD129X) += rtd-1295-nas-giraffe-2GB.dtb
+dtb-$(CONFIG_ARCH_RTD129X) += rtd-1295-videonas-giraffe-1GB.dtb
 dtb-$(CONFIG_ARCH_RTD129X) += rtd-1295-videonas-giraffe-2GB.dtb
 dtb-$(CONFIG_ARCH_RTD129X) += rtd-1295-nas-qa-rescue.dtb
 
