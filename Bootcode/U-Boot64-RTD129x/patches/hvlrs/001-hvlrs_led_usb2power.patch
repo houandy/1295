@@ -1,0 +1,39 @@
+diff --git a/examples/flash_writer/image/hw_setting/rtd1295/demo/0001/RTD1295_hwsetting_BOOT_2DDR4_8Gb_s2133.config b/examples/flash_writer/image/hw_setting/rtd1295/demo/0001/RTD1295_hwsetting_BOOT_2DDR4_8Gb_s2133.config
+index fc68481..9902c34 100644
+--- a/examples/flash_writer/image/hw_setting/rtd1295/demo/0001/RTD1295_hwsetting_BOOT_2DDR4_8Gb_s2133.config
++++ b/examples/flash_writer/image/hw_setting/rtd1295/demo/0001/RTD1295_hwsetting_BOOT_2DDR4_8Gb_s2133.config
+@@ -293,4 +293,13 @@ w 0xff018000,0x00000001	# Turn on CPU timer
+ 
+ w 0xfffffff8,0x00000000
+ w 0x98007680,0x000000a5	# WDG disable
+-w 0xfffffffc,0x00000000
+\ No newline at end of file
++w 0xfffffffc,0x00000000
++
++w 0x980070d8,0x0000FFF1 # setting PWM1~3 clk, setting PWM0 to default clock
++w 0x980070d4,0x5050507D #
++w 0x980070d0,0xFFFFFFFF #
++w 0x98007100,0x70000002 # setting IGPIO28~30 default status
++w 0x98007104,0x00000002 # setting USB port2 power^M
++w 0x98007310,0x28001400 # setting IGPIO27 to PWM0_1, IGPIO28 to PWM1_1
++w 0x98007314,0x000a0000 # setting IGPIO29 to PWM2_1, IGPIO30 to PWM3_1
++
+diff --git a/examples/flash_writer/image/hw_setting/rtd1295/demo/0001/RTD1295_hwsetting_BOOT_2DDR4_4Gb_s2133.config b/examples/flash_writer/image/hw_setting/rtd1295/demo/0001/RTD1295_hwsetting_BOOT_2DDR4_4Gb_s2133.config
+index fc68481..9902c34 100644
+--- a/examples/flash_writer/image/hw_setting/rtd1295/demo/0001/RTD1295_hwsetting_BOOT_2DDR4_4Gb_s2133.config
++++ b/examples/flash_writer/image/hw_setting/rtd1295/demo/0001/RTD1295_hwsetting_BOOT_2DDR4_4Gb_s2133.config
+@@ -294,3 +294,12 @@
+ w 0xfffffff8,0x00000000
+ w 0x98007680,0x000000a5        # WDG disable
+-w 0xfffffffc,0x00000000
+\ No newline at end of file
++w 0xfffffffc,0x00000000
++
++w 0x980070d8,0x0000FFF1 # setting PWM1~3 clk, setting PWM0 to default clock
++w 0x980070d4,0x5050507D #
++w 0x980070d0,0xFFFFFFFF #
++w 0x98007100,0x70000002 # setting IGPIO28~30 default status
++w 0x98007104,0x00000002 # setting USB port2 power
++w 0x98007310,0x28001400 # setting IGPIO27 to PWM0_1, IGPIO28 to PWM1_1
++w 0x98007314,0x000a0000 # setting IGPIO29 to PWM2_1, IGPIO30 to PWM3_1
++
