@@ -581,9 +581,9 @@
 		reg = <0x9801BC00 0x14>, <0x9801A910 0x4>;
 		interrupt-parent = <&mux_intc>;
 		interrupts = <0 29>;
-		status = "disabled";
+		status = "okay";
 
-		pwms = <&pwm 1 37878>; // (1) pwm node (2) pwm id (3) out period_ns (1/26400 ns)
+		pwms = <&pwm 0 37878>; // (1) pwm node (2) pwm id (3) out period_ns (1/26400 ns)
 
 		timer_target = <0x100000>;
 		fan_debounce = <0x0>;// 0x0~0x7
