@@ -174,7 +174,6 @@ if [ $target = RTD129x_spi ]; then
 #		cp ./examples/flash_writer/image/hw_setting/$hwsetting.bin ./DVRBOOT_OUT/$target/hw_setting/A01-$hwsetting.bin
 #		cp ./examples/flash_writer/dvrboot.exe.bin ./DVRBOOT_OUT/$target/A01-$hwsetting-nas-RTD1295_spi.bin
 #	done
-
 fi
 
 for patchfile in $(ls patches/${project}/*.patch)
@@ -186,7 +185,8 @@ if [ $release == 1 ]; then
 		[ -d ${releaseimagefolder}/ ] || mkdir -p ${releaseimagefolder}/
 		[ -d ${releaseimagefolder}/uboot-${project}-${VERSION_NUMBER}-${now}/ ] || mkdir -p ${releaseimagefolder}/uboot-${project}-${VERSION_NUMBER}-${now}
 		[ -d ${releaseimagefolder}/uboot-${project}-${VERSION_NUMBER}-${now}/ ] && {
-			[ -z ${DEST_FILE} ] || cp ${DEST_FILE} ${releaseimagefolder}/uboot-${project}-${VERSION_NUMBER}-${now}/Uboot-${project}.bin
-      [ -z ${DEST_HWSETTING_FILE} ] || cp ${DEST_HWSETTING_FILE} ${releaseimagefolder}/uboot-${project}-${VERSION_NUMBER}-${now}/Uboot-${project}-hwsetting.bin
+			[ -f ${DEST_FILE} ] && cp ${DEST_FILE} ${releaseimagefolder}/uboot-${project}-${VERSION_NUMBER}-${now}/
+			[ -f ${DEST_FILE} ] && cp ${DEST_FILE} ${releaseimagefolder}/uboot-${project}-${VERSION_NUMBER}-${now}/Uboot-${project}.bin
+			[ -f ${DEST_HWSETTING_FILE} ] && cp ${DEST_HWSETTING_FILE} ${releaseimagefolder}/uboot-${project}-${VERSION_NUMBER}-${now}/Uboot-${project}-hwsetting.bin
 		}
 fi
