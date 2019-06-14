@@ -49,15 +49,15 @@ endef
 
 define Package/openmax/install
 	tar -C $(1) --strip-components=1 -Jxf $(TARGET_SOURCE_URL)/$(TARGET_SOURCE) $(TARGET_NAME)/usr
-  ifeq ($(CONFIG_RTK_BOARD_CHIP_CODENAME), rtd129x)
+ifeq ($(CONFIG_RTK_BOARD_CHIP_CODENAME), "rtd12xx")
 	tar -C $(1) --strip-components=1 -Jxf $(TARGET_SOURCE_URL)/$(TARGET_SOURCE) $(TARGET_NAME)/system
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/rtk-supplicant.init $(1)/etc/init.d/rtk-supplicant
-  endif
-  ifeq ($(CONFIG_RTK_BOARD_CHIP_CODENAME), rtd16xx)
+endif
+ifeq ($(SUBTARGET), "rtd16xx")
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/osd.ini $(1)/etc/init.d/osd
-  endif
+endif
 endef
 
 $(eval $(call BuildPackage,openmax))
