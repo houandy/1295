@@ -6,7 +6,7 @@
 workdir=$(pwd)
 [ -z $1 ] && modelname="1619_kernel49_nas" || modelname=$1
 [ -z $2 ] && build_mode="build" || build_mode=$2
-[ -z $3 ] && VERSION_NICK="0.0.0.0" || VERSION_NICK=$3
+[ -z $3 ] && VERSION_CODE="0.0.0.0" || VERSION_CODE=$3
 [ -z $4 ] && VERSION_NUMBER="0.0.0.0" || VERSION_NUMBER=$4
 UBOOT_VERSION="1.0.0"
 branch=master
@@ -87,7 +87,7 @@ buildimage()
 {
   initcode $1
 	make defconfig
-	make VERSION_PRODUCT=${modelname} VERSION_NICK=${VERSION_NICK} VERSION_NUMBER=${VERSION_NUMBER} BUILDTIME=${now}
+	make VERSION_PRODUCT=${modelname} VERSION_CODE=${VERSION_CODE} VERSION_NUMBER=${VERSION_NUMBER} BUILDTIME=${now}
 }
 
 checkmodel()
