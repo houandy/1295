@@ -126,7 +126,7 @@
 				<&ir_rx_pins>,
 				<&ir_tx_pins>,
 				<&spdif_pins>,
-				<dc_fan_sensor_pins>,
+				<&dc_fan_sensor_pins>,
 				<&spi_pins_loc_gpio>, /* <&spi_pins_loc_gpio>: GPIO0~3 mux to gpio; <&spi_pins_loc_spi>: GPIO0~3 mux to SPI*/
 				<&pwm0_1_pins>,
 				<&pwm1_0_pins>,
