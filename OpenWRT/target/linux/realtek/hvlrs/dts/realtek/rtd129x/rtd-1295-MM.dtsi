@@ -589,6 +589,56 @@
 		fan_debounce = <0x0>;// 0x0~0x7
 	};
 
+	rtk-lsadc@0x98012800 {
+		compatible = "Realtek,rtk-lsadc";
+		interrupt-parent = <&mux_intc>;
+		interrupts = <0 21>, <0 22>; /* LSADC0_INT, LSADC1_INT */
+		reg = <0x9801B00C 0x4>, /* MISC_ISR */
+			<0x98012800 0x200>, /* LSADC */
+			<0x9800034C 0x4>; /* LSADC_PG */
+		status = "okay";
+		clk_gating_en = <1>, /* LSADC0 0:disable; 1:enable */
+						<1>; /* LSADC1 0:disable; 1:enable */
+		vdd_mux_sel = <0>; /* 0:VDD1; 1:VDD2 */
+		vdd_mux1 = <0>; /* 0 ~ 15: VDD_IN source selection */
+		vdd_mux2 = <0>; /* 0 ~ 15: VDD_IN source selection */
+		vdd_mux_en = <1>; /* 0:disable; 1:enable */
+
+		rtk-lsadc0-pad0 {
+			//compatible = "Realtek,rtk-lsadc0-pad0";
+			activate = <1>; /* 0:in-activate; 1:activate */
+			ctrl_mode = <0>; /* 0:Voltage mode; 1:Current mode*/
+			sw_idx = <0>; /* 0:External input pin 0; 1:External input pin 1 */
+			voltage_threshold = <32>; /* 8 bit : 0 ~ 255 */
+		};
+
+		rtk-lsadc0-pad1 {
+			//compatible = "Realtek,rtk-lsadc0-pad1";
+			activate = <1>; /* 0:in-activate; 1:activate */
+			ctrl_mode = <0>; /* 0:Voltage mode; 1:Current mode*/
+			sw_idx = <1>; /* 0:External input pin 0; 1:External input pin 1 */
+			voltage_threshold = <16>; /* 8 bit : 0 ~ 255 */
+		};
+
+		rtk-lsadc1-pad0 {
+			//compatible = "Realtek,rtk-lsadc1-pad0";
+			activate = <1>; /* 0:in-activate; 1:activate */
+			ctrl_mode = <0>; /* 0:Voltage mode; 1:Current mode*/
+			sw_idx = <0>; /* 0:VDD; 1:GND */
+			voltage_threshold = <32>; /* 8 bit : 0 ~ 255 */
+			detect_range_ctrl = <0>; /* 0:0V ~ 1.024V; 1:0.5V ~ 1.524V */
+		};
+
+		rtk-lsadc1-pad1 {
+			//compatible = "Realtek,rtk-lsadc1-pad1";
+			activate = <1>; /* 0: in-activate; 1:activate */
+			ctrl_mode = <0>; /* 0: Voltage mode; 1:Current mode*/
+			sw_idx = <0>; /* 0:VDD; 1:GND */
+			voltage_threshold = <16>; /* 8 bit : 0 ~ 255 */
+			detect_range_ctrl = <1>; /* 0:0V ~ 1.024V; 1:0.5V ~ 1.524V */
+		};
+	};
+
 	mcp@0x98015000 {
 		compatible = "Realtek,rtk-mcp";
 		reg = <0x98015000 0x1000>, <0x98014000 0x1000>;

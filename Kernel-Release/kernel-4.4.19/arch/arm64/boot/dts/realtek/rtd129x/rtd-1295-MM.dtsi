@@ -461,6 +461,8 @@
 		compatible = "Realtek,rtk-watchdog";
 		reg = <0x98007680 0x100>;
 		rst-oe = <0>; /* 0:input, 1:output */
+		timeout-sec = <20>;
+		status = "okay";
 	};
 
 	rtk-rstctrl@0x98007000 {
@@ -548,7 +550,9 @@
 		compatible = "Realtek,rtd1295-pwm";
 		#pwm-cells = <2>;
 		reg = <0x980070D0 0xC>;
-		status = "disabled";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pwm0_0_pins>;
+		status = "okay";
 		pwm_0 {
 			enable = <0>;
 			clkout_div = <0xff>; //default OCD: from 0x0 to 0xff
@@ -586,6 +590,58 @@
 
 		timer_target = <0x100000>;
 		fan_debounce = <0x0>;// 0x0~0x7
+		clocks = <&clk_en_2 CLK_EN_FAN>;
+		resets = <&rst4 RSTN_FAN>;
+	};
+
+	rtk-lsadc@0x98012800 {
+		compatible = "Realtek,rtk-lsadc";
+		interrupt-parent = <&mux_intc>;
+		interrupts = <0 21>, <0 22>; /* LSADC0_INT, LSADC1_INT */
+		reg = <0x9801B00C 0x4>, /* MISC_ISR */
+			<0x98012800 0x200>, /* LSADC */
+			<0x9800034C 0x4>; /* LSADC_PG */
+		status = "okay";
+		clk_gating_en = <1>, /* LSADC0 0:disable; 1:enable */
+						<1>; /* LSADC1 0:disable; 1:enable */
+		vdd_mux_sel = <0>; /* 0:VDD1; 1:VDD2 */
+		vdd_mux1 = <0>; /* 0 ~ 15: VDD_IN source selection */
+		vdd_mux2 = <0>; /* 0 ~ 15: VDD_IN source selection */
+		vdd_mux_en = <1>; /* 0:disable; 1:enable */
+
+		rtk-lsadc0-pad0 {
+			//compatible = "Realtek,rtk-lsadc0-pad0";
+			activate = <1>; /* 0:in-activate; 1:activate */
+			ctrl_mode = <0>; /* 0:Voltage mode; 1:Current mode*/
+			sw_idx = <0>; /* 0:External input pin 0; 1:External input pin 1 */
+			voltage_threshold = <32>; /* 8 bit : 0 ~ 255 */
+		};
+
+		rtk-lsadc0-pad1 {
+			//compatible = "Realtek,rtk-lsadc0-pad1";
+			activate = <1>; /* 0:in-activate; 1:activate */
+			ctrl_mode = <0>; /* 0:Voltage mode; 1:Current mode*/
+			sw_idx = <1>; /* 0:External input pin 0; 1:External input pin 1 */
+			voltage_threshold = <16>; /* 8 bit : 0 ~ 255 */
+		};
+
+		rtk-lsadc1-pad0 {
+			//compatible = "Realtek,rtk-lsadc1-pad0";
+			activate = <1>; /* 0:in-activate; 1:activate */
+			ctrl_mode = <0>; /* 0:Voltage mode; 1:Current mode*/
+			sw_idx = <0>; /* 0:VDD; 1:GND */
+			voltage_threshold = <32>; /* 8 bit : 0 ~ 255 */
+			detect_range_ctrl = <0>; /* 0:0V ~ 1.024V; 1:0.5V ~ 1.524V */
+		};
+
+		rtk-lsadc1-pad1 {
+			//compatible = "Realtek,rtk-lsadc1-pad1";
+			activate = <1>; /* 0: in-activate; 1:activate */
+			ctrl_mode = <0>; /* 0: Voltage mode; 1:Current mode*/
+			sw_idx = <0>; /* 0:VDD; 1:GND */
+			voltage_threshold = <16>; /* 8 bit : 0 ~ 255 */
+			detect_range_ctrl = <1>; /* 0:0V ~ 1.024V; 1:0.5V ~ 1.524V */
+		};
 	};
 
 	mcp@0x98015000 {
