@@ -19,7 +19,7 @@ releaseimagefolder="/var/www/html/release/image/${project}"
 
 for patchfile in $(ls patches/${project}/*.patch)
 do
-	patch -p1 < ${patchfile}
+	patch -p1 --no-backup-if-mismatch < ${patchfile}
 done
 
 ########### Build Thor A01 RTK #############

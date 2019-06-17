@@ -462,6 +462,8 @@
 		compatible = "Realtek,rtk-watchdog";
 		reg = <0x98007680 0x100>;
 		rst-oe = <0>; /* 0:input, 1:output */
+		timeout-sec = <20>;
+		status = "okay";
 	};
 
 	rtk-rstctrl@0x98007000 {
