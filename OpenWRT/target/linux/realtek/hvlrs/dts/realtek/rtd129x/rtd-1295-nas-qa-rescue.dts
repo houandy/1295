@@ -52,8 +52,7 @@
 	};
 
 	rtk_iso_gpio: rtk_iso_gpio@98007100 {
-		gpios = <&rtk_iso_gpio 1 1 1>;
-		/* igpio1, output, default high */
+		gpios = <&rtk_iso_gpio 1 1 1>,<&rtk_iso_gpio 28 1 1>;
 	};
 
 	timer {

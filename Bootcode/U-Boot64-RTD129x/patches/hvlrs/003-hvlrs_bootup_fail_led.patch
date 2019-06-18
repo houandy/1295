@@ -4,20 +4,24 @@ new mode 100755
 index d4261f4..bf19b7c
 --- a/common/main.c
 +++ b/common/main.c
-@@ -350,5 +350,18 @@
+@@ -356,5 +356,22@@
  #endif
  
-+   if(getenv_ulong("bootup", 16, 0) >= 1)
++   if(boot_mode != BOOT_RESCUE_MODE)
 +   {
-+       run_command("mw 0x98007310 0x08001400", 0);
-+       run_command("mw 0x98007314 0x00020000", 0);
-+       setenv("bootup", " ");
-+       saveenv();
-+       boot_mode = BOOT_CONSOLE_MODE;
-+       abort = 1; // don't auto boot
-+   }else{
-+       setenv("bootup", "1");
-+       saveenv();
++       if(getenv_ulong("bootup", 16, 0) >= 1)
++       {
++         run_command("mw 0x98007310 0x08001400", 0);
++         run_command("mw 0x98007314 0x00020000", 0);
++         run_command("mw 0x98007104 0x70000002", 0);
++         boot_mode = BOOT_CONSOLE_MODE;
++         abort = 1; // don't auto boot
++         setenv("bootup", " ");
++         saveenv();
++       }else{
++         setenv("bootup", "1");
++         saveenv();
++       }
 +   }
 +
  #if defined(CONFIG_BOARD_WD_MONARCH)||defined(CONFIG_BOARD_WD_PELICAN)

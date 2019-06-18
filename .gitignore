@@ -39,5 +39,7 @@
 *.map
 *.ipk
 *.rev
+*.rej
+*.orig
 key-build*
 fwmd5

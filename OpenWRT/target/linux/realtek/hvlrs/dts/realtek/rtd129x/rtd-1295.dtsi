@@ -130,7 +130,7 @@
 				<&spdif_pins>,
 				<&spi_pins_loc_gpio>, /* <&spi_pins_loc_gpio>: GPIO0~3 mux to gpio; <&spi_pins_loc_spi>: GPIO0~3 mux to SPI*/
 				//<&dc_fan_sensor_pins>,
-				<&etn_led_pins>,
+				//<&etn_led_pins>,
 				<&pwm2_1_pins>,
 				<&pwm3_1_pins>;
 		status = "okay";
