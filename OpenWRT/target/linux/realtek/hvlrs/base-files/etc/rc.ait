@@ -5,6 +5,9 @@
 	tcpsvd 0 21 ftpd -t 3600 -w /tmp &
 	telnetd -l /usr/libexec/login.sh &
 	touch /tmp/.aitscript
+	echo none > /sys/class/leds/IODATA\:G/trigger
+	echo default-on > /sys/class/leds/IODATA\:R/trigger
+	echo default-on > /sys/class/leds/IODATA\:B/trigger
 	[ -z $(/root/utils/factory list | grep bootup) ] || /root/utils/factory set bootup > /dev/null 2>&1
 	/root/utils/factory save > /dev/null 2>&1
 }
