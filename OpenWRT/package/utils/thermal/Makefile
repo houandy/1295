@@ -11,7 +11,7 @@ PKG_NAME:=thermal
 PKG_RELEASE:=2
 
 PKG_BUILD_DIR := $(BUILD_DIR)/$(PKG_NAME)
-PKG_BUILD_DEPENDS := libpthread
+PKG_BUILD_DEPENDS := 
 
 include $(INCLUDE_DIR)/package.mk
 

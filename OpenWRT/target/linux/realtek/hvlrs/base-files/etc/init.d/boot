@@ -53,6 +53,6 @@ boot() {
 	# temporary hack until configd exists
 	/sbin/reload_config
 
-	/root/utils/factory set bootup
-	/root/utils/factory save
+	[ -z $(/root/utils/factory list | grep bootup) ] || /root/utils/factory set bootup > /dev/null 2>&1
+	/root/utils/factory save > /dev/null 2>&1
 }
