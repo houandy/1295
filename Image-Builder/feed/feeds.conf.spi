@@ -39,7 +39,7 @@ burn_factory=y
 kerneldtb_file=normal.dtb
 kerneldtb_zone=$((57344))
 kerneldtb_1stfw_addr=$(($storage_start_addr))
-start_addr_2ndfw=$((0x719000))
+start_addr_2ndfw=$((0x6b9000))
 kerneldtb_2ndfw_addr=$((start_addr_2ndfw))
 burn_kerneldtb=y
 
@@ -75,6 +75,40 @@ burn_kernel=y
 #bootlogo
 bootlogo_file=bootfile.image
 bootlogo_zone=$((0x43000))
-bootlogo_1stfw_addr=$((kernel_2ndfw_addr+kernel_zone))
 bootlogo_2ndfw_addr=$((kernel_2ndfw_addr+kernel_zone))
+bootlogo_1stfw_addr=$((bootlogo_2ndfw_addr+bootlogo_zone))
 burn_bootlogo=n
+
+
+secureboot_addr=$((bootlogo_1stfw_addr+bootlogo_zone))
+secureboot_zone=$((0x10000))
+encrykey_addr=$((secureboot_addr+secureboot_zone))
+encrykey_zone=$((0x10000))
+hashdata_addr=$((encrykey_addr+encrykey_zone))
+hashdata_zone=$((0x80000))
+free_addr=$((hashdata_addr+hashdata_zone))
+free_zone=$((0x278000))
+ait_addr=$((free_addr+free_zone))
+ait_zone=$((0x20000))
+end_addr=$((ait_addr+ait_zone))
+
+#echo "storage_start_addr=$(printf "%x\n" $storage_start_addr)"
+#echo "kerneldtb_1stfw_addr=$(printf "%x\n" ${kerneldtb_1stfw_addr})"
+#echo "rescuedtb_1stfw_addr=$(printf "%x\n" $rescuedtb_1stfw_addr)"
+#echo "rescuefs_1stfw_addr=$(printf "%x\n" $rescuefs_1stfw_addr)"
+#echo "bluecore_1stfw_addr=$(printf "%x\n" $bluecore_1stfw_addr)"
+#echo "kernel_1stfw_addr=$(printf "%x\n" $kernel_1stfw_addr)"
+#kerneldtb_2ndfw_addr=$((kernel_1stfw_addr+kernel_zone))
+#echo "kerneldtb_2ndfw_addr =$(printf "%x\n" ${kerneldtb_2ndfw_addr})"
+#echo "rescuedtb_2ndfw_addr=$(printf "%x\n" $rescuedtb_2ndfw_addr)"
+#echo "rescuefs_2ndfw_addr=$(printf "%x\n" $rescuefs_2ndfw_addr)"
+#echo "bluecore_2ndfw_addr=$(printf "%x\n" $bluecore_2ndfw_addr)"
+#echo "kernel_2ndfw_addr=$(printf "%x\n" $kernel_2ndfw_addr)"
+#echo "bootlogo_2ndfw_addr=$(printf "%x\n" $bootlogo_2ndfw_addr)"
+#echo "bootlogo_1stfw_addr=$(printf "%x\n" $bootlogo_1stfw_addr)"
+#echo "secureboot_addr=$(printf "%x\n" $secureboot_addr)"
+#echo "encrykey_addr=$(printf "%x\n" $encrykey_addr)"
+#echo "hashdata_addr=$(printf "%x\n" $hashdata_addr)"
+#echo "free_addr=$(printf "%x\n" $free_addr)"
+#echo "ait_addr=$(printf "%x\n" $ait_addr)"
+#echo "end_addr=$(printf "%x\n" $end_addr)"
