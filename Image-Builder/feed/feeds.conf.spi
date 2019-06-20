@@ -33,7 +33,7 @@ swap_part_size_MB=700
 burn_bootpart=n
 
 #Factory file
-burn_factory=y
+burn_factory=n
 
 #Device Tree
 kerneldtb_file=normal.dtb
