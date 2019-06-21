@@ -6,7 +6,7 @@ config interface loopback
 	option ipaddr	127.0.0.1
 	option netmask	255.0.0.0
 
-config interface 'wan'
+config interface 'lan'
         option ifname 'eth0'
         option proto 'static'
 #       option hostname 'OpenWRT-Kylin'
