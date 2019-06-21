@@ -2,7 +2,7 @@ diff --git a/common/main.c b/common/main.c
 index d4261f4..fe27ca6
 --- a/common/main.c
 +++ b/common/main.c
-@@ -336,10 +336,23 @@ start = get_timer(0);
+@@ -336,10 +336,25 @@ start = get_timer(0);
  #ifdef CONFIG_INSTALL_GPIO_NUM
  		if(!getGPIO(CONFIG_INSTALL_GPIO_NUM)){
  			printf("\nPress Install Button\n");
@@ -23,6 +23,8 @@ index d4261f4..fe27ca6
 +		run_command("mw 0x98007310 0x08001400", 0);
 +		run_command("mw 0x98007314 0x00000000", 0);
 +		run_command("mw 0x98007104 0x10000002", 0);
++		setenv("bootup", " ");
++		saveenv();
 +	}
  #endif
  
