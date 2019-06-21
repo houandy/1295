@@ -9,13 +9,8 @@ project=$2
 now="$(date '+%Y%m%d')"
 binfilefolder="DVRBOOT_OUT/${target}"
 releaseimagefolder="/var/www/html/release/image/${project}"
-[ -z $3 ] && release=0 || release=$3
-[ ${release} = "release" ] && {
-  [ -z $4 ] || {
-    VERSION_NUMBER=$4
-    release=1
-  }
-}
+[ -z $3 ] && VERSION_NUMBER="0.0.0" || VERSION_NUMBER=$3
+[ -z $4 ] && release=0 || release=1
 
 for patchfile in $(ls patches/${project}/*.patch)
 do
@@ -150,11 +145,12 @@ if [ $target = RTD129x_spi ]; then
 	make mrproper; make rtd1295_spi_16MB_defconfig
 	for hwsetting in $BUILD_HWSETTING_LIST
 	do
-		make Board_HWSETTING=$hwsetting CONFIG_CHIP_TYPE=0001
+		make Board_HWSETTING=$hwsetting CONFIG_CHIP_TYPE=0001 UBOOTVERSION=${VERSION_NUMBER}_${now}
 		cp ./examples/flash_writer/image/hw_setting/$hwsetting.bin ./DVRBOOT_OUT/$target/hw_setting/A01-$hwsetting.bin
 		cp ./examples/flash_writer/dvrboot.exe.bin ./DVRBOOT_OUT/$target/A01-$hwsetting-nas-RTD1295_spi.bin
-    DEST_FILE="${binfilefolder}/A01-${hwsetting}-nas-RTD1295_spi.bin"
-    DEST_HWSETTING_FILE="${binfilefolder}/hw_setting/A01-${hwsetting}.bin"
+		cp ./DVRBOOT_OUT/$target/A01-$hwsetting-nas-RTD1295_spi.bin ./DVRBOOT_OUT/$target/Uboot-${project}.bin
+		DEST_FILE="${binfilefolder}/Uboot-${project}.bin"
+		DEST_HWSETTING_FILE="${binfilefolder}/hw_setting/A01-${hwsetting}.bin"
 	done
 	
 #	BUILD_HWSETTING_LIST=RTD1296_hwsetting_BOOT_4DDR4_4Gb_s1866
@@ -186,7 +182,6 @@ if [ $release == 1 ]; then
 		[ -d ${releaseimagefolder}/uboot-${project}-${VERSION_NUMBER}-${now}/ ] || mkdir -p ${releaseimagefolder}/uboot-${project}-${VERSION_NUMBER}-${now}
 		[ -d ${releaseimagefolder}/uboot-${project}-${VERSION_NUMBER}-${now}/ ] && {
 			[ -f ${DEST_FILE} ] && cp ${DEST_FILE} ${releaseimagefolder}/uboot-${project}-${VERSION_NUMBER}-${now}/
-			[ -f ${DEST_FILE} ] && cp ${DEST_FILE} ${releaseimagefolder}/uboot-${project}-${VERSION_NUMBER}-${now}/Uboot-${project}.bin
 			[ -f ${DEST_HWSETTING_FILE} ] && cp ${DEST_HWSETTING_FILE} ${releaseimagefolder}/uboot-${project}-${VERSION_NUMBER}-${now}/Uboot-${project}-hwsetting.bin
 		}
 fi

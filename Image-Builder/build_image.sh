@@ -110,7 +110,8 @@ function build_config_txt() {
 	workspace=$1/$project
 	output=$workspace/config.txt
 	
-	echo -e "#VERSION $version\n" > $output
+	echo -e "#TOTALVERSION $totalversion\n" > $output
+	echo -e "#VERSION $version\n" >> $output
 	echo "debug_level=$debug_level" >> $output
 	if [ $storage = spi ]; then
 		echo "use_spi=y" >> $output

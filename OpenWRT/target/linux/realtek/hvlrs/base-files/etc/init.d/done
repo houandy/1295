@@ -1,0 +1,29 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2006 OpenWrt.org
+
+START=95
+boot() {
+	mount_root done
+	rm -f /sysupgrade.tgz
+
+	# process user commands
+	[ -f /etc/rc.local ] && {
+		sh /etc/rc.local
+	}
+
+	# set leds to normal state
+	. /etc/diag.sh
+	set_state done
+
+	#enable WOL
+	echo 1 > /proc/net/eth0/r8169/wol_enable
+	echo lan > /sys/kernel/suspend/wakeup
+
+	#update version
+	[ -z "$(/root/utils/factory list | grep upgradeimage)" ] || {
+		/root/utils/factory set fwversion $(cat /etc/SOC_FW_version) > /dev/null 2>&1
+		/root/utils/factory set $(cat /etc/modelname)version $(cat /etc/PKG_FW_version) > /dev/null 2>&1
+		/root/utils/factory set upgradeimage > /dev/null 2>&1
+		/root/utils/factory save > /dev/null 2>&1
+	}
+}

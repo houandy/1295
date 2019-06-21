@@ -1,6 +1,7 @@
 
-version=1.0.0
-project=nas
+totalversion=%C
+version=%V
+project=%P
 
 #FAIL_LEVEL  0x01
 #INFO_LEVEL  0x02

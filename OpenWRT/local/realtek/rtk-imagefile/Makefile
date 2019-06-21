@@ -24,6 +24,7 @@ IMG_OMV_DIR:=$(IMG_DST_DIR)/components/packages/omv
 IMG_EXTRA_DIRS:= data cache
 
 include $(INCLUDE_DIR)/package.mk
+include $(INCLUDE_DIR)/version.mk
 
 define Package/rtk-imagefile
   TITLE:=Image file creator for Realtek platform
@@ -54,6 +55,7 @@ endef
 #endif
 
 define Build/Compile
+	$(VERSION_SED_SCRIPT) $(IMG_DST_DIR)/feed/feeds.conf*
 endef
 
 define Package/rtk-imagefile/install
