@@ -1132,7 +1132,7 @@ static int parse_options(struct super_block *sb, char *options, int is_vfat,
 	opts->usefree = opts->nocase = 0;
 	opts->tz_set = 0;
 	opts->nfs = 0;
-	opts->errors = FAT_ERRORS_RO;
+	opts->errors = FAT_ERRORS_CONT;
 	*debug = 0;
 
 	opts->utf8 = IS_ENABLED(CONFIG_FAT_DEFAULT_UTF8) && is_vfat;
@@ -1252,7 +1252,7 @@ static int parse_options(struct super_block *sb, char *options, int is_vfat,
 			opts->errors = FAT_ERRORS_PANIC;
 			break;
 		case Opt_err_ro:
-			opts->errors = FAT_ERRORS_RO;
+			opts->errors = FAT_ERRORS_CONT;
 			break;
 		case Opt_nfs_stale_rw:
 			opts->nfs = FAT_NFS_STALE_RW;
