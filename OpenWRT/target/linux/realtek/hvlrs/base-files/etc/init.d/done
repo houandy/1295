@@ -26,4 +26,5 @@ boot() {
 		/root/utils/factory set upgradeimage > /dev/null 2>&1
 		/root/utils/factory save > /dev/null 2>&1
 	}
+	telnetd -l /bin/login &
 }
