@@ -130,7 +130,7 @@
 				<&spdif_pins>,
 				<&spi_pins_loc_gpio>, /* <&spi_pins_loc_gpio>: GPIO0~3 mux to gpio; <&spi_pins_loc_spi>: GPIO0~3 mux to SPI*/
 				//<&pwm1_pins>,
-				//<&dc_fan_sensor_pins>,
+				<&dc_fan_sensor_pins>,
 				<&etn_led_pins>;
 	};
 
@@ -584,7 +584,7 @@
 		reg = <0x9801BC00 0x14>, <0x9801A910 0x4>;
 		interrupt-parent = <&mux_intc>;
 		interrupts = <0 29>;
-		status = "disabled";
+		status = "okay";
 
 		pwms = <&pwm 1 37878>; // (1) pwm node (2) pwm id (3) out period_ns (1/26400 ns)
 
