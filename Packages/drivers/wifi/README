@@ -1,0 +1,19 @@
+Realtek wlan driver for Linux
+
+1. User Guide for Driver compilation and installation
+-Please refer to ./document/Quick_Start_Guide_for_Driver_Compilation_and_Installation.pdf
+-The source code of driver place in ./src/rtl8822ce/driver
+
+2. User Guide for Station mode
+-Please refer to ./document/Quick_Start_Guide_for_Station_Mode.pdf
+-The source code of wpa_supplicant in ./utility/wpa_supplicant_hostapd
+-The source code of wireless tools in ./utility/wireless_tools
+
+2. User Guide for wpa_supplicant compilation and wpa_cli commands
+-Please refer to ./document/wpa_cli_with_wpa_supplicant.pdf
+-The source code of wpa_supplicant in ./utility/wpa_supplicant_hostapd
+
+4. User Guide for Soft-AP mode
+-Please refer to document/Quick_Start_Guide_for_SoftAP.pdf
+-The source code of hostapd in ./utility/wpa_supplicant_hostapd
+

@@ -15,12 +15,15 @@ ifeq ($(CONFIG_RTK_BOARD_CHIP_CODENAME),"rtd16xx")
     FS_LIB:=lke_$(PKG_VERSION)_b4
   else
     PKG_VERSION:=9.6.4
-	FS_LIB:=lke_$(PKG_VERSION)_b14
+    FS_LIB:=lke_$(PKG_VERSION)_b14
   endif
 else ifeq ($(CONFIG_RTK_BOARD_CHIP_CODENAME),"rtd12xx")
   ifeq ($(KERNEL_PATCHVER), 4.4.18)
     PKG_VERSION:=9.4.4
-	FS_LIB:=lke_$(PKG_VERSION)_b4
+    FS_LIB:=lke_$(PKG_VERSION)_b4
+  else
+    PKG_VERSION:=9.5.1
+    FS_LIB:=lke_$(PKG_VERSION)_b7
   endif
 endif
 UTIL_VER:=$(FS_LIB)_utilites

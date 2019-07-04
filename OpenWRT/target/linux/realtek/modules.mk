@@ -323,7 +323,7 @@ define KernelPackage/openmax
 	CONFIG_CMA_SIZE_SEL_MAX=n \
 	CONFIG_CMA_ALIGNMENT=4 \
 	CONFIG_ADF=n \
-
+	CONFIG_SND_REALTEK=y
   DEPENDS:=
   FILES:=
 endef
@@ -341,6 +341,8 @@ define KernelPackage/rtk-video
   TITLE:=rtk-video kernel options
   KCONFIG:= \
         CONFIG_MEDIA_SUPPORT=y \
+		CONFIG_CEC=y \
+		CONFIG_RTK_CEC=y \
         CONFIG_RTK_HDMITX=y \
         CONFIG_RTK_HDCP_1x=y \
         CONFIG_RTK_HDMIRX=n \
