@@ -3,8 +3,8 @@
 . /lib/functions.sh
 
 case "$ACTION" in
-pressed)
-	if [ "$SEEN" -lt 1 ]
+released)
+	if [ "$SEEN" -le 1 ]
 	then
 		echo "REBOOT" > /dev/console
 		sync

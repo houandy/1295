@@ -216,12 +216,12 @@
 		poll-interval = <20>;
 		power {
 			label = "power";
-			gpios = <&rtk_iso_gpio 34 0 0>;
+			gpios = <&rtk_iso_gpio 34 0 1>;
 			linux,code = <0x164>;
 		};
 		reset {
 			label = "reset";
-			gpios = <&rtk_misc_gpio 60 0 0>;
+			gpios = <&rtk_misc_gpio 60 0 1>;
 			linux,code = <0x198>;
 		};
 	};

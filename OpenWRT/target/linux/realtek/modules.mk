@@ -341,8 +341,6 @@ define KernelPackage/rtk-video
   TITLE:=rtk-video kernel options
   KCONFIG:= \
         CONFIG_MEDIA_SUPPORT=y \
-		CONFIG_CEC=y \
-		CONFIG_RTK_CEC=y \
         CONFIG_RTK_HDMITX=y \
         CONFIG_RTK_HDCP_1x=y \
         CONFIG_RTK_HDMIRX=n \
