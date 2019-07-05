@@ -131,6 +131,7 @@
 				<&spi_pins_loc_gpio>, /* <&spi_pins_loc_gpio>: GPIO0~3 mux to gpio; <&spi_pins_loc_spi>: GPIO0~3 mux to SPI*/
 				//<&dc_fan_sensor_pins>,
 				//<&etn_led_pins>,
+				<&pwm0_1_pins>,
 				<&pwm2_1_pins>,
 				<&pwm3_1_pins>;
 		status = "okay";
@@ -610,9 +611,9 @@
 		#pwm-cells = <2>;
 		reg = <0x980070D0 0xC>;
 		status = "okay";
-		pwm_idx = <2 3> ;
+		pwm_idx = <0 2 3> ;
 		pwm_0 {
-			enable = <0>;
+			enable = <1>;
 			clkout_div = <0xff>; //default OCD: from 0x0 to 0xff
 			clksrc_div = <0x1>;  //default OSD: from 0x0 to 0xf
 			duty_rate = <50>;  //default duty_rate 0 ~ 100

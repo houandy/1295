@@ -759,7 +759,7 @@ void (*rtk_do_poweroff)(void);
 static void rtk_poweroff(void)
 {
     printk(KERN_INFO "[RTD129x_PM] Power off\n");
-
+    rtk_suspend_gpip_output_change_suspend();
     if (rtk_do_poweroff) {
         rtk_do_poweroff();
     }
