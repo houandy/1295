@@ -274,17 +274,17 @@
 		};
 		BTN_0 {
 			label = "USB2.0_BC1.2_PWR";
-			gpios = <&rtk_iso_gpio 19 1 1>;
+			gpios = <&rtk_misc_gpio 19 1 1>;
 			default-state = "on";
 		};
 		/*BTN_1 {
 			label = "USB2B_PWR";
-			gpios = <&rtk_iso_gpio 17 1 0>;
+			gpios = <&rtk_misc_gpio 17 1 0>;
 			default-state = "off";
 		};
 		BTN_2 {
 			label = "USB3_PWR";
-			gpios = <&rtk_iso_gpio 11 1 0>;
+			gpios = <&rtk_misc_gpio 11 1 0>;
 			default-state = "off";
 		};*/
 	};
