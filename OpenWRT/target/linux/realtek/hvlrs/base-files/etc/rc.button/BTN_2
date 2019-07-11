@@ -1,0 +1,17 @@
+#!/bin/sh
+
+. /lib/functions.sh
+
+case "$ACTION" in
+pressed)
+		echo "disable usb port" > /dev/console
+		echo default-on > /sys/devices/platform/gpio-leds/leds/USB3_PWR/trigger
+;;
+
+released)
+		echo "enable usb port" > /dev/console
+		echo none > /sys/devices/platform/gpio-leds/leds/USB3_PWR/trigger
+;;
+esac
+
+return 0

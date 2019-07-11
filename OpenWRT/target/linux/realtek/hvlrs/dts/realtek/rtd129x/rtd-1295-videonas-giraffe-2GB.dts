@@ -230,6 +230,21 @@
 			gpios = <&rtk_misc_gpio 60 0 1>;
 			linux,code = <0x198>;
 		};
+		BTN_0 {
+			label = "BTN_0";
+			gpios = <&rtk_misc_gpio 54 0 1>;//U2_FAULTn
+			linux,code = <0x100>;
+		};
+		/*BTN_1 {
+			label = "BTN_1";
+			gpios = <&rtk_misc_gpio 20 0 1>;//U2B_FAULTn
+			linux,code = <0x101>;
+		};
+		BTN_2 {
+			label = "BTN_2";
+			gpios = <&rtk_misc_gpio 12 0 1>;//U3_FAULTn
+			linux,code = <0x102>;
+		};*/
 	};
 	gpio-leds {
 		compatible = "gpio-leds";
@@ -257,5 +272,20 @@
 			linux,default-delay_on = "200";
 			linux,default-delay_off = "200";
 		};
+		BTN_0 {
+			label = "USB2.0_BC1.2_PWR";
+			gpios = <&rtk_iso_gpio 19 1 1>;
+			default-state = "on";
+		};
+		/*BTN_1 {
+			label = "USB2B_PWR";
+			gpios = <&rtk_iso_gpio 17 1 0>;
+			default-state = "off";
+		};
+		BTN_2 {
+			label = "USB3_PWR";
+			gpios = <&rtk_iso_gpio 11 1 0>;
+			default-state = "off";
+		};*/
 	};
 };
