@@ -588,7 +588,7 @@
 
 		pwms = <&pwm 0 37878>; // (1) pwm node (2) pwm id (3) out period_ns (1/26400 ns)
 
-		timer_target = <0x100000>;
+		timer_target = <0x8000>;
 		fan_debounce = <0x0>;// 0x0~0x7
 	};
 
