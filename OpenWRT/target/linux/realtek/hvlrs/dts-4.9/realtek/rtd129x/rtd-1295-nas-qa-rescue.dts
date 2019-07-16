@@ -17,7 +17,7 @@
 /memreserve/ 0x12000000 0x0D500000;
 
 
-#include "rtd-1295.dtsi"
+#include "rtd-1295-rescue.dtsi"
 
 / {
 	model= "Realtek_RTD1295";

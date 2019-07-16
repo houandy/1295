@@ -138,6 +138,12 @@
 			<0>, /* BT : low activity */
 			<0>, /* Wifi : low activity */
 			<0>; /* Button : low activity */
+		gpio-output-change-enable = <1>,<1>,<1>; /* (0) disable (1) enable */
+		gpio-output-change-list =
+					<&rtk_iso_gpio 28 1 0>, /* <&rtk_iso_gpio {num} 1 {low/high}> */
+					<&rtk_iso_gpio 29 1 0>, /* <&rtk_iso_gpio {num} 1 {low/high}> */
+					<&rtk_iso_gpio 30 1 0>; /* <&rtk_iso_gpio {num} 1 {low/high}> */
+		gpio-output-change-activity = <1>,<1>,<1>; /* (0) output low at suspend (1) output high at suspend */
 	};
 };
 

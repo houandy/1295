@@ -832,36 +832,34 @@
 		reg = <0x980070D0 0xC>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&pwm0_0_pins>,
-		<&pwm0_1_pins>,
-		<&pwm1_0_pins>,
-		<&pwm1_1_pins>,
-		<&pwm2_1_pins>,
-		<&pwm3_1_pins>;
+                <&pwm0_1_pins>,
+				        <&pwm2_1_pins>,
+				        <&pwm3_1_pins>;
 		status = "okay";
 		pwm_idx = <0 1 2 3> ;
 		pwm_0 {
 			enable = <1>;
 			clkout_div = <0xff>; //default OCD: from 0x0 to 0xff
-			clksrc_div = <0x1>; //default OSD: from 0x0 to 0xf
-			duty_rate = <50>; //default duty_rate 0 ~ 100
+			clksrc_div = <0x1>;  //default OSD: from 0x0 to 0xf
+			duty_rate = <50>;  //default duty_rate 0 ~ 100
 		};
 		pwm_1 {
-			enable = <1>;
-			clkout_div = <0xbb>; //default OCD: from 0x0 to 0xff
-			clksrc_div = <0xf>; //default OSD: from 0x0 to 0xf
-			duty_rate = <50>; //default duty_rate 0 ~ 100
+			enable = <0>;
+			clkout_div = <0xff>; //default OCD: from 0x0 to 0xff
+			clksrc_div = <0x1>;  //default OSD: from 0x0 to 0xf
+			duty_rate = <50>;  //default duty_rate 0 ~ 100
 		};
 		pwm_2 {
 			enable = <1>;
 			clkout_div = <0xbb>; //default OCD: from 0x0 to 0xff
-			clksrc_div = <0xf>; //default OSD: from 0x0 to 0xf
-			duty_rate = <50>; //default duty_rate 0 ~ 100
+			clksrc_div = <0xf>;  //default OSD: from 0x0 to 0xf
+			duty_rate = <50>;  //default duty_rate 0 ~ 100
 		};
 		pwm_3 {
 			enable = <1>;
 			clkout_div = <0xbb>; //default OCD: from 0x0 to 0xff
-			clksrc_div = <0xf>; //default OSD: from 0x0 to 0xf
-			duty_rate = <50>; //default duty_rate 0 ~ 100
+			clksrc_div = <0xf>;  //default OSD: from 0x0 to 0xf
+			duty_rate = <50>;  //default duty_rate 0 ~ 100
 		};
 	};
 
