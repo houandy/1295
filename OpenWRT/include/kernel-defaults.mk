@@ -137,7 +137,7 @@ define Kernel/SetNoInitramfs
 	echo '# CONFIG_INITRAMFS_FORCE is not set' >> $(LINUX_DIR)/.config.set
 endef
 
-dts_files=$(foreach fdir,$(TOPDIR)/target/linux/$(BOARD)/$(SUBTARGET)/dts,$(fdir)/.)
+dts_files=$(foreach fdir,$(TOPDIR)/target/linux/$(BOARD)/$(SUBTARGET)/dts-$(KERNEL_PATCHVER),$(fdir)/.)
 define Kernel/Configure/Default
 	rm -f $(LINUX_DIR)/localversion
 	-$(if $(dts_files),$(CP) -rf $(dts_files) $(LINUX_DIR)/arch/$(LINUX_KARCH)/boot/dts/)

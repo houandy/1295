@@ -5,7 +5,12 @@ CPU_TYPE:=cortex-a53
 CHIP:= rtd129x
 KERNELNAME:=Image dtbs
 
+
+ifeq ("$(CONFIG_RTK_KERNEL_4_9)","y")
+KERNEL_PATCHVER:=4.9
+else
 KERNEL_PATCHVER:=4.4.18
+endif
 
 define Target/Description
 	Build NAS firmware image for Realtek RTD129x SoC boards.
