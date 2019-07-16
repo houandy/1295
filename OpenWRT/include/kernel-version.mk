@@ -11,7 +11,7 @@ LINUX_KERNEL_HASH-4.14.74 = 70e69189fd7b2f96fa33833735c7bcf3281dc0172c3734e2c581
 remove_uri_prefix=$(subst git://,,$(subst http://,,$(subst https://,,$(1))))
 sanitize_uri=$(call qstrip,$(subst @,_,$(subst :,_,$(subst .,_,$(subst -,_,$(subst /,_,$(1)))))))
 ifneq (,$(CONFIG_TARGET_realtek))
-LINUX_VERSION-4.9 = .119
+LINUX_VERSION-4.9 = 
 endif
 
 ifneq ($(call qstrip,$(CONFIG_KERNEL_GIT_CLONE_URI)),)
@@ -26,9 +26,9 @@ ifdef KERNEL_PATCHVER
 endif
 endif
 
-ifneq (,$(CONFIG_TARGET_realtek))
-  LINUX_VERSION=external
-endif
+#ifneq (,$(CONFIG_TARGET_realtek))
+#  LINUX_VERSION=external
+#endif
 split_version=$(subst ., ,$(1))
 merge_version=$(subst $(space),.,$(1))
 KERNEL_BASE=$(firstword $(subst -, ,$(LINUX_VERSION)))

@@ -3081,9 +3081,9 @@ static int sd_probe(struct device *dev)
     index=0;
   } else {
     if(index==0)
-      index=1;  
+      index=1;
   }
-  
+
 	error = sd_format_disk_name("sd", index, gd->disk_name, DISK_NAME_LEN);
 	if (error) {
 		sdev_printk(KERN_WARNING, sdp, "SCSI disk (sd) name length exceeded.\n");

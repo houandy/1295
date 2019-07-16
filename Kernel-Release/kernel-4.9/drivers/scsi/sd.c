@@ -3108,6 +3108,13 @@ static int sd_probe(struct device *dev)
 		goto out_put;
 	}
 
+  if (strncmp(sdp->vendor, "ATA     ", 8) == 0) {
+    index=0;
+  } else {
+    if(index==0)
+      index=1;
+  }
+
 #if 0//#ifdef CONFIG_AHCI_RTK
 	if( sdp->host && sdp->host->hostt ) {
 		if( strncmp(sdp->host->hostt->name, "ahci", 4 ) == 0 ) {

@@ -1,0 +1,154 @@
+From bc01b0e2e23efa4413ce8fa43bc887a291e2a9ae Mon Sep 17 00:00:00 2001
+From: Jacky Ho <jacky.ho@realtek.com>
+Date: Fri, 12 Jul 2019 19:07:51 +0800
+Subject: [PATCH] Fixed_invalid_SB2_message_when_used_rescue_from_USB
+
+---
+ .../rtd129x/rtd-1295-nas-qa-rescue.dts        | 82 ++++++++++++++++---
+ .../dts/realtek/rtd129x/rtd-1295-sata.dtsi    |  5 +-
+ 2 files changed, 72 insertions(+), 15 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/realtek/rtd129x/rtd-1295-nas-qa-rescue.dts b/arch/arm64/boot/dts/realtek/rtd129x/rtd-1295-nas-qa-rescue.dts
+index 514a4865..da78bfca 100644
+--- a/arch/arm64/boot/dts/realtek/rtd129x/rtd-1295-nas-qa-rescue.dts
++++ b/arch/arm64/boot/dts/realtek/rtd129x/rtd-1295-nas-qa-rescue.dts
+@@ -38,6 +38,13 @@
+ 		reg = <0 0x40000000>; /* 1024 MB */
+ 	};
+ 
++	firmware {
++		optee {
++			compatible = "linaro,optee-tz";
++			method = "smc";
++		};
++	};
++
+ 	reserved-memory {
+ 		#address-cells = <1>;
+ 		#size-cells = <1>;
+@@ -75,7 +82,7 @@
+ 		clock-frequency = <27000000>;
+ 	};
+ 
+-	serial0 {
++	serial0@98007800 {
+ 		clock-frequency = <27000000>;
+ 	};
+ 
+@@ -83,6 +90,7 @@
+ 		compatible = "Realtek,rtk-ion";
+ 		#address-cells = <1>;
+ 		#size-cells = <0>;
++
+ 		rtk,ion-heap@0 { /* SYSTEM_HEAP */
+ 			compatible = "Realtek,rtk-ion-reserve";
+ 			reg = <0>;
+@@ -123,23 +131,72 @@
+ 		};
+ 	};
+ 
++	fb@0 {
++		status = "disabled";
++	};
++
++	test_vo@98005000 {
++		compatible = "Realtek,rtk1295-test_vo";
++		reg = <0x98005000 0x1000>,
++			<0x9800D000 0x1000>,
++			<0x98000000 0x1000>;
++		//interrupts = <0 31 4>;
++		interrupts = <0 34 4>;
++	};
++
+ 	rtk_misc_gpio: rtk_misc_gpio@9801b100 {
+-		gpios = <&rtk_misc_gpio 8 0 0>, /* install button */
+-			<&rtk_misc_gpio 100 1 1>; /* audio dac unmute */
++		gpios = <&rtk_misc_gpio 8 0 0>, /* install button, input, default N/A */
++			<&rtk_misc_gpio 100 1 1>; /* audio dac unmute , output, default high */
+ 	};
+ 
+ 	rtk_iso_gpio: rtk_iso_gpio@98007100 {
+-		gpios =<&rtk_iso_gpio 21 1 0>;  /* igpio21, output, default low */
++		gpios = <&rtk_iso_gpio 21 1 0>; /* igpio21, output, default low */
+ 	};
+ 
+-	/* 
+-	 * pddrive_nf0, pddrive_nf1, pddrive_nf2, pddrive_nf3, pddrive_nf4 ; for sdr50
+-	 * pddrive_nf0, pddrive_nf1, pddrive_nf2, pddrive_nf3, pddrive_nf4 ; for hs200
+-	 */
+-	 emmc@98012000 {
+-		compatible = "Realtek,rtk1295-emmc";
+-		pddrive_nf_s0 = <0x77 0x77 0x77 0x77 0x77>;
+-		pddrive_nf_s2 = <0xbb 0xbb 0xbb 0xbb 0xbb>;
++	serial1@9801B200 {
++		status = "disabled";
++	};
++
++	hdmirx@98034000 {
++		status = "disabled";
++	};
++
++	sdmmc@98010400 {
++		status = "disabled";
++	};
++
++	md@9800b000 {
++		status = "disabled";
++	};
++
++	se@9800c000 {
++		status = "disabled";
++	};
++
++	rtc@9801B600 {
++		status = "disabled";
++	};
++
++	jpeg@9803e000 {
++		status = "disabled";
++	};
++
++	ve1@98040000 {
++		status = "disabled";
++	};
++
++	ve3@98048000 {
++		status = "disabled";
++	};
++
++	gpu@98050000 {
++		status = "disabled";
++	};
++
++	power_control {
++		dc1_pll {
++			status = "disabled";
++		} ;
+ 	};
+ 
+ 	rtk_avcpu {
+@@ -157,3 +214,4 @@
+ 		};
+ 	};
+ };
++
+diff --git a/arch/arm64/boot/dts/realtek/rtd129x/rtd-1295-sata.dtsi b/arch/arm64/boot/dts/realtek/rtd129x/rtd-1295-sata.dtsi
+index 1c40c119..60109ea5 100644
+--- a/arch/arm64/boot/dts/realtek/rtd129x/rtd-1295-sata.dtsi
++++ b/arch/arm64/boot/dts/realtek/rtd129x/rtd-1295-sata.dtsi
+@@ -39,10 +39,9 @@
+ 		sata-port@0 {
+ 			reg = <0>;
+ 			phys = <&sata_phy 0>;
+-			resets = <&rst1 5>, <&rst1 7>, <&rst1 10>;
++			resets = <&rst1 5>, <&rst1 7>;
+ 			reset-names = "rstn_sata_0",
+-					"rstn_sata_phy_0",
+-					"rstn_sata_phy_pow_0";
++					"rstn_sata_phy_0";
+ 			gpios = <&rtk_misc_gpio 16 1 1>;
+ 		};
+ 	};
+-- 
+2.21.0
+

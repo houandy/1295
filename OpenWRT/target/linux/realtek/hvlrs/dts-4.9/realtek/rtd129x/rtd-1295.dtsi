@@ -870,7 +870,7 @@
 		reg = <0x9801BC00 0x14>, <0x9801A910 0x4>;
 		interrupt-parent = <&mux_intc>;
 		interrupts = <0 29>;
-		status = "okay";
+		status = "disabled";
 
 		pwms = <&pwm 1 37878>; // (1) pwm node (2) pwm id (3) out period_ns (1/26400 ns)
 
