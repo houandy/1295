@@ -108,7 +108,7 @@ menuconfig RTK_NAS_PACKAGES
 
 	config RTK_BLUECORE
 		bool
-		default n	
+		default y
 
 config RTK_NAS_SMB
 	bool
