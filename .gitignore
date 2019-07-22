@@ -13,6 +13,7 @@
 /OpenWRT/feeds.conf
 /OpenWRT/package/.feeds*
 /OpenWRT/local/luci/modules/luci-base/src/
+/OpenWRT/local/packages/multimedia/ffmpeg/patches/
 /OpenWRT/logs/
 /Toolchain/Toolchain
 /Bootcode/U-Boot64*/u-boot*
