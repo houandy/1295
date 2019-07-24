@@ -249,6 +249,7 @@ FFMPEG_RTK_HW_VIDEO_DECODERS:= \
 	mjpeg_rma \
 	h263_rma \
 	avs_rma \
+	flv_rma \
 
 FFMPEG_RTK_HW_VIDEO_ENCODERS:= \
 	h264_omx
@@ -334,7 +335,7 @@ $(call Package/ffmpeg/Default)
  SECTION:=multimedia
  CATEGORY:=Multimedia
  TITLE+= media player
- DEPENDS+= +libffmpeg-full
+ DEPENDS+= +libffmpeg-full +tinycompress
  VARIANT:=full
 endef
 

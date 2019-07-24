@@ -34,6 +34,7 @@ endif
 INCLUDES:= -I./include -I./ -I./utils
 DEFINES:= -DNAS_ENABLE -DSYNO -D$(STORAGE_TYPE) -D$(CHIP_TYPE_NAME)
 ADD_CFLAGS:= -march=armv8-a -Wall
+LIBS:= libfactory.a
 
 include $(INCLUDE_DIR)/package.mk
 
@@ -51,10 +52,11 @@ endef
 define Build/Compile
 	$(MAKE) -C "$(PKG_BUILD_DIR)" \
 		CC="$(TARGET_CROSS)gcc" \
-		AR="$(TARGET_AR)" \
+		AR="$(TARGET_AR) cr" \
 		RANLIB="$(TARGET_RANLIB)" \
 		CFLAGS="$(TARGET_CFLAGS) $(INCLUDES) $(DEFINES) $(ADD_CFLAGS)" \
-		LDFLAGS="$(TARGET_LDFLAGS)"
+		LDFLAGS="$(TARGET_LDFLAGS)" \
+		LIBS="$(LIBS)"
 endef
 
 define Build/Prepare

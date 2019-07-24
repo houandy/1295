@@ -25,7 +25,12 @@ validate_section_hciattach() {
 enable_uart_bt() {
 	local tty speed
 
-	[ "`cat $RFKILL_PATH/type`" = "bluetooth" ] || return 1
+	if [ "`cat $RFKILL_PATH/type`" = "bluetooth" ]; then
+		echo 1 > $RFKILL_PATH/state
+		sleep 1
+	else
+		return 1
+	fi
 
 	[ -n "`hciconfig hci0 | grep USB`" ] && return 1
 

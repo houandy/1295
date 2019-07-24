@@ -44,7 +44,8 @@ define Build/Compile
 endef
 
 define Build/InstallDev
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/$(CONFIGURE_PATH)/libzen-config $(STAGING_DIR)/host/bin/
+	$(INSTALL_DIR) $(2)/bin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/$(CONFIGURE_PATH)/libzen-config $(2)/bin/
 	$(INSTALL_DIR) $(1)/usr/include/ZenLib
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/Source/ZenLib/*.h $(1)/usr/include/ZenLib
 	$(INSTALL_DIR) $(1)/usr/include/ZenLib/Format/Http

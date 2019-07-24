@@ -44,7 +44,8 @@ define Build/Compile
 endef
 
 define Build/InstallDev
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/$(CONFIGURE_PATH)/libmediainfo-config $(STAGING_DIR)/host/bin/
+	$(INSTALL_DIR) $(2)/bin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/$(CONFIGURE_PATH)/libmediainfo-config $(2)/bin/
 	$(INSTALL_DIR) $(1)/usr/include/MediaInfo
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/Source/MediaInfo/MediaInfo*.h $(1)/usr/include/MediaInfo
 endef
