@@ -1,0 +1,99 @@
+From b71e8e63e15568f050307a09313993d4d979f3a1 Mon Sep 17 00:00:00 2001
+From: "william.lee" <william.lee@realtek.com>
+Date: Tue, 14 May 2019 15:53:09 +0800
+Subject: [PATCH] Get EGL display at runtime
+
+---
+ src/video/SDL_egl.c | 68 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 68 insertions(+)
+
+diff --git a/src/video/SDL_egl.c b/src/video/SDL_egl.c
+index 141ad1f..5e55a99 100644
+--- a/src/video/SDL_egl.c
++++ b/src/video/SDL_egl.c
+@@ -157,6 +157,68 @@ SDL_EGL_UnloadLibrary(_THIS)
+     }
+ }
+ 
++#ifdef REALTEK_PATCH
++static int
++check_egl_extension(const char *extensions, const char *extension)
++{
++	size_t extlen = strlen(extension);
++	const char *end = extensions + strlen(extensions);
++
++	while (extensions < end) {
++		size_t n = 0;
++
++		/* Skip whitespaces, if any */
++		if (*extensions == ' ') {
++			extensions++;
++			continue;
++		}
++
++		n = strcspn(extensions, " ");
++
++		/* Compare strings */
++		if (n == extlen && strncmp(extension, extensions, n) == 0)
++			return 1; /* Found */
++
++		extensions += n;
++	}
++
++	/* Not found */
++	return 0;
++}
++
++static inline void *
++platform_get_egl_proc_address(const char *address)
++{
++	const char *extensions = eglQueryString(EGL_NO_DISPLAY, EGL_EXTENSIONS);
++
++	if (extensions &&
++	    (check_egl_extension(extensions, "EGL_EXT_platform_wayland") ||
++	     check_egl_extension(extensions, "EGL_KHR_platform_wayland"))) {
++		return (void *) eglGetProcAddress(address);
++	}
++
++	return NULL;
++}
++
++static inline EGLDisplay
++platform_get_egl_display(EGLenum platform, void *native_display,
++				const EGLint *attrib_list)
++{
++	static PFNEGLGETPLATFORMDISPLAYEXTPROC get_platform_display = NULL;
++	if (!get_platform_display) {
++		get_platform_display = (PFNEGLGETPLATFORMDISPLAYEXTPROC)
++            platform_get_egl_proc_address(
++                "eglGetPlatformDisplayEXT");
++	}
++
++	if (get_platform_display)
++		return get_platform_display(platform,
++					    native_display, attrib_list);
++
++	return NULL;
++}
++#endif
++
+ int
+ SDL_EGL_LoadLibrary(_THIS, const char *egl_path, NativeDisplayType native_display)
+ {
+@@ -267,7 +329,13 @@ SDL_EGL_LoadLibrary(_THIS, const char *egl_path, NativeDisplayType native_displa
+     LOAD_FUNC(eglQueryString);
+     
+ #if !defined(__WINRT__)
++#ifdef REALTEK_PATCH
++   _this->egl_data->egl_display = platform_get_egl_display(EGL_PLATFORM_WAYLAND_KHR, native_display, NULL);
++   if (_this->egl_data->egl_display == NULL)
++        _this->egl_data->egl_display = _this->egl_data->eglGetDisplay(native_display);
++#else
+     _this->egl_data->egl_display = _this->egl_data->eglGetDisplay(native_display);
++#endif
+     if (!_this->egl_data->egl_display) {
+         return SDL_SetError("Could not get EGL display");
+     }
+-- 
+2.7.4
+

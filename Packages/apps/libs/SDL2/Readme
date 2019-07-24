@@ -1,0 +1,7 @@
+on Linux an EGL implementation could support X11, Wayland, 
+GBM (Generic Buffer Manager),Surface Flinger, and perhaps other platforms
+The patch of libSDL2 uses egl new functions that enable an EGL client to specify to which
+platform a native resource belongs when creating an EGL resource from that native resource
+
+To enable new functions, add CFLAGS=-DREALTEK_PATCH in your Makefile
+

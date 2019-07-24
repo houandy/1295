@@ -23,7 +23,11 @@ PKG_LICENSE:=LGPL-2.1+
 
 PKG_BUILD_DEPENDS:=mali-wayland wayland-protocols libwayland libxkbcommon
 
+TARGET_SOURCE_URL:=$(TOPDIR)/../Packages/apps/libs/$(PKG_NAME)
+
 include $(INCLUDE_DIR)/package.mk
+
+CONFIGURE_ARGS+=CFLAGS=-DREALTEK_PATCH
 
 define Package/libSDL2
   SECTION:=libs
@@ -32,6 +36,11 @@ define Package/libSDL2
   DEPENDS:= \
 	+mali-wayland +wayland-protocols +libwayland +libxkbcommon +alsa-lib
   URL:=http://www.linuxfromscratch.org/blfs/view/cvs/multimedia/sdl2.html
+endef
+
+define Build/Prepare
+	$(CP) $(TARGET_SOURCE_URL)/0001-Get-EGL-display-at-runtime.patch patches/099-Get-EGL-display-at-runtime.patch
+	$(call Build/Prepare/Default)
 endef
 
 define Package/libSDL2/description
