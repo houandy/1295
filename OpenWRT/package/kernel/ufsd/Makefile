@@ -9,16 +9,16 @@ include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=ufsd
-ifeq ($(CONFIG_RTK_BOARD_CHIP_CODENAME),"rtd16xx")
-  ifeq ($(KERNEL_PATCHVER), 4.4)
+ifeq ("$(CONFIG_RTK_BOARD_CHIP_1619)","y")
+  ifeq ("$(KERNEL_PATCHVER)","4.4")
     PKG_VERSION:=9.4.4
     FS_LIB:=lke_$(PKG_VERSION)_b4
   else
     PKG_VERSION:=9.6.4
     FS_LIB:=lke_$(PKG_VERSION)_b14
   endif
-else ifeq ($(CONFIG_RTK_BOARD_CHIP_CODENAME),"rtd12xx")
-  ifeq ($(KERNEL_PATCHVER), 4.4.18)
+else ifeq ("$(CONFIG_RTK_BOARD_CHIP_1295)","y")
+  ifeq ("$(KERNEL_PATCHVER)","4.4.18")
     PKG_VERSION:=9.4.4
     FS_LIB:=lke_$(PKG_VERSION)_b4
   else

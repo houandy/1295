@@ -6,6 +6,7 @@
 #
 
 include $(TOPDIR)/rules.mk
+include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=openmax
 PKG_VERSION:=1.0.0
@@ -30,7 +31,7 @@ define Package/openmax
   CATEGORY:=Multimedia
 #  SUBMENU:=Multimedia
   TITLE:=Realtek OpenMAX libraries
-  DEPENDS:=@RTK_NAS_TRANSCODE +libstdcpp $(LIBRPC_DEPENDS) +alsa-lib 
+  DEPENDS:=@RTK_NAS_TRANSCODE +libstdcpp $(LIBRPC_DEPENDS) +alsa-lib
 endef
 
 define Package/openmax/description
@@ -49,18 +50,14 @@ endef
 
 define Package/openmax/install
 	tar -C $(1) --strip-components=1 -Jxf $(TARGET_SOURCE_URL)/$(TARGET_SOURCE) $(TARGET_NAME)/usr
-  ifeq ($(CONFIG_RTK_BOARD_CHIP_CODENAME), "rtd12xx")
+ifeq ("$(CONFIG_RTK_BOARD_CHIP_1295)","y")
 	tar -C $(1) --strip-components=1 -Jxf $(TARGET_SOURCE_URL)/$(TARGET_SOURCE) $(TARGET_NAME)/system
-  endif
-  ifeq ("$(CONFIG_RTK_KERNEL_4_4_18)","y")
+endif
+ifeq ("$(CONFIG_RTK_KERNEL_4_4_18)","y")
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/rtk-supplicant.init $(1)/etc/init.d/rtk-supplicant
-  endif
-  ifeq ("$(CONFIG_RTK_KERNEL_4_9)","y")
-	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) ./files/osd.ini $(1)/etc/init.d/osd
-  endif
-ifeq ($(CONFIG_RTK_BOARD_CHIP_CODENAME), "rtd16xx")
+endif
+ifeq ("$(CONFIG_RTK_KERNEL_4_9)","y")
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/osd.ini $(1)/etc/init.d/osd
 endif

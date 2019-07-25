@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=opencl
-ifeq ($(CONFIG_RTK_BOARD_CHIP_CODENAME),"rtd16xx")
+ifeq ("$(CONFIG_RTK_BOARD_CHIP_1619)","y")
 PKG_VERSION:=r16p0
 endif
 PKG_RELEASE:=2
