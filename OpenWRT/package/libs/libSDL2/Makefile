@@ -27,7 +27,9 @@ TARGET_SOURCE_URL:=$(TOPDIR)/../Packages/apps/libs/$(PKG_NAME)
 
 include $(INCLUDE_DIR)/package.mk
 
+ifeq ($(CONFIG_RTK_KERNEL_4_4_18),)
 CONFIGURE_ARGS+=CFLAGS=-DREALTEK_PATCH
+endif
 
 define Package/libSDL2
   SECTION:=libs

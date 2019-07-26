@@ -19,7 +19,11 @@ TARGET_SOURCE_URL:=$(TOPDIR)/../Packages/apps/mm/ffmpeg
 TARGET_SOURCE:=apps_ffmpeg_3.3.7_OpenWRT-gcc8.2-glibc2.27.tar.xz
 ifdef CONFIG_RTK_NAS_VIDEO
 TARGET_SOURCE_URL:=$(TOPDIR)/../Packages/apps/mm/player
+ifeq ($(CONFIG_RTK_KERNEL_4_4_18),)
+TARGET_SOURCE:=apps_player_3.3.7_OpenWRT-gcc8.2-glibc2.27_49.tar.xz
+else
 TARGET_SOURCE:=apps_player_3.3.7_OpenWRT-gcc8.2-glibc2.27.tar.xz
+endif
 endif
 endif
 TARGET_NAME:=RTK-NAS-Transcode-Libs

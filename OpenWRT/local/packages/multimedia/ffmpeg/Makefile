@@ -17,7 +17,11 @@ PKG_RELEASE:=1
 TOOLCHAIN:=OpenWRT-gcc8.2-glibc2.27
 ifdef CONFIG_RTK_NAS_VIDEO
 TARGET_SOURCE_URL:=$(TOPDIR)/../Packages/apps/mm/player
+ifeq ($(CONFIG_RTK_KERNEL_4_4_18),)
+TARGET_SOURCE:=apps_player_$(PKG_VERSION)_$(TOOLCHAIN)_49.tar.xz
+else
 TARGET_SOURCE:=apps_player_$(PKG_VERSION)_$(TOOLCHAIN).tar.xz
+endif
 else
 TARGET_SOURCE_URL:=$(TOPDIR)/../Packages/apps/mm/ffmpeg
 TARGET_SOURCE:=apps_ffmpeg_$(PKG_VERSION)_$(TOOLCHAIN).tar.xz
@@ -248,8 +252,7 @@ FFMPEG_RTK_HW_VIDEO_DECODERS:= \
 	wmv3_rma \
 	mjpeg_rma \
 	h263_rma \
-	avs_rma \
-	flv_rma \
+	avs_rma
 
 FFMPEG_RTK_HW_VIDEO_ENCODERS:= \
 	h264_omx
