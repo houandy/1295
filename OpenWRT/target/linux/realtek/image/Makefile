@@ -106,6 +106,7 @@ endif
 	( cd $(IMAGE_BUILDER); $(IMAGE_BUILDER)/build_image.sh $(IMAGE_BUILDER)/feed $(CHIP)_$(layout_type) || exit 1; cd -)
 	cp $(IMAGE_BUILDER)/install.img $(BIN_DIR)
 	rm -rf $(BIN_DIR)/rescue; cp $(IMAGE_BUILDER)/workspace/rescue $(BIN_DIR) -a
+	cd $(TARGET_DIR); tar jcf $(BIN_DIR)/root.tar.bz2 *;cd $(TOPDIR)
 endef
 else
 define Image/Build/rtkimg
