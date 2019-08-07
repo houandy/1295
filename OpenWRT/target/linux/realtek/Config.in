@@ -15,6 +15,10 @@ config RTK_BOARD_CHIP_1395
 	depends on TARGET_realtek_rtd139x
 
 config RTK_BOARD_CHIP_1619
+        bool
+        depends on TARGET_realtek_qsinas
+
+config RTK_BOARD_CHIP_1619
 	bool
 	depends on TARGET_realtek_rtd16xx
 
@@ -25,6 +29,7 @@ config RTK_BOARD_CHIP
 	default "rtd-1296" if RTK_BOARD_CHIP_1296
 	default "rtd-1395" if RTK_BOARD_CHIP_1395
 	default "rtd-1619" if TARGET_realtek_rtd16xx
+	default "rtd-1619" if TARGET_realtek_qsinas
 
 config RTK_BOARD_CHIP_CODENAME
 	string
@@ -33,6 +38,7 @@ config RTK_BOARD_CHIP_CODENAME
 	default "rtd12xx" if TARGET_realtek_rtd129x
 	default "rtd13xx" if TARGET_realtek_rtd139x
 	default "rtd16xx" if TARGET_realtek_rtd16xx
+	default "rtd16xx" if TARGET_realtek_qsinas
 
 choice
 	prompt "DDR memory size on board"
