@@ -2,6 +2,8 @@
 # the system init finished. By default this file does nothing.
 
 [ -f /tmp/.aitscript ] || {
+	/sbin/mount_root
+	mount -t devtmpfs none /dev
 	tcpsvd 0 21 ftpd -t 3600 -w /tmp &
 	telnetd -l /usr/libexec/login.sh &
 	touch /tmp/.aitscript

@@ -6,9 +6,9 @@
 [ -n "$FAILSAFE" ] && {
 	cat /etc/banner.ait
 	/etc/rc.ait
-} || {
-	usbreset $(lsusb | grep -v "root hub" | cut -d " " -f 6)
 }
+
+usbreset $(lsusb | grep -v "root hub" | cut -d " " -f 6) > /dev/null 2>&1
 
 fgrep -sq '/ overlay ro,' /proc/mounts && {
 	echo 'Your JFFS2-partition seems full and overlayfs is mounted read-only.'
@@ -59,3 +59,6 @@ service() {
 	}
 	/etc/init.d/$@
 }
+
+[ -n "$FAILSAFE" ] && block mount
+
