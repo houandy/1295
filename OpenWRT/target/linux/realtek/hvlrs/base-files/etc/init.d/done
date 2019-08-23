@@ -19,9 +19,6 @@ boot() {
 	echo 1 > /proc/net/eth0/r8169/wol_enable
 	echo lan > /sys/kernel/suspend/wakeup
 
-	#reset USB device
-	usbreset $(lsusb | grep -v "root hub" | cut -d " " -f 6) > /dev/null 2>&1
-
 	#update version
 	[ -z "$(/root/utils/factory list | grep upgradeimage)" ] || {
 		/root/utils/factory set fwversion $(cat /etc/SOC_FW_version) > /dev/null 2>&1

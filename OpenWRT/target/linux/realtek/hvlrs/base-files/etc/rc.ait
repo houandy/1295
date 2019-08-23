@@ -3,11 +3,6 @@
 
 [ -f /tmp/.aitscript ] || {
 	/sbin/mount_root
-	mount -t devtmpfs none /dev
-	sync
-	usbreset $(lsusb | grep -v "root hub" | cut -d " " -f 6) > /dev/null 2>&1
-	sync
-	umount /dev
 	sync
 	tcpsvd 0 21 ftpd -t 3600 -w /tmp &
 	telnetd -l /usr/libexec/login.sh &
