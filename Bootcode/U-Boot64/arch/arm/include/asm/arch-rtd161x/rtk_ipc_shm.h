@@ -34,6 +34,8 @@ struct RTK119X_ipc_shm {
 /*144*/	volatile unsigned int		gpio_wakeup_activity2;				/* [31-24] magic key(0xEA) [10-0] mapping to the number of iso gpio 24~34 , (0) low activity (1) high activity */
 /*148*/	volatile unsigned int		gpio_output_change_enable2;			/* [31-24] magic key(0xEA) [10-0] mapping to the number of iso gpio 24~34 */
 /*14C*/	volatile unsigned int		gpio_output_change_activity2;		/* [31-24] magic key(0xEA) [10-0] mapping to the number of iso gpio 24~34 , (0) low activity (1) high activity AT SUSPEND TIME */
+/*150*/	volatile unsigned int 		gpio_wakeup_enable3;
+/*154*/	volatile unsigned int 		gpio_wakeup_activity3;
 };
 
 struct RTK119X_ir_wake_up_key {

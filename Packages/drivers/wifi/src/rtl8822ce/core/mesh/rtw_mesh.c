@@ -706,6 +706,7 @@ void rtw_chk_candidate_peer_notify(_adapter *adapter, struct wlan_network *scann
 		, scanned->network.MacAddress
 		, BSS_EX_TLV_IES(&scanned->network)
 		, BSS_EX_TLV_IES_LEN(&scanned->network)
+		, scanned->network.Rssi
 		, GFP_ATOMIC
 	);
 #endif
@@ -1178,33 +1179,12 @@ void rtw_mesh_adjust_chbw(u8 req_ch, u8 *req_bw, u8 *req_offset)
 	}
 }
 
-int rtw_sae_check_frames(_adapter *adapter, const u8 *buf, u32 len, u8 tx)
+void rtw_mesh_sae_check_frames(_adapter *adapter, const u8 *buf, u32 len, u8 tx, u16 alg, u16 seq, u16 status)
 {
-	const u8 *frame_body = buf + sizeof(struct rtw_ieee80211_hdr_3addr);
-	u16 alg;
-	u16 seq;
-	u16 status;
-	int ret = 0;
-
-	alg = RTW_GET_LE16(frame_body);
-	if (alg != 3)
-		goto exit;
-
-	seq = RTW_GET_LE16(frame_body + 2);
-	status = RTW_GET_LE16(frame_body + 4);
-
-	RTW_INFO("RTW_%s:AUTH alg:0x%04x, seq:0x%04x, status:0x%04x\n"
-		, (tx == _TRUE) ? "Tx" : "Rx", alg, seq, status);
-
-	ret = 1;
-
 #if CONFIG_RTW_MESH_PEER_BLACKLIST
 	if (tx && seq == 1)
 		rtw_mesh_plink_set_peer_conf_timeout(adapter, GetAddr1Ptr(buf));
 #endif
-
-exit:
-	return ret;
 }
 
 #if CONFIG_RTW_MPM_TX_IES_SYNC_BSS
@@ -2477,6 +2457,7 @@ int rtw_mesh_peer_establish(_adapter *adapter, struct mesh_plink_ent *plink, str
 	rtw_ewma_err_rate_add(&sta->metrics.err_rate, 1);
 	/* init data_rate to 1M */
 	sta->metrics.data_rate = 10;
+	sta->alive = _TRUE;
 
 	_enter_critical_bh(&stapriv->asoc_list_lock, &irqL);
 	if (rtw_is_list_empty(&sta->asoc_list)) {
@@ -2507,6 +2488,7 @@ void rtw_mesh_expire_peer_notify(_adapter *adapter, const u8 *peer_addr)
 		, peer_addr
 		, null_ssid
 		, 2
+		, 0
 		, GFP_ATOMIC
 	);
 #endif
@@ -3219,6 +3201,9 @@ int rtw_mesh_nexthop_lookup(_adapter *adapter,
 	struct sta_info *next_hop;
 	const u8 *target_addr = mda;
 	int err = -ENOENT;
+	struct registry_priv  *registry_par = &adapter->registrypriv;
+	u8 peer_alive_based_preq = registry_par->peer_alive_based_preq;
+	BOOLEAN nexthop_alive = _TRUE;
 
 	rtw_rcu_read_lock();
 	mpath = rtw_mesh_path_lookup(adapter, target_addr);
@@ -3226,19 +3211,39 @@ int rtw_mesh_nexthop_lookup(_adapter *adapter,
 	if (!mpath || !(mpath->flags & RTW_MESH_PATH_ACTIVE))
 		goto endlookup;
 
-	if (rtw_time_after(rtw_get_current_time(),
-		       mpath->exp_time -
-		       rtw_ms_to_systime(adapter->mesh_cfg.path_refresh_time)) &&
-	    _rtw_memcmp(adapter_mac_addr(adapter), msa, ETH_ALEN) == _TRUE &&
-	    !(mpath->flags & RTW_MESH_PATH_RESOLVING) &&
-	    !(mpath->flags & RTW_MESH_PATH_FIXED)) {
-		rtw_mesh_queue_preq(mpath, RTW_PREQ_Q_F_START | RTW_PREQ_Q_F_REFRESH);
-	}
-
 	next_hop = rtw_rcu_dereference(mpath->next_hop);
 	if (next_hop) {
 		_rtw_memcpy(ra, next_hop->cmn.mac_addr, ETH_ALEN);
 		err = 0;
+	}
+
+	if (peer_alive_based_preq && next_hop)
+		nexthop_alive = next_hop->alive;
+
+	if (_rtw_memcmp(adapter_mac_addr(adapter), msa, ETH_ALEN) == _TRUE &&
+	    !(mpath->flags & RTW_MESH_PATH_RESOLVING) &&
+	    !(mpath->flags & RTW_MESH_PATH_FIXED)) {
+		u8 flags = RTW_PREQ_Q_F_START | RTW_PREQ_Q_F_REFRESH;
+
+		if (peer_alive_based_preq && nexthop_alive == _FALSE) {
+			flags |= RTW_PREQ_Q_F_BCAST_PREQ;
+			rtw_mesh_queue_preq(mpath, flags);
+		} else if (rtw_time_after(rtw_get_current_time(),
+			mpath->exp_time -
+			rtw_ms_to_systime(adapter->mesh_cfg.path_refresh_time))) {
+			rtw_mesh_queue_preq(mpath, flags);
+		}
+	/* Avoid keeping trying unicast PREQ toward root,
+	   when next_hop leaves */
+	} else if (peer_alive_based_preq &&
+		   _rtw_memcmp(adapter_mac_addr(adapter), msa, ETH_ALEN) == _TRUE &&
+		   (mpath->flags & RTW_MESH_PATH_RESOLVING) &&
+		   !(mpath->flags & RTW_MESH_PATH_FIXED) &&
+		   !(mpath->flags & RTW_MESH_PATH_BCAST_PREQ) &&
+		   mpath->is_root && nexthop_alive == _FALSE) {
+		enter_critical_bh(&mpath->state_lock);
+		mpath->flags |= RTW_MESH_PATH_BCAST_PREQ;
+		exit_critical_bh(&mpath->state_lock);
 	}
 
 endlookup:

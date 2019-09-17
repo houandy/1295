@@ -47,7 +47,6 @@ unsigned int i2c_current_speed[RTK_I2C_CNT] = {0};
 #define I2C5_MUX_MASK	~(0x00003800|0x0001C000)
 #define I2C5_MUX_EN		(0x00003800&((0x2)<<11))|(0x0001C000&((0x2)<<14))
 
-
 #elif defined(CONFIG_RTD1395)
 
 #define I2C0_REG		0x9804E004
@@ -101,7 +100,6 @@ unsigned int i2c_current_speed[RTK_I2C_CNT] = {0};
 #define I2C5_MUX_EN		SB2_MUXPAD3_i2c_sda_5(0x1)|SB2_MUXPAD3_i2c_scl_5(0x1)
 
 #endif
-
 
 
 #define i2c_print(fmt, args...)	/*printf(fmt,## args)*/

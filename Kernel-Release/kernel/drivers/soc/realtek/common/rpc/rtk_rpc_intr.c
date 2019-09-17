@@ -28,11 +28,11 @@
 
 
 #include "rtk_rpc.h"
-
+#ifdef CONFIG_ION_RTK
 #include "uapi/ion.h"
 #include "ion/ion.h"
 #include "uapi/ion_rtk.h"
-
+#endif
 /*
  * dump ring buffer rate limiting:
  * not more than 1 ring buffer dumping every 3s
@@ -45,7 +45,7 @@ volatile RPC_DEV *rpc_intr_devices;
 int rpc_intr_is_paused;
 int rpc_intr_is_suspend;
 
-int timeout = HZ / 40; /* jiffies */
+int timeout = HZ; //HZ / 40; /* jiffies */
 
 RPC_DEV_EXTRA rpc_intr_extra[RPC_NR_DEVS / RPC_NR_PAIR];
 
@@ -53,7 +53,7 @@ extern void rpc_send_interrupt(int type);
 
 
 
-
+#ifdef CONFIG_ION_RTK
 struct ion_client *fw_rpc_ion_client;
 extern struct ion_device *rtk_phoenix_ion_device;
 
@@ -67,6 +67,7 @@ typedef struct r_program_entry
 static r_program_entry_t *r_program_head = NULL;
 static int r_program_count = 0;
 
+
 struct task_struct *acpu_r_program_kthread;
 wait_queue_head_t acpu_r_program_waitQueue;
 int acpu_r_program_flag = 0;
@@ -74,8 +75,8 @@ int acpu_r_program_flag = 0;
 struct task_struct *vcpu_r_program_kthread;
 wait_queue_head_t vcpu_r_program_waitQueue;
 int vcpu_r_program_flag = 0;
-
-
+#endif
+#ifdef CONFIG_ION_RTK
 static void r_program_add(r_program_entry_t * entry)
 {
 	spin_lock_bh(&rpc_alloc_lock);
@@ -316,17 +317,14 @@ out:
 	up_write(&dev->ptrSync->writeSem);
 	return ret;
 }
+#endif
 
-
-
+#ifdef CONFIG_ION_RTK
 void rpc_ion_handler(RPC_DEV_EXTRA *extra)
 {
 	struct ion_handle *handle = NULL;
 	ion_phys_addr_t phys_addr;
 	unsigned long reply_value = 0;
-	size_t len;
-	size_t align;
-	size_t alloc_val;
 	char tmpbuf[sizeof(RPC_STRUCT) + sizeof(uint32_t)];
 	uint32_t *tmp;
 	char replybuf[sizeof(RPC_STRUCT) + 2*sizeof(uint32_t)];
@@ -357,81 +355,106 @@ void rpc_ion_handler(RPC_DEV_EXTRA *extra)
 			__func__, ntohl(rpc->programID), ntohl(rpc->versionID), ntohl(rpc->procedureID), ntohl(rpc->taskID), ntohl(rpc->sysTID), ntohl(rpc->sysPID),
 			ntohl(rpc->parameterSize), ntohl(rpc->mycontext), readl(rpc_refclk_base), in_atomic() ? "atomic" : "");
 
-	if (ntohl(rpc->procedureID) == 1) { /*allocate*/
-		align = PAGE_SIZE;
-		tmp = (uint32_t *)(tmpbuf + sizeof(RPC_STRUCT));
-		alloc_val = PAGE_ALIGN(ntohl(*tmp));
-
-		rpc->mycontext = htonl(ntohl(rpc->mycontext) & 0xfffffffc);
-
-		handle = ion_alloc(fw_rpc_ion_client, alloc_val, align,
-			RTK_PHOENIX_ION_HEAP_MEDIA_MASK,
-			ION_FLAG_NONCACHED | ION_FLAG_SCPUACC | ION_FLAG_HWIPACC | ION_FLAG_ACPUACC);
-
-		if (IS_ERR(handle)) {
-			pr_err("[%s] ERROR: ion_alloc fail %d\n", __func__, (int *) handle);
-		}
-		if (ion_phys(fw_rpc_ion_client, handle, &phys_addr, &alloc_val) != 0) {
-			pr_err("[%s] ERROR: ion_phys fail\n", __func__);
-		}
-		rpc_entry = kmalloc(sizeof(struct r_program_entry), GFP_KERNEL);
-		rpc_entry->handle = handle;
-		rpc_entry->phys_addr = phys_addr;
-		r_program_add(rpc_entry);
+    {
 #if defined(CONFIG_ARCH_RTD129x) || defined(CONFIG_ARCH_RTD119X)
-		reply_value = phys_addr + 0x80000000;
+        const bool match_old_mapping = true;
 #else
-		reply_value = phys_addr;
+        const bool match_old_mapping = false;
 #endif
-		pr_debug("[%s] ion_alloc addr : 0x%x\n", __func__, reply_value);
-	} else if(ntohl(rpc->procedureID) == 2) { /*free*/
-		tmp = (uint32_t *)(tmpbuf + sizeof(RPC_STRUCT));
-#if defined(CONFIG_ARCH_RTD129x) || defined(CONFIG_ARCH_RTD119X)
-		phys_addr = ntohl(*tmp) - 0x80000000;
-#else
-		phys_addr = ntohl(*tmp);
-#endif
-		rpc_entry = r_program_remove(phys_addr);
-		if (rpc_entry == NULL){
-			pr_err("[%s]cannot find rpc_entry to free:phys_addr:%x\n", __func__, phys_addr);
-			return;
-		}
-		ion_free(fw_rpc_ion_client, rpc_entry->handle);
-		kfree(rpc_entry);
-		rpc->mycontext = htonl(ntohl(rpc->mycontext) & 0xfffffffc);
-		reply_value = 0;
-	} else if (ntohl(rpc->procedureID) == 3) { /*Secure allocate*/
-		align = PAGE_SIZE;
-		tmp = (uint32_t *)(tmpbuf + sizeof(RPC_STRUCT));
-		alloc_val = PAGE_ALIGN(ntohl(*tmp));
-		rpc->mycontext = htonl(ntohl(rpc->mycontext) & 0xfffffffc);
+        enum RPC_REMOTE_CMD {
+            RPC_REMOTE_CMD_ALLOC        = 1,
+            RPC_REMOTE_CMD_FREE         = 2,
+            RPC_REMOTE_CMD_ALLOC_SECURE = 3,
+        } remote_cmd;
 
+        size_t align;
+        size_t alloc_val;
+
+        unsigned int fw_send_value;
+        tmp = (uint32_t *)(tmpbuf + sizeof(RPC_STRUCT));
+        fw_send_value = ntohl(*tmp);
+        remote_cmd = (enum RPC_REMOTE_CMD) ntohl(rpc->procedureID);
+
+        switch (remote_cmd) {
+            case RPC_REMOTE_CMD_ALLOC:
+            case RPC_REMOTE_CMD_ALLOC_SECURE:
+                {
+#define FW_ALLOC_SPEC_MASK  0xC0000000
+#define FW_ALLOC_VCPU_FWACC 0x40000000
+#define FW_ALLOC_VCPU_EXTRA 0x80000000
+                    unsigned int ion_alloc_heap_mask =
+                        (remote_cmd == RPC_REMOTE_CMD_ALLOC) ? RTK_PHOENIX_ION_HEAP_MEDIA_MASK : RTK_PHOENIX_ION_HEAP_SECURE_MASK ;
+                    unsigned int ion_alloc_flags =
+                        (remote_cmd == RPC_REMOTE_CMD_ALLOC) ? (ION_FLAG_NONCACHED | ION_FLAG_SCPUACC | ION_FLAG_HWIPACC | ION_FLAG_ACPUACC) :
 #if (defined(CONFIG_ARCH_RTD139x) && defined(CONFIG_RTK_VMX_DRM))
-		handle = ion_alloc(fw_rpc_ion_client, alloc_val, align,
-			RTK_PHOENIX_ION_HEAP_SECURE_MASK,
-			ION_FLAG_NONCACHED | ION_FLAG_SECURE_AUDIO);
+                        (ION_FLAG_NONCACHED | ION_FLAG_SECURE_AUDIO)
 #else
-		handle = ion_alloc(fw_rpc_ion_client, alloc_val, align,
-			RTK_PHOENIX_ION_HEAP_SECURE_MASK,
-			ION_FLAG_NONCACHED  | ION_FLAG_HWIPACC);
+                        (ION_FLAG_NONCACHED  | ION_FLAG_HWIPACC)
 #endif
-		if (IS_ERR(handle)) {
-			pr_err("[%s] ERROR: secure ion_alloc fail %d\n", __func__, (int *) handle);
-		}
-		if (ion_phys(fw_rpc_ion_client, handle, &phys_addr, &alloc_val) != 0) {
-			pr_err("[%s] ERROR: secure ion_phys fail\n", __func__);
-		}
-		rpc_entry = kmalloc(sizeof(struct r_program_entry), GFP_KERNEL);
-		rpc_entry->handle = handle;
-		rpc_entry->phys_addr = phys_addr;
-		r_program_add(rpc_entry);
-#if defined(CONFIG_ARCH_RTD129x) || defined(CONFIG_ARCH_RTD119X)
-		reply_value = phys_addr + 0x80000000;
-#else
-		reply_value = phys_addr;
+                        ;
+                    alloc_val = PAGE_ALIGN(fw_send_value & ~FW_ALLOC_SPEC_MASK);
+
+                    if (fw_send_value & FW_ALLOC_VCPU_FWACC) {
+                        ion_alloc_flags = ION_FLAG_VCPU_FWACC;
+                    } else if (fw_send_value & FW_ALLOC_VCPU_EXTRA) {
+                        handle = ion_alloc(fw_rpc_ion_client, alloc_val, PAGE_SIZE, ion_alloc_heap_mask, ION_FLAG_CMA);
+                        ion_alloc_flags |= ION_USAGE_ALGO_LAST_FIT;
+                    }
+                    if (handle == NULL || IS_ERR(handle))
+                        handle = ion_alloc(fw_rpc_ion_client, alloc_val, PAGE_SIZE, ion_alloc_heap_mask, ion_alloc_flags);
+
+                    rpc->mycontext = htonl(ntohl(rpc->mycontext) & 0xfffffffc);
+
+                    if (IS_ERR(handle)) {
+                        pr_err("[%s] ERROR: ion_alloc fail %d(heap:0x%x flags:0x%x)\n", __func__, (int *) handle, ion_alloc_heap_mask, ion_alloc_flags);
+                        reply_value = -1U;
+                        break;
+                    }
+
+                    if (ion_phys(fw_rpc_ion_client, handle, &phys_addr, &alloc_val) != 0) {
+                        pr_err("[%s] ERROR: ion_phys fail(heap:0x%x flags:0x%x)\n", __func__, ion_alloc_heap_mask, ion_alloc_flags);
+                    }
+                    rpc_entry = kmalloc(sizeof(struct r_program_entry), GFP_KERNEL);
+                    rpc_entry->handle = handle;
+                    rpc_entry->phys_addr = phys_addr;
+                    r_program_add(rpc_entry);
+                    reply_value = phys_addr;
+                    if (match_old_mapping)
+                        reply_value += 0x80000000;
+
+                    pr_debug("[%s] ion_alloc addr : 0x%x (heap:0x%x flags:0x%x)\n", __func__, reply_value, ion_alloc_heap_mask, ion_alloc_flags);
+
+                }
+                break;
+            case RPC_REMOTE_CMD_FREE:
+                {
+                    phys_addr = fw_send_value;
+                    if (match_old_mapping)
+                        phys_addr -= 0x80000000;
+
+                    rpc_entry = r_program_remove(phys_addr);
+
+                    if (rpc_entry) {
+                        ion_free(fw_rpc_ion_client, rpc_entry->handle);
+                        kfree(rpc_entry);
+                        pr_debug("[%s] ion_free addr : 0x%x (reply_value : 0x%lx)\n", __func__, phys_addr, reply_value);
+                        reply_value = 0;
+                    } else {
+                        pr_err("[%s]cannot find rpc_entry to free:phys_addr:%x\n", __func__, phys_addr);
+                        reply_value = -1U;
+#if 0 /* WORKAROUND : Avoid FW deadlock when phys_addr is illegal */
+                        return;
 #endif
-		pr_debug("[%s] ion_alloc addr : 0x%x\n", __func__, reply_value);
-	}
+                    }
+
+                    rpc->mycontext = htonl(ntohl(rpc->mycontext) & 0xfffffffc);
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
 
 	/*Reply RPC*/
 	rrpc = (RPC_STRUCT *)replybuf;
@@ -457,8 +480,8 @@ void rpc_ion_handler(RPC_DEV_EXTRA *extra)
 	}
 
 }
-
-
+#endif
+#ifdef CONFIG_ION_RTK
 static int acpu_remote_alloc_thread(void * p)
 {
 	RPC_DEV_EXTRA *extra = &rpc_intr_extra[1];
@@ -480,8 +503,8 @@ static int acpu_remote_alloc_thread(void * p)
 	}
 	return 0;
 }
-
-
+#endif	
+#ifdef CONFIG_ION_RTK
 #ifdef CONFIG_ARCH_RTD13xx
 static int vcpu_remote_alloc_thread(void * p)
 {
@@ -505,7 +528,7 @@ static int vcpu_remote_alloc_thread(void * p)
 	return 0;
 }
 #endif
-
+#endif	
 
 /*
  * This function may be called by tasklet and rpc_intr_read(),
@@ -548,7 +571,7 @@ void rpc_dispatch(unsigned long data)
 		pr_debug("%s: program:%u version:%u procedure:%u taskID:%u sysTID:%u sysPID:%u size:%u context:%x 90k:%u %s\n",
 			__func__, rpc.programID, rpc.versionID, rpc.procedureID, rpc.taskID, rpc.sysTID, rpc.sysPID,
 			rpc.parameterSize, rpc.mycontext, readl(rpc_refclk_base), in_atomic() ? "atomic" : "");
-#if 1   /*audio fw ion remote alloc handled by kernel*/
+#if CONFIG_ION_RTK   /*audio fw ion remote alloc handled by kernel*/
 		out += rpc.parameterSize;
 		if (out >= dev->ringEnd)
 			out = dev->ringStart + (out - dev->ringEnd);
@@ -672,12 +695,15 @@ int rpc_intr_init(void)
 	int result = 0, i;
 	is_init = 0;
 	int j = 0;
+#ifdef CONFIG_ION_RTK
 	struct ion_handle *handle = NULL;
 	ion_phys_addr_t phys_addr;
+#endif	
 	size_t alloc_val;
-
+#ifdef CONFIG_ION_RTK
 	fw_rpc_ion_client = ion_client_create(rtk_phoenix_ion_device,
 						"FW_REMOTE_ALLOC");
+#endif	
 	/* Create corresponding structures for each device. */
 	rpc_intr_devices = (RPC_DEV *) AVCPU2SCPU(RPC_INTR_RECORD_ADDR);
 
@@ -745,6 +771,7 @@ int rpc_intr_init(void)
 			}
 		}
 	}
+#ifdef CONFIG_ION_RTK	
 	init_waitqueue_head(&acpu_r_program_waitQueue);
 	acpu_r_program_kthread = kthread_run(acpu_remote_alloc_thread, (void *)&j, "acpu_r_program");
 
@@ -752,6 +779,7 @@ int rpc_intr_init(void)
 	init_waitqueue_head(&vcpu_r_program_waitQueue);
 	vcpu_r_program_kthread = kthread_run(vcpu_remote_alloc_thread, (void *)&j, "vcpu_r_program");
 #endif
+#endif	
 	is_init = 1;
 	rpc_intr_is_paused = 0;
 	rpc_intr_is_suspend = 0;
@@ -951,7 +979,7 @@ ssize_t rpc_intr_read(struct file *filp, char *buf, size_t count, loff_t *f_pos)
 wait_again:
 
 		k = wait_event_interruptible_timeout(proc->waitQueue,
-			(extra->currProc == proc) && (!ring_empty(dev)),
+			((extra->currProc == proc) && (!ring_empty(dev)) || proc->bExit),
 			timeout);
 		if (k == 0)
 			goto done; /* timeout */
@@ -969,6 +997,11 @@ wait_again:
 
 		if (signal_pending(current)) {
 			pr_debug("RPC deblock because of receiving a signal...\n");
+			goto done;
+		}
+
+		if (proc->bExit) {
+			pr_info("user request to exit\n");
 			goto done;
 		}
 	}
@@ -1259,6 +1292,12 @@ long rpc_intr_ioctl(struct file *filp, unsigned int cmd,
 			break;
 		case RPC_IOCQTIMEOUT:
 			return timeout;
+		case RPC_IOCTEXITLOOP: {
+			RPC_PROCESS *proc = filp->private_data;
+			proc->bExit = true;
+			wake_up_interruptible(&proc->waitQueue);
+			return 0;
+		}
 #ifdef CONFIG_REALTEK_RPC_PROGRAM_REGISTER
 		case RPC_IOCTHANDLER: {
 			int found;

@@ -193,7 +193,17 @@ struct registry_priv {
 	u8	power_mgnt;
 	u8	ips_mode;
 	u8	lps_level;
+#ifdef CONFIG_LPS_1T1R
+	u8	lps_1t1r;
+#endif
 	u8	lps_chk_by_tp;
+#ifdef CONFIG_WOWLAN
+	u8	wow_power_mgnt;
+	u8	wow_lps_level;
+	#ifdef CONFIG_LPS_1T1R
+	u8	wow_lps_1t1r;
+	#endif
+#endif /* CONFIG_WOWLAN */
 	u8	smart_ps;
 #ifdef CONFIG_WMMPS_STA
 	u8	wmm_smart_ps;
@@ -226,6 +236,11 @@ struct registry_priv {
 #endif /* CONFIG_WMMPS_STA */
 
 	WLAN_BSSID_EX    dev_network;
+
+#if CONFIG_TX_AC_LIFETIME
+	u8 tx_aclt_flags;
+	struct tx_aclt_conf_t tx_aclt_confs[TX_ACLT_CONF_NUM];
+#endif
 
 	u8 tx_bw_mode;
 #ifdef CONFIG_AP_MODE
@@ -372,6 +387,7 @@ struct registry_priv {
 
 	u8 boffefusemask;
 	BOOLEAN bFileMaskEfuse;
+	BOOLEAN bBTFileMaskEfuse;
 #ifdef CONFIG_RTW_ACS
 	u8 acs_auto_scan;
 	u8 acs_mode;
@@ -461,6 +477,9 @@ struct registry_priv {
 	u8 tdmadig_mode;
 	u8 tdmadig_dynamic;
 #endif/*CONFIG_TDMADIG*/
+#ifdef CONFIG_RTW_MESH
+	u8 peer_alive_based_preq;
+#endif
 };
 
 /* For registry parameters */
@@ -802,6 +821,7 @@ struct macid_ctl_t {
 	u8 vht_en[MACID_NUM_SW_LIMIT];
 	u32 rate_bmp0[MACID_NUM_SW_LIMIT];
 	u32 rate_bmp1[MACID_NUM_SW_LIMIT];
+	u8 op_num[H2C_MSR_ROLE_MAX]; /* number of macid having h2c_msr's OPMODE = 1 for specific ROLE */
 
 	struct sta_info *sta[MACID_NUM_SW_LIMIT]; /* corresponding stainfo when macid is not shared */
 
@@ -1083,6 +1103,12 @@ struct dvobj_priv {
 #endif
 
 	struct rf_ctl_t rf_ctl;
+
+#if CONFIG_TX_AC_LIFETIME
+	struct tx_aclt_conf_t tx_aclt_force_val;
+	u8 tx_aclt_flags;
+	struct tx_aclt_conf_t tx_aclt_confs[TX_ACLT_CONF_NUM];
+#endif
 
 	/* For 92D, DMDP have 2 interface. */
 	u8	InterfaceNumber;

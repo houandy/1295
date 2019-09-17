@@ -10,10 +10,10 @@
 /* /memreserve/ 0x32b00000 0x12C00000; */
 
 /memreserve/ SYS_BOOTCODE_MEMBASE SYS_BOOTCODE_MEMSIZE;
-/memreserve/ RPC_COMM_PHYS RPC_COMM_SIZE;
-/memreserve/ RPC_RINGBUF_PHYS RPC_RINGBUF_SIZE;
+/* /memreserve/ RPC_COMM_PHYS RPC_COMM_SIZE; */
+/* /memreserve/ RPC_RINGBUF_PHYS RPC_RINGBUF_SIZE; */
 /* /memreserve/ ROOTFS_NORMAL_START ROOTFS_NORMAL_SIZE; */
-/memreserve/ ACPU_IDMEM_PHYS ACPU_IDMEM_SIZE;
+/* /memreserve/ ACPU_IDMEM_PHYS ACPU_IDMEM_SIZE; */
 
 #define MEDIA_REQ_SIZE_0 (0x0ce00000) // 206M
 #define ION_MEDIA_HEAP_PHYS_0 (MEM_SLOT(0, PHYS, MEDIA_REQ_SIZE_0))
@@ -30,7 +30,7 @@
 #define ION_MEDIA_HEAP_SIZE_1 (MEM_SLOT(2, SIZE, MEDIA_REQ_SIZE_1))
 #define ION_MEDIA_HEAP_FLAG_1 (MEM_SLOT(2, FLAG, MEDIA_REQ_SIZE_1))
 
-#include "rtd-16xx.dtsi"
+#include "rtd-1619-megingjord.dtsi"
 #include "rtd-1619-usb.dtsi"
 #include "rtd-1619-sata.dtsi"
 
@@ -196,12 +196,30 @@
 		fps = <60>;
 	};
 
+	rtk_usb_power_manager@0 {
+		gpio1: gpio1 {
+			/delete-property/realtek,power-gpio; //gpio48
+		};
+	};
+
 	dwc3_drd: rtk_dwc3_drd@98013200 {
 		dwc3_drd@98020000 {
 			dr_mode = "host"; /*host, peripheral*/
 		};
 		rtk_dwc3_drd_type_c@0 {
 			status = "disabled";
+		};
+	};
+
+	dwc3_u2host: rtk_dwc3_u2host@98013C00 {
+		status = "disabled";
+	};
+
+	dwc3_u3host: rtk_dwc3_u3host@98013E00 {
+		/delete-property/dis_u3_port; // Disable usb 3.0 port
+
+		dwc3_u3host@981F0000 {
+			/delete-property/snps,dis_u3_susphy_quirk;
 		};
 	};
 
@@ -239,9 +257,16 @@
 
 	rtk_iso_gpio: rtk_iso_gpio@98007100 {
 		gpios = <&rtk_iso_gpio 60 1 1>;
-		wakeup-gpio-list = <&rtk_iso_gpio 26 0 1>;
-                wakeup-gpio-enable = <1>;
-                wakeup-gpio-activity = <0>;
+                autorepeat;
+                label = "gpio-keys";
+                power-button {
+                       wakeup-source;
+                       gpios = <&rtk_iso_gpio 2 0 1>;
+                       label = "Power Button";
+                       linux,code = <0x74>;
+                       key-is-active-low;
+                };
+
 	};
 
 	dptx@9803D000 {
@@ -283,4 +308,13 @@
 			/delete-property/ gpios;
 		};
 	};
+	rtk_pm@0 {
+		wakeup-flags = <0x1d>; /* Bits [5] CEC [4] timer [3]Alarm [2]GPIO [1]IR [0]LAN  */
+	};	
+	spi_0: spi@9801BD00 {
+		status = "okay";
+	};
+	watchdog@0x98007680 {
+                status = "disabled";
+        };			
 };

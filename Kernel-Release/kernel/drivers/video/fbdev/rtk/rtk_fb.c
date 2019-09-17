@@ -27,7 +27,7 @@
 #include <linux/slab.h>
 #include <linux/delay.h>
 #include <linux/mm.h>
-#include <linux/fb.h>
+
 #include <linux/uaccess.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
@@ -43,7 +43,10 @@
 
 #include "debug.h"
 #include "rtk_fb.h"
+
 #include "dc2vo/dc2vo.h"
+#include "rtk_fb_RPC.h"
+#include "rtk_fb_freelogo.h"
 
 #ifdef CONFIG_REALTEK_AVCPU
 #include "avcpu.h"
@@ -83,7 +86,7 @@ extern struct ion_device *rtk_phoenix_ion_device;
 #define ANDROID_NUMBER_OF_FPS 60
 #define ANDROID_BYTES_PER_PIXEL 4
 static int debug = 0;
-
+static uint32_t my_fb_node=0; //__LINUX_MEDIA_NAS__
 #define dprintk(msg...) if (debug)   { printk(KERN_ALERT	"D/RTK_FB: " msg); }
 //#define dprintk(msg...) if (debug)   { dbg_info(KERN_DEBUG	"D/RTK_FB: " msg); }
 
@@ -105,29 +108,6 @@ int ump_ops_register(struct ump_operations *cb)
 EXPORT_SYMBOL(ump_ops_register);
 #endif
 
-struct rtk_fb_memory {
-	struct ion_client *fb_client;
-	struct ion_handle *fb_handle;
-	size_t alloc_size;
-	int width;
-	int height;
-	int align;
-	int count;
-	void *virAddr;
-	int byte_per_pixel;
-	int flags;
-};
-
-struct rtk_fb {
-	struct fb_info fb;
-	int rotation;
-	u32 cmap[16];
-	VENUSFB_MACH_INFO video_info;
-	struct rtk_fb_memory *pMem;
-	int fps;
-	int irq;
-};
-
 enum rtk_fb_memory_flags {
 	RTK_FB_MEM_ALLOC_ALGO_LAST_FIT = 0x1 << 0,
 	RTK_FB_MEM_FREE_FB = 0x1 << 1,
@@ -147,9 +127,11 @@ __maybe_unused static inline int	rtk_fb_memory_align (struct rtk_fb_memory *pMem
 __maybe_unused static inline int	rtk_fb_memory_count (struct rtk_fb_memory *pMem) { return (pMem != NULL) ? pMem->count:0;}
 __maybe_unused static inline int	rtk_fb_memory_bypePrePixel  (struct rtk_fb_memory *pMem) { return (pMem != NULL) ? pMem->byte_per_pixel:ANDROID_BYTES_PER_PIXEL;}
 
+int osd_status;
+
 static int fb_avcpu_event_notify(struct notifier_block *self, unsigned long action, void *data)
 {
-	struct fb_info *info = (struct fb_info *)registered_fb[0];
+	struct fb_info *info = (struct fb_info *)registered_fb[my_fb_node]; //__LINUX_MEDIA_NAS__
 	struct rtk_fb *fb = container_of(info, struct rtk_fb, fb);
 	return DC_avcpu_event_notify(action, &fb->video_info);
 }
@@ -676,6 +658,8 @@ err:
 	return ret;
 }
 
+static DEVICE_ATTR(freelogo, S_IWUSR, NULL, freelogo_store);
+
 static int rtk_fb_probe(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -714,6 +698,14 @@ static int rtk_fb_probe(struct platform_device *pdev)
 		dbg_warn("[%s %s] Use default count:%d\n", __FILE__, __func__, count);
 	}
 
+	prop = of_get_property(pdev->dev.of_node, "osd-init", &size);
+	if ((prop) && (size >= sizeof(u32) * 1)) {
+		osd_status = of_read_number(prop, 1);
+		dbg_warn("[%s %s] Enable osd-init\n", __FILE__, __func__);
+	}else{
+		dbg_warn("[%s %s] osd-init not enabled\n", __FILE__, __func__);
+	}
+
 	fb->irq = irq_of_parse_and_map(pdev->dev.of_node, 0);
 
 	prop = of_get_property(pdev->dev.of_node, "fps", &size);
@@ -742,12 +734,26 @@ static int rtk_fb_probe(struct platform_device *pdev)
 	if(ret)
 		goto err_register_framebuffer_failed;
 
+	my_fb_node=fb->fb.node; //__LINUX_MEDIA_NAS__
 #ifdef CONFIG_REALTEK_AVCPU
 	register_avcpu_notifier(&fb_avcpu_event_notifier);
 #endif
 
+	ret = device_create_file(&pdev->dev, &dev_attr_freelogo);
+	if (ret < 0)
+		goto err_create_devfile_failed;
+
+	if (osd_status == 1) {
+		ret = RTK_FB_RPC_OSD_init(fb);
+		if (ret < 0)
+			goto err_osd_init_failed;
+	}
+
 	return 0;
 
+err_osd_init_failed:
+err_create_devfile_failed:
+	unregister_framebuffer(&fb->fb);
 err_register_framebuffer_failed:
 
 err_fb_set_var_failed:
@@ -779,6 +785,7 @@ static int rtk_fb_remove(struct platform_device *pdev)
 {
 	struct rtk_fb *fb = platform_get_drvdata(pdev);
 
+	device_remove_file(&pdev->dev, &dev_attr_freelogo);
 #ifdef CONFIG_REALTEK_AVCPU
 	unregister_avcpu_notifier(&fb_avcpu_event_notifier);
 #endif
@@ -806,6 +813,7 @@ static const struct dev_pm_ops rtk_fb_pm_ops = {
 };
 
 static struct platform_driver rtkfb_of_driver = {
+	.probe  = rtk_fb_probe,
 	.remove	= rtk_fb_remove,
 	.driver = {
 		.name = "rtk-fb",
@@ -817,6 +825,12 @@ static struct platform_driver rtkfb_of_driver = {
 	},
 };
 
-module_platform_driver_probe(rtkfb_of_driver, rtk_fb_probe);
+//module_platform_driver_probe(rtkfb_of_driver, rtk_fb_probe);
+
+static int rtk_fb_init(void)
+{
+	return platform_driver_register(&rtkfb_of_driver);
+}
+late_initcall(rtk_fb_init);
 
 MODULE_LICENSE("GPL");

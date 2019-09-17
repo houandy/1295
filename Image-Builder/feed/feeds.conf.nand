@@ -1,0 +1,102 @@
+
+version=1.0.0
+project=nas
+
+#FAIL_LEVEL  0x01
+#INFO_LEVEL  0x02
+#LOG_LEVEL   0x04
+#DEBUG_LEVEL 0x08
+#WARNING_LEVEL  0x10
+#UI_LEVEL  0x20
+#DRYRUN 0x80
+debug_level=$((0x00+0x20+0x10+0x08+0x04+0x02+0x01))
+
+#storage [spi|emmc|nand]
+storage=nand
+storage_size=$((512*1024*1024))
+storage_align=$((2048))
+storage_eraseblock_size=131072
+
+bootargs=bootargs.conf.nand
+
+lzma=n
+
+update_1stfw=y
+update_2ndfw=y
+
+
+burn_fwtbl=y
+seqnum_1stfw=$((0))
+seqnum_2ndfw=$((0))
+
+burn_bootpart=y
+
+#Factory file
+burn_factory=y
+
+#Device Tree
+kerneldtb_file=normal.dtb
+kerneldtb_zone=$((0x20000))
+kerneldtb_1stfw_addr=$(($storage_start_addr))
+start_addr_2ndfw=$((0x2480000))
+kerneldtb_2ndfw_addr=$((start_addr_2ndfw))
+burn_kerneldtb=y
+
+#Rescue Device Tree
+rescuedtb_file=rescue.dtb
+rescuedtb_zone=$((0x20000))
+rescuedtb_1stfw_addr=$((kerneldtb_1stfw_addr+kerneldtb_zone))
+rescuedtb_2ndfw_addr=$((kerneldtb_2ndfw_addr+kerneldtb_zone))
+burn_rescuedtb=y
+
+#Rescue rootfs
+rescuefs_file=rescue_rootfs.cpio.gz
+rescuefs_zone=$((0xC0000))
+#rescuefs_zone=$((0x100000))
+rescuefs_1stfw_addr=$((rescuedtb_1stfw_addr+rescuedtb_zone))
+rescuefs_2ndfw_addr=$((rescuedtb_2ndfw_addr+rescuedtb_zone))
+burn_rescue_rootfs=y
+
+#bluecore
+bluecore_file=bluecore.audio
+bluecore_zone=$((0x440000))
+bluecore_1stfw_addr=$((rescuefs_1stfw_addr+rescuefs_zone))
+bluecore_2ndfw_addr=$((rescuefs_2ndfw_addr+rescuefs_zone))
+burn_bluecore=y
+encrypted_bluecore=n
+
+#kernel
+kernel_file=Image
+kernel_zone=$((0x1200000))
+kernel_1stfw_addr=$((bluecore_1stfw_addr+bluecore_zone))
+kernel_2ndfw_addr=$((bluecore_2ndfw_addr+bluecore_zone))
+burn_kernel=y
+
+#bootlogo
+bootlogo_file=bootfile.image
+bootlogo_zone=$((0x800000))
+bootlogo_1stfw_addr=$((kernel_2ndfw_addr+kernel_zone))
+bootlogo_2ndfw_addr=$((kernel_2ndfw_addr+kernel_zone))
+burn_bootlogo=n
+
+
+#boot partition rootfs
+#part type [squashfs|ubifs]
+bootpart_name=/
+bootpart_dir=root-realtek
+bootpart_type=squashfs
+bootpart_zone=$((0x5000000))
+#bootpart_addr=$((bootlogo_2ndfw_addr+bootlogo_zone))
+bootpart_addr=$((0x17e40000))
+bootpart_ini=rootfs.ini
+
+#normal partition
+#part type [ubifs]
+normalpart1_name=data
+normalpart1_dir=root-realtek/overlay
+normalpart1_type=ubifs
+normalpart1_zone=$((0x1800000))
+normalpart1_addr=$((bootpart_addr+bootpart_zone))
+normalpart1_ini=data.ini
+
+normalpart_count=$((1))

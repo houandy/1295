@@ -21,7 +21,7 @@
 	/* Flash writer setting:
 	*   The corresponding setting will be located at
 	*   uboot/examples/flash_writer_u/$(CONFIG_FLASH_WRITER_SETTING).inc*/
-	#define CONFIG_FLASH_WRITER_SETTING            "161x_force_emmc_rtk"
+	#define CONFIG_FLASH_WRITER_SETTING            "161x_force_emmc_rtk_non_tee"
 	#define CONFIG_CHIP_ID            			   "rtd161x"
 	#define CONFIG_CUSTOMER_ID            		   "demo" 
 	#define CONFIG_CHIP_TYPE            		   "0001"
@@ -66,6 +66,11 @@
 		#define CONFIG_RESCUE_FROM_USB_DTB				"rescue.emmc.dtb"
 		#define CONFIG_RESCUE_FROM_USB_ROOTFS			"rescue.root.emmc.cpio.gz_pad.img"
 	#endif /* CONFIG_RESCUE_FROM_USB */
+
+	/* KERNELARGS */
+#ifndef CONFIG_KERNELARGS
+	#define CONFIG_KERNELARGS	"init=/etc/init root=/dev/mmcblk0p1 rootfstype=squashfs rootwait loglevel=8"
+#endif
 #endif
 
 
@@ -96,9 +101,6 @@
 	#define CONFIG_RESCUE_FROM_USB_AUDIO_CORE	"bluecore.audio"
 #endif /* CONFIG_RESCUE_FROM_USB */
 
-/* Clear memory as initrd's size in device tree */
-#define CONFIG_ROOTFS_RESCUE_SIZE	0x100000 // 1 MB
-
 #define COUNTER_FREQUENCY               27000000 // FIXME, need to know what impact it will cause
 
 #define CONFIG_VERSION			"0000"
@@ -114,5 +116,20 @@
 
 /* #undef CONFIG_SYS_FACTORY */
 
+/* PWM */
+//#define CONFIG_CMD_RTKPWM
+//#define CONFIG_RTK_PWM
+#ifdef CONFIG_RTK_PWM
+#define CONFIG_CMD_PWM
+//#define PWM_0_PIN_0
+//#define PWM_0_PIN_1
+//#define PWM_1_PIN_0
+//#define PWM_1_PIN_1
+//#define PWM_2_PIN_0
+//#define PWM_2_PIN_1
+//#define PWM_3_PIN_0
+//#define PWM_3_PIN_1
+#define PWM_OPEN_DRAIN_EN 0
+#endif /* CONFIG_RTK_PWM */
 #endif /* __CONFIG_RTK_RTD161X_QA_RTK_EMMC_H */
 

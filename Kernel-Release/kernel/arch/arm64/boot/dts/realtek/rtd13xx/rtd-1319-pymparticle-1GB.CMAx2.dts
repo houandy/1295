@@ -33,12 +33,12 @@
 /memreserve/ ION_MEDIA_HEAP_PHYS_0  ION_MEDIA_HEAP_SIZE_0;
 /memreserve/ ION_AUDIO_HEAP_PHYS_0  ION_AUDIO_HEAP_SIZE_0;
 
-#include "rtd-13xx.dtsi"
+#include "rtd-1319-pymparticle.dtsi"
 #include "rtd-1319-usb.dtsi"
 #include "rtd-1319-sata.dtsi"
 
 / {
-	model= "Realtek_PymParticle_1GB";
+	model= "Realtek_PymParticle_1GB_CMAx2";
 	model_hex= <0x00000527>;
 
 	/*
@@ -216,15 +216,12 @@
 		fps = <60>;
 	};
 
-	sata_phy: sata_phy@9803FF60 {
-		sata-phy@0 {
-			status = "disabled";
-		};
-	};
-
 	ahci_sata: sata@9803F000 {
 		sata-port@0 {
-			/delete-property/ phys;
+			gpios = <&rtk_iso_gpio 80 1 1>;
+		};
+		sata-port@1 {
+			gpios = <&rtk_iso_gpio 81 1 1>;
 		};
 	};
 };

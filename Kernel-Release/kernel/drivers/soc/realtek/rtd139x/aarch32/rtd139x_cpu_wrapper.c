@@ -174,6 +174,18 @@ static int set_l4_icg(void *base)
 	return 0;
 }
 
+static int arm_pmu_int_enable(void *base)
+{
+	unsigned int val;
+
+	val = readl(base + 0x120);
+	val |= 0xf;
+	writel(val, base + 0x120);
+
+	return 0;
+}
+
+
 irqreturn_t scpu_wrapper_isr(int irq, void *reg_base)
 {
 	struct pt_regs *regs;
@@ -251,6 +263,7 @@ static int __init scpu_wrapper_init(void)
 	scpu_dbg_scpu_monitor(0, 0x98013b00, 0x98013c00, 0x0);
 
 	set_l4_icg(scpu_wrap_addr);
+	arm_pmu_int_enable(scpu_wrap_addr);
 
 	return 0;
 }

@@ -5,7 +5,7 @@ BEGIN{
     # a rarely used character to prevent seperate a line
     FS="\x07"
     
-    arg["audio_loadaddr"]="0x0f900000"
+    arg["audio_loadaddr"]=audio_memaddr
     arg["baudrate"]="115200"
     arg["blue_logo_loadaddr"]="0x30000000"
     arg["bootcmd"]="bootr"
@@ -29,8 +29,21 @@ BEGIN{
         arg["rescue_rootfs"]="rescue.root.emmc.cpio.gz_pad.img"
         arg["rescue_vmlinux"]="emmc.uImage"
     }
+    if (storage=="nand")
+    {
+        arg["rescue_dtb"]="rescue.nand.dtb"
+        arg["rescue_rootfs"]="rescue.root.nand.cpio.gz_pad.img"
+        arg["rescue_vmlinux"]="nand.uImage"
+    }
     arg["rescue_rootfs_loadaddr"]="0x02200000"
-    arg["rootfs_loadaddr"]="0x02200000"
+    if ((chip=="rtd129x_spi"))
+    {
+        arg["rootfs_loadaddr"]="0x04000000"
+    }
+    else
+    {
+        arg["rootfs_loadaddr"]="0x02200000"
+    }
     arg["serverip"]="192.168.100.2"
 }
 {

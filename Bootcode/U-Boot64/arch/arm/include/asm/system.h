@@ -56,6 +56,7 @@
 #define SCTLR_EL2_RES1		(3 << 28 | 3 << 22 | 1 << 18 | 1 << 16 |\
 				 1 << 11 | 3 << 4)	    /* Reserved, RES1 */
 #define SCTLR_EL2_EE_LE		(0 << 25) /* Exception Little-endian          */
+#define SCTLR_EL2_UWXN_DIS	(0 << 20) /* Unprivileged write permission is not XN */
 #define SCTLR_EL2_WXN_DIS	(0 << 19) /* Write permission is not XN       */
 #define SCTLR_EL2_ICACHE_DIS	(0 << 12) /* Instruction cache disabled       */
 #define SCTLR_EL2_SA_DIS	(0 << 3)  /* Stack Alignment Check disabled   */
@@ -88,6 +89,7 @@
 				 1 << 11) /* Reserved, RES1                   */
 #define SCTLR_EL1_UCI_DIS	(0 << 26) /* Cache instruction disabled       */
 #define SCTLR_EL1_EE_LE		(0 << 25) /* Exception Little-endian          */
+#define SCTLR_EL1_UWXN_DIS	(0 << 20) /* Unprivileged write permission is not XN  */
 #define SCTLR_EL1_WXN_DIS	(0 << 19) /* Write permission is not XN       */
 #define SCTLR_EL1_NTWE_DIS	(0 << 18) /* WFE instruction disabled         */
 #define SCTLR_EL1_NTWI_DIS	(0 << 16) /* WFI instruction disabled         */

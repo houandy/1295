@@ -1,12 +1,26 @@
 /*
- * reset-rtk.c - Realtek reset controller & reset control
+ * reset.c - Realtek Generic Reset Controller
  *
- * Copyright (C) 2016-2017 Realtek Semiconductor Corporation
- * Copyright (C) 2016-2017 Cheng-Yu Lee <cylee12@realtek.com>
+ * Copyright (C) 2016-2017,2019 Realtek Semiconductor Corporation
+ *
+ * Author:
+ *      Cheng-Yu Lee <cylee12@realtek.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/list.h>
@@ -19,9 +33,7 @@
 #include <linux/reset.h>
 #include <linux/reset-controller.h>
 #include <linux/slab.h>
-#include <linux/suspend.h>
 #include <soc/realtek/rtk_mmio.h>
-#include <soc/realtek/rdbg.h>
 #include <dt-bindings/reset/rtk,reset.h>
 
 #include "common.h"
@@ -57,8 +69,6 @@ struct reset_priv {
 	/* boot clear bits */
 	unsigned int boot_clear_bits;
 
-	/* reg tracker */
-	struct rdbg_info *ref;
 };
 
 #define to_reset_priv(_p) container_of((_p), struct reset_priv, rcdev)
@@ -102,7 +112,7 @@ static inline void rtk_reset_update_bits(struct reset_priv *priv,
 	unsigned int mask, unsigned int val)
 {
 	dev_dbg(priv->dev, "%s: flags:%c mask=%08x, val=%08x\n",
-		__func__, contain_write_en(priv) ? 'w' : '-' , mask, val);
+		__func__, contain_write_en(priv) ? 'w' : '-', mask, val);
 	if (priv->regmap) {
 		regmap_update_bits(priv->regmap, priv->offset, mask, val);
 	} else if (priv->reg) {
@@ -130,8 +140,6 @@ static int rtk_reset_assert(struct reset_controller_dev *rcdev,
 	val = bits_to_clear(priv, BIT(id));
 	rtk_reset_update_bits(priv, mask, val);
 
-	rdbg_update_ref(priv->ref, BIT(id), __func__);
-
 	return 0;
 }
 
@@ -151,7 +159,6 @@ static void rtk_reset_deassert_sync(unsigned int group)
 		val = bits_to_set(p, p->async_data);
 		rtk_reset_update_bits(p, mask, val);
 
-		rdbg_update_ref(p->ref, p->async_data, __func__);
 		p->async_data = 0;
 	}
 }
@@ -177,8 +184,6 @@ static int rtk_reset_deassert(struct reset_controller_dev *rcdev,
 	mask = bits_to_mask(priv, BIT(id));
 	val = bits_to_set(priv, BIT(id));
 	rtk_reset_update_bits(priv, mask, val);
-
-	rdbg_update_ref(priv->ref, BIT(id), __func__);
 
 	return 0;
 }
@@ -256,10 +261,6 @@ static int rtk_reset_suspend(struct device *dev)
 	if (priv->flags & RESET_NO_PM)
 		return 0;
 
-#ifdef CONFIG_SUSPEND
-	if (RTK_PM_STATE == PM_SUSPEND_STANDBY)
-		return 0;
-#endif
 	dev_info(dev, "Enter %s\n", __func__);
 
 	rtk_reset_read(priv, &priv->pm_data);
@@ -278,10 +279,6 @@ static int rtk_reset_resume(struct device *dev)
 	if (priv->flags & RESET_NO_PM)
 		return 0;
 
-#ifdef CONFIG_SUSPEND
-	if (RTK_PM_STATE == PM_SUSPEND_STANDBY)
-		return 0;
-#endif
 	dev_info(dev, "Enter %s\n", __func__);
 
 	dev_dbg(dev, "saved val=%08x\n", priv->pm_data);
@@ -331,13 +328,6 @@ static int rtk_reset_probe(struct platform_device *pdev)
 		priv->regmap = regmap;
 		priv->offset = offset;
 		dev_info(dev, "use mmio regmap\n");
-	}
-
-	/* low level debug */
-	if (is_clk_debug_enabled()) {
-		priv->ref = of_rdbg_get_info(np, 0, 0);
-		if (priv->ref)
-			dev_err(dev, "rdbg add %s\n", np->name);
 	}
 
 	priv->rcdev.owner = THIS_MODULE;

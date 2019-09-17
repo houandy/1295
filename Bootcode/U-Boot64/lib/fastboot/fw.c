@@ -117,7 +117,6 @@ static const char *get_fw_type_str(int type)
 	case FW_TYPE_VIDEO_FILE2: break;
 	case FW_TYPE_VIDEO: break;
 	case FW_TYPE_VIDEO2: break;
-	case FW_TYPE_ECPU: break;
 	case FW_TYPE_TEE: break;         //30
 	case FW_TYPE_GOLD_KERNEL:
 		str = "FW_TYPE_GOLD_KERNEL";
@@ -131,12 +130,10 @@ static const char *get_fw_type_str(int type)
 	case FW_TYPE_GOLD_AUDIO:
 		str = "FW_TYPE_GOLD_AUDIO";
 		break;
-	case FW_TYPE_GOLD_TEE: break;        //35
 	case FW_TYPE_CONFIG: break;
 	case FW_TYPE_UBOOT: break;
 	case FW_TYPE_BL31: break;
 	case FW_TYPE_HYP: break;
-	case FW_TYPE_GOLD_BL31: break;
 	case FW_TYPE_RSA_KEY_FW: break;
 	case FW_TYPE_RSA_KEY_TEE: break;
 /*

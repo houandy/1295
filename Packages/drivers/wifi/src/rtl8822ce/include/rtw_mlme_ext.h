@@ -276,6 +276,10 @@ enum TDLS_option {
 
 #endif /* CONFIG_TDLS */
 
+#ifndef NL80211_AUTHTYPE_SAE
+#define NL80211_AUTHTYPE_SAE 4
+#endif
+
 /*
  * Usage:
  * When one iface acted as AP mode and the other iface is STA mode and scanning,
@@ -679,6 +683,8 @@ void change_band_update_ie(_adapter *padapter, WLAN_BSSID_EX *pnetwork, u8 ch);
 
 void Set_MSR(_adapter *padapter, u8 type);
 
+void rtw_set_external_auth_status(_adapter *padapter, const void *data, int len);
+
 u8 rtw_get_oper_ch(_adapter *adapter);
 void rtw_set_oper_ch(_adapter *adapter, u8 ch);
 u8 rtw_get_oper_bw(_adapter *adapter);
@@ -764,7 +770,7 @@ void rtw_absorb_ssid_ifneed(_adapter *padapter, WLAN_BSSID_EX *bssid, u8 *pframe
 int rtw_get_bcn_keys(ADAPTER *Adapter, u8 *pframe, u32 packet_len,
 		struct beacon_keys *recv_beacon);
 int validate_beacon_len(u8 *pframe, uint len);
-void rtw_dump_bcn_keys(struct beacon_keys *recv_beacon);
+void rtw_dump_bcn_keys(void *sel, struct beacon_keys *recv_beacon);
 int rtw_check_bcn_info(ADAPTER *Adapter, u8 *pframe, u32 packet_len);
 void update_beacon_info(_adapter *padapter, u8 *pframe, uint len, struct sta_info *psta);
 #ifdef CONFIG_DFS
@@ -828,7 +834,7 @@ s8 rtw_macid_get_ch_g(struct macid_ctl_t *macid_ctl, u8 id);
 void rtw_alloc_macid(_adapter *padapter, struct sta_info *psta);
 void rtw_release_macid(_adapter *padapter, struct sta_info *psta);
 u8 rtw_search_max_mac_id(_adapter *padapter);
-void rtw_macid_ctl_set_h2c_msr(struct macid_ctl_t *macid_ctl, u8 id, u8 h2c_msr);
+u8 rtw_macid_ctl_set_h2c_msr(struct macid_ctl_t *macid_ctl, u8 id, u8 h2c_msr);
 void rtw_macid_ctl_set_bw(struct macid_ctl_t *macid_ctl, u8 id, u8 bw);
 void rtw_macid_ctl_set_vht_en(struct macid_ctl_t *macid_ctl, u8 id, u8 en);
 void rtw_macid_ctl_set_rate_bmp0(struct macid_ctl_t *macid_ctl, u8 id, u32 bmp);
@@ -1112,6 +1118,8 @@ u8 set_csa_hdl(_adapter *padapter, unsigned char *pbuf);	/* Kurt: Handling DFS c
 u8 tdls_hdl(_adapter *padapter, unsigned char *pbuf);
 u8 run_in_thread_hdl(_adapter *padapter, u8 *pbuf);
 u8 rtw_getmacreg_hdl(_adapter *padapter, u8 *pbuf);
+
+int rtw_sae_preprocess(_adapter *adapter, const u8 *buf, u32 len, u8 tx);
 
 #define GEN_DRV_CMD_HANDLER(size, cmd)	{size, &cmd ## _hdl},
 #define GEN_MLME_EXT_HANDLER(size, cmd)	{size, cmd},

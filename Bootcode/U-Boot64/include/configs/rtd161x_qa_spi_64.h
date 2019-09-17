@@ -27,7 +27,7 @@
 	/* Flash writer setting:
 	*   The corresponding setting will be located at
 	*   uboot/examples/flash_writer_u/$(CONFIG_FLASH_WRITER_SETTING).inc*/
-	#define CONFIG_FLASH_WRITER_SETTING            "161x_force_spi_rtk"
+	#define CONFIG_FLASH_WRITER_SETTING            "161x_force_spi_rtk_non_tee"
 	#define CONFIG_CHIP_ID            			   "rtd161x"
 	#define CONFIG_CUSTOMER_ID            		   "demo"
 	#define CONFIG_FLASH_TYPE					   "RTK_FLASH_SPI"
@@ -39,6 +39,10 @@
 #define CONFIG_BOOT_FROM_SPI
 #ifndef CONFIG_BOOT_FROM_SPI
 	#define CONFIG_SPI_MTD_STATIC
+#endif
+#ifdef CONFIG_BOOT_FROM_SPI
+#define CONFIG_BFS_SUPPORT_LOGO_IMG
+#define CONFIG_BFS_SUPPORT_KERNEL_ROOTFS
 #endif
 #endif
 	#ifdef CONFIG_SPI_MTD_STATIC
@@ -75,8 +79,8 @@
 	#define CONFIG_INITRD_SIZE                     0x00400000
 
 #define ENV_NAME_SETTINGS \
-	"fwimgname=openwrt-rtd1295-nas_spi-rtk-spi-8M-initrd-sysupgrade.bin\0" \
-	"bootcodeimgname=openwrt-rtd1295-bootcode.bin\0"
+	"fwimgname=openwrt-rtd161x-nas_spi-rtk-spi-8M-initrd-sysupgrade.bin\0" \
+	"bootcodeimgname=openwrt-rtd161x-bootcode.bin\0"
 #define ENV_LAYOUT_SETTINGS \
 	"fwimgaddr="STR(CONFIG_FWIMG_ADDR)"\0" \
 	"fwimgsize="STR(CONFIG_FWIMG_SIZE)"\0" \
@@ -189,10 +193,12 @@
 	#define CONFIG_RESCUE_FROM_USB_ROOTFS		"rescue.root.spi.cpio.gz_pad.img"
 	#define CONFIG_RESCUE_FROM_USB_AUDIO_CORE	"bluecore.audio"
 #endif /* CONFIG_RESCUE_FROM_USB */
+/* KERNELARGS */
+#ifndef CONFIG_KERNELARGS
+	#define CONFIG_KERNELARGS	"mtdparts=RtkSFC:1024k(U-Boot)ro,64k(FWtbl)ro,128k(Factory),10944k(FW)ro,4096k(Free),128k(oops) " \
 #endif
-
-/* Clear memory as initrd's size in device tree */
-#define CONFIG_ROOTFS_RESCUE_SIZE	0x100000 // 1 MB
+							"init=/etc/init root=/dev/sda1 rootfstype=ext4 rootwait loglevel=8"
+#endif
 
 #define COUNTER_FREQUENCY               27000000 // FIXME, need to know what impact it will cause
 

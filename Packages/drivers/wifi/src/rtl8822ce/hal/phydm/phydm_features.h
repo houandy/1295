@@ -29,6 +29,7 @@
 #define CONFIG_RUN_IN_DRV
 #define ODM_DC_CANCELLATION_SUPPORT		(ODM_RTL8188F | \
 						 ODM_RTL8710B | \
+						 ODM_RTL8723D | \
 						 ODM_RTL8192F | \
 						 ODM_RTL8821C | \
 						 ODM_RTL8721D)

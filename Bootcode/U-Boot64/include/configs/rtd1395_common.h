@@ -329,6 +329,9 @@
 /* DTBO Index */
 #define DTBO_INDEX 0
 
+/* Clear memory as initrd's size in device tree */
+#define CONFIG_ROOTFS_RESCUE_SIZE	0x100000 // 1 MB
+
 /********* RTK CONFIGS ************/
 #define CONFIG_BSP_REALTEK
 #define CONFIG_NO_RELOCATION

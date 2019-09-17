@@ -34,9 +34,9 @@
 /memreserve/ ION_AUDIO_HEAP_PHYS_0  ION_AUDIO_HEAP_SIZE_0;
 /memreserve/ ION_MEDIA_HEAP_PHYS_1  ION_MEDIA_HEAP_SIZE_1;
 
-#include "rtd-13xx.dtsi"
-#include "rtd-1319-usb.dtsi"
-#include "rtd-1319-sata.dtsi"
+#include "rtd-1315-reddiscs.dtsi"
+#include "rtd-1315-usb.dtsi"
+#include "rtd-1315-sata.dtsi"
 
 / {
 	model= "Realtek_RedDiscs_2GB";
@@ -65,7 +65,7 @@
 	chosen {
 		linux,initrd-start = <ROOTFS_NORMAL_START>;
 		linux,initrd-end = <ROOTFS_NORMAL_END>;
-		bootargs = "earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200 init=/init androidboot.storage=emmc androidboot.hardware=hank loglevel=4";
+		bootargs = "earlycon=uart8250,mmio32,0x98007800 console=ttyS0,460800 init=/init androidboot.storage=emmc androidboot.hardware=hank loglevel=4";
 		swiotlb-memory-reservation-size = <512>; /*  512: 1MB,  2048: 4MB*/
 		swiotlb-force = <0>; /* 0: SWIOTLB_NORMAL, 1: SWIOTLB_FORCE, 2: SWIOTLB_NO_FORCE */
 		cma-region-enable = <1>;
@@ -211,15 +211,22 @@
 		fps = <60>;
 	};
 
-	sata_phy: sata_phy@9803FF60 {
-		sata-phy@0 {
-			status = "disabled";
-		};
+	pcie2: pcie2@980A0000 {
+		status = "disabled";
 	};
 
-	ahci_sata: sata@9803F000 {
-		sata-port@0 {
-			/delete-property/ phys;
-		};
+	pcie3: pcie3@980C0000 {
+		status = "disabled";
 	};
+
+	sdio: sdio@98010A00 {
+		status = "disabled";
+	};
+
+	rtk_iso_gpio: rtk_iso_gpio@98007100 {
+		gpio-unused = <22>, <23>, <25>, <40>, <41>, <42>, <43>, <45>,
+			<52>, <53>, <65>, <66>, <67>, <68>, <69>, <70>,
+			<71>, <72>, <73>, <74>, <75>, <76>;
+	};
+
 };

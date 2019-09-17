@@ -176,11 +176,9 @@ enum {
 #define HDCP_INFINITE_REAUTH    0x100
 #define HDCP_MAX_FAIL_MESSAGES  3
 
-/* FIXME: should be 300ms delay between HDMI start frame event and HDCP enable
- * (to respect 7 VSYNC delay in 24 Hz)
- */
-#define HDCP_ENABLE_DELAY       300
-#define HDCP_R0_DELAY           110
+
+/* HDCP 1.4Spec, must not read the R0' sooner than 100ms after write Aksv */
+#define HDCP_R0_DELAY           120
 #define HDCP_KSV_TIMEOUT_DELAY  5000
 
 /* Event source */

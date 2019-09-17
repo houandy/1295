@@ -43,6 +43,13 @@
 
 static void __iomem *scpu_wrap_addr;
 
+void rtk_cpu_power_up_all(void)
+{
+	writel(0x00003F3F, scpu_wrap_addr + 0x538);
+	writel(0x000000FF | readl(scpu_wrap_addr + 0x100), scpu_wrap_addr + 0x100);
+	writel(0x00003233, scpu_wrap_addr + 0x900);
+}
+
 void rtk_cpu_power_up(int cpu)
 {
 	u32 tmp = 0;

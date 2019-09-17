@@ -63,6 +63,14 @@ struct secure_register_desc {
 	u32 fmt;
 };
 
+#define REG_DESC_OFFSET_INVALID  0xffffffff
+#define DEFINE_REG_SMCCC(_off, _w, _r) \
+	{ .offset = _off, .wcmd = _w, .rcmd = _r, .fmt = SMCCC_FMT_CMD, }
+#define DEFINE_REG_SMCCC_PHYS(_off, _w, _r) \
+	{ .offset = _off, .wcmd = _w, .rcmd = _r, .fmt = SMCCC_FMT_CMD_PHYS, }
+#define DEFINE_REG_INVALID \
+	{ .offset = REG_DESC_OFFSET_INVALID, }
+
 struct rtk_regmap_config {
 	struct regmap_config config;
 	const struct secure_register_desc *descs;

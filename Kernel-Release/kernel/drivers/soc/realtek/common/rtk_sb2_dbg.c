@@ -21,6 +21,7 @@
 #include <linux/slab.h>
 #include <linux/notifier.h>
 #include <linux/ktime.h>
+#include <linux/debugfs.h>
 #include <asm/system_misc.h>
 
 #include <soc/realtek/rtk_sb2_dbg.h>
@@ -32,6 +33,7 @@
 #define sb2_err_hl(fmt, ...)   pr_err("\033[0;31m[%s] " fmt "\033[m\n", DRIVER_NAME, ##__VA_ARGS__)
 #define sb2_dbg(fmt, ...)   pr_debug("[%s] " fmt, DRIVER_NAME, ##__VA_ARGS__)
 
+static int sb2_default_handler_enable = 1;
 static struct sb2_data *sb2_data;
 static ATOMIC_NOTIFIER_HEAD(sb2_dbg_notifier);
 static ATOMIC_NOTIFIER_HEAD(sb2_inv_notifier);
@@ -81,6 +83,9 @@ static int sb2_dbg_default_inv_callback(struct notifier_block *nb, unsigned long
 {
 	struct sb2_inv_event_data *d = data;
 
+	if (!sb2_default_handler_enable)
+		return NOTIFY_DONE;
+
 	sb2_err("sb2 get int 0x%08x from SB2_INV_INTSTAT\n", d->raw_ints);
 	sb2_err_hl("Invalid access issued by %s", inv_cpu_str[d->inv_cpu]);
 	sb2_err_hl("Invalid address is 0x%x", d->addr);
@@ -90,11 +95,15 @@ static int sb2_dbg_default_inv_callback(struct notifier_block *nb, unsigned long
 
 static struct notifier_block sb2_dbg_default_inv_nb = {
 	.notifier_call = sb2_dbg_default_inv_callback,
+	.priority = -1,
 };
 
 static int sb2_dbg_default_dbg_callback(struct notifier_block *nb, unsigned long action, void *data)
 {
 	struct sb2_dbg_event_data *d = data;
+
+	if (!sb2_default_handler_enable)
+		return NOTIFY_DONE;
 
 	sb2_err("sb2 get int 0x%08x from SB2_DBG_INT\n", d->raw_ints);
 	return NOTIFY_OK;
@@ -102,19 +111,18 @@ static int sb2_dbg_default_dbg_callback(struct notifier_block *nb, unsigned long
 
 static struct notifier_block sb2_dbg_default_dbg_nb = {
 	.notifier_call = sb2_dbg_default_dbg_callback,
+	.priority = -1,
 };
 
-void sb2_dbg_add_default_handlers(void)
+void sb2_dbg_disable_default_handlers(void)
 {
-	sb2_dbg_register_dbg_notifier(&sb2_dbg_default_dbg_nb);
-	sb2_dbg_register_inv_notifier(&sb2_dbg_default_inv_nb);
+	sb2_default_handler_enable = 0;
 }
 EXPORT_SYMBOL_GPL(sb2_dbg_add_default_handlers);
 
-void sb2_dbg_remove_default_handlers(void)
+void sb2_dbg_enable_default_handlers(void)
 {
-	sb2_dbg_unregister_dbg_notifier(&sb2_dbg_default_dbg_nb);
-	sb2_dbg_unregister_inv_notifier(&sb2_dbg_default_inv_nb);
+	sb2_default_handler_enable = 1;
 }
 EXPORT_SYMBOL_GPL(sb2_dbg_remove_default_handlers);
 
@@ -262,7 +270,6 @@ static void sb2_disable_interrupt(struct sb2_data *data)
 	sb2_write(data, SB2_DBG_INT, 0);
 }
 
-
 static int sb2_dbg_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -298,7 +305,10 @@ static int sb2_dbg_probe(struct platform_device *pdev)
 	sb2_info("info 0x%x\n", sb2_read(data, SB2_CHIP_INFO));
 	sb2_info("use smc %x\n", SB2_USE_SMCCALL);
 
-	sb2_dbg_add_default_handlers();
+	sb2_dbg_register_dbg_notifier(&sb2_dbg_default_dbg_nb);
+	sb2_dbg_register_inv_notifier(&sb2_dbg_default_inv_nb);
+	debugfs_create_u32("sb2_default_handlers_enable", 0644, NULL,
+			   &sb2_default_handler_enable);
 
 	platform_set_drvdata(pdev, data);
 	sb2_set_l4_icg(data);

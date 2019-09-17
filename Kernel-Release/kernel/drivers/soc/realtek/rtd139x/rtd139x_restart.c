@@ -18,6 +18,7 @@
 #include <linux/delay.h>
 #include <linux/io.h>
 #include <soc/realtek/rtk_rstctl.h>
+#include <soc/realtek/rtk_wdt.h>
 
 #include <asm/system_misc.h>
 
@@ -30,8 +31,6 @@ unsigned int rst_ctrl_reg_offset = 0;
 #define WDT_CTL 0
 #define WDT_OVERFLOW 0xC
 #define WDT_NMI 8
-#define WDT_RSTB_CNT 0x40
-#define WDT_OE 0x44 //0x980076C4
 
 static void setup_restart_action(RESET_ACTION action)
 {
@@ -49,10 +48,16 @@ static void setup_restart_action(RESET_ACTION action)
 void rtk_machine_restart(char mode, const char *cmd)
 {
 	if (cmd) {
+		set_wdt_oe();
+
 		if (!strncmp("bootloader", cmd, 11)) {
 			setup_restart_action(RESET_ACTION_FASTBOOT);
 		} else if (!strncmp("recovery", cmd, 9)) {
 			setup_restart_action(RESET_ACTION_RECOVERY);
+#ifdef CONFIG_RTK_VMX_ULTRA
+		} else if (!strncmp("dm-verity device corrupted", cmd, 27)) {
+			setup_restart_action(RESET_ACTION_RESCUE);
+#endif
 		} else {
 			setup_restart_action(RESET_ACTION_NO_ACTION);
 		}
@@ -60,10 +65,6 @@ void rtk_machine_restart(char mode, const char *cmd)
 		setup_restart_action(RESET_ACTION_NO_ACTION);
 	}
 
-	if (wdt_oe >= 0)
-		writel(wdt_oe, wdt_base + WDT_OE);
-
-	writel(0x00800000, wdt_base + WDT_RSTB_CNT);
 	writel(BIT(0), wdt_base + WDT_CLR);
 	writel(0x00800000, wdt_base + WDT_OVERFLOW);
 	writel(0x000000FF, wdt_base + WDT_CTL);

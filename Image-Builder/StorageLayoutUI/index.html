@@ -1,0 +1,635 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<title>Firmware Layout Customization</title>
+	<link rel="stylesheet" href="./lib/bootstrap.min.css">
+	<style type="text/css">
+		label{
+		font-size:20px;
+		margin-bottom:1rem;
+		font-weight:800;
+		color:#7281a5;
+		}
+		.error {
+		border-color: red !important
+		}
+		h2{
+		margin-top:2em;
+		font-weight:800;
+		}
+		fieldset {
+		border: 1px solid #ddd !important;
+		margin-top:1em;
+		xmin-width: 0;
+		padding: 10px;
+		position: relative;
+		border-radius:4px;
+		background-color:#f5f5f5;
+		padding-left:10px!important;
+		}
+	</style>
+</head>
+<body class="container">
+<h2>Firmware Layout Customization</h2>
+<form class="form-horizontal" role="form" id="form">
+<div class="row">
+<ul class="col">
+<div class="form-group">
+	<label for="version" class="control-label">version:</label>
+	<input type="text" id="version" class="form-control" placeholder="1.0.0">
+</div>
+<div class="form-group">
+	<label for="project" class="control-label">project:</label>
+	<input type="text" id="project" class="form-control" placeholder="nas">
+</div>
+<div class="form-group">
+	<label for="debug_level" class="control-label">debug_level:</label>
+	<div style="margin-left: 16px;color:#606060;">
+	<input type="checkbox" value="0x01" name="debug_level" checked="checked"> FAIL_LEVEL<br>
+	<input type="checkbox" value="0x02" name="debug_level" checked="checked"> INFO_LEVEL<br>
+	<input type="checkbox" value="0x04" name="debug_level" checked="checked"> LOG_LEVEL<br>
+	<input type="checkbox" value="0x08" name="debug_level" checked="checked"> DEBUG_LEVEL<br>
+	<input type="checkbox" value="0x10" name="debug_level" checked="checked"> WARNING_LEVEL<br>
+	<input type="checkbox" value="0x20" name="debug_level" checked="checked"> UI_LEVEL<br>
+	</div>
+</div>
+<div class="form-group"><label for="storage" class="control-label">storage:</label>
+	<select id="storage" class="dropdown form-control">
+		<option value="spi">spi</option>
+		<option value="emmc" selected="selected">emmc</option>
+		<!--option value="nand">nand</option-->
+	</select>
+</div>
+<div class="form-group">
+	<label for="bootargs" class="control-label">bootargs: </label>
+	<input type="text" id="bootargs" class="form-control" placeholder="bootargs.conf.emmc">
+</div>
+<div class="form-group">
+	<label for="storage_size" class="control-label">storage size: </label>
+	<div class="input-group">
+	<input type="text" id="storage_size" placeholder="8"  class="form-control"/>
+	<select id="unit" class="dropdown form-control">
+		<option value="1024*1024">MB</option>
+		<option value="1024*1024*1024" selected="selected">GB</option>
+	</select>
+	</div>
+</div>
+</ul>
+<ul  class="col">
+<div class="form-group">
+	<label for="basic-addon2">align:</label>
+	<div class="input-group mb-3">
+		<input type="text" id="align" class="form-control" placeholder="4096" aria-describedby="basic-addon2"/>
+		<div class="input-group-append">
+			<span class="input-group-text" id="basic-addon2">Byte</span>
+		</div>
+	</div>
+</div>
+<div class="form-group">
+	<label for="start_addr_2ndfw" class="control-label">storage 2nd firmware start address: </label>
+	<div class="input-group mb-3">
+		<div class="input-group-prepend">
+			<span class="input-group-text" id="basic-addon3">0x</span>
+		</div>
+		<input type="text" id="start_addr_2ndfw" class="form-control" placeholder="2871000" aria-describedby="basic-addon3" required/>
+	</div>
+</div>
+<div class="form-group">
+	<label for="lzma" class="control-label">lzma: </label>
+	<input type="radio" name="lzma" value="y" checked="checked"/>y
+	<input type="radio" name="lzma" value="n"/>n
+</div>
+<div class="form-group">
+	<label for="update_1stfw" class="control-label">update_1stfw: </label>
+	<input type="radio" name="update_1stfw" value="y" checked="checked"/>y
+	<input type="radio" name="update_1stfw" value="n"/>n
+</div>
+<div class="form-group">
+	<label for="update_2ndfw" class="control-label">update_2ndfw: </label>
+	<input type="radio" name="update_2ndfw" value="y" checked="checked"/>y
+	<input type="radio" name="update_2ndfw" value="n"/>n
+</div>
+<!--div class="form-group">
+	<label for="burn_fwtbl" class="control-label">burn_fwtbl: </label>
+	<input type="radio" name="burn_fwtbl" value="y" checked="checked"/>y
+	<input type="radio" name="burn_fwtbl" value="n"/>n
+</div-->
+<div class="form-group">
+	<label for="seqnum_1stfw" class="control-label">seqnum_1stfw: </label>
+	<input type="text" id="seqnum_1stfw" class="form-control" placeholder="0"/>
+</div>
+<div class="form-group">
+	<label for="seqnum_2ndfw" class="control-label">seqnum_2ndfw: </label>
+	<input type="text" id="seqnum_2ndfw" class="form-control" placeholder="0"/>
+</div>
+<div class="form-group">
+	<label for="burn_factory" class="control-label">burn_factory: </label>
+	<input type="radio" name="burn_factory" value="y" checked="checked"/>y
+	<input type="radio" name="burn_factory" value="n "/>n
+</div>
+</ul>
+</div>
+	<div class="card">
+		<p class="card-header">Device Tree</p>
+		<div class="card-body">
+			<div id="kernelDT"></div>
+			<input type="file" id="file_input1"/>
+			<label for="size">zone</label>
+			<input type="text" class="size">
+		</div>
+	</div>
+	<div class="card">
+		<p class="card-header">Rescue Device Tree</p>
+		<div class="card-body">
+			<div id="rescueDT"></div>
+			<input type="file" id="file_input2"/>
+			<label for="size">zone</label>
+			<input type="text" class="size"/>
+		</div>
+	</div>
+	<div class="card">
+		<p class="card-header">Rescue RootFS</p>
+		<div class="card-body">
+			<div id="rescueRootFS"></div>
+			<input type="file" id="file_input3"/>
+			<label for="size">zone</label>
+			<input type="text" class="size"/>
+		</div>
+	</div>
+	<div class="card">
+		<p class="card-header">Bluecore</p>
+		<div class="card-body">
+			<div id="audioKernel"></div>
+			<input type="file" id="file_input4"/>
+			<label for="size">zone</label>
+			<input type="text" class="size"/>
+				<div class="form-group" style="margin:0;">
+				<label for="bluecore_encryption" class="control-label" style="margin:0;">Bluecore encryption: </label>
+				<input type="radio" name="bluecore_encryption" value="y"/>y
+				<input type="radio" name="bluecore_encryption" value="n" checked="checked"/>n
+			</div>
+		</div>
+	</div>
+	<div class="card">
+		<p class="card-header">Kernel</p>
+		<div class="card-body">
+			<div id="linuxKernel"></div>
+			<input type="file" id="file_input5"/>
+			<label for="size">zone</label>
+			<input type="text" class="size"/>
+		</div>
+	</div>
+	<div class="card">
+		<p class="card-header">Boot Logo</p>
+		<div class="card-body">
+			<div id="bootlogo"></div>
+			<input type="file" id="file_input6"/>
+			<label for="size">zone</label>
+			<input type="text" class="size"/><br>
+			<div class="form-group" style="margin:0;">
+				<label for="burn_logo" class="control-label" style="margin:0;"> Burn boot logo?</label>
+				<input type="radio" name="burn_logo" value="y" checked="checked"/>y
+				<input type="radio" name="burn_logo" value="n"/>n
+			</div>
+		</div>
+	</div>
+	<div class="card">
+		<p class="card-header">Boot Partition</p>
+		<div class="card-body">
+			<div id="partition"></div>
+			<input type="file" id="file_input7" webkitdirectory directory/>
+			<label for="size">zone</label>
+			<input type="text" class="size" value="52428800"/>
+			<!--select id="type" class="dropdown">
+				<option value="squashfs" selected="selected">squashfs</option>
+				<option value="swap">swap</option>
+				<option value="ext4">ext4</option>
+				<option value="ubifs">ubifs</option>
+			</select-->
+		</div>
+	</div>
+	<div class="card">
+		<p class="card-header">Normal Part</p>
+		<div class="card-body">
+			<label for="count">Count of general-purpose partitions</label>
+			<select id="count" class="dropdown form-control">
+				<option value="0" selected="selected">0</option>
+				<option value="1">1</option>
+				<option value="2">2</option>
+				<option value="3">3</option>
+			</select>
+			<div id="normal_part" class="form-group"></div>
+		</div>
+	</div>
+<!--button id="submit" class="btn btn-primary">submit</button-->
+	<div class="modal" tabindex="-1" id="exampleModal" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content" style="width:818px;">
+				<div class="modal-header">
+					<h3 class="modal-title" id="exampleModalLabel">Show Layout</h5>
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+				<div class="modal-body" style="padding-top:0;padding-left:1.6em">
+					<table id="showtable" class="table" data-toggle="modal"></table>
+				</div>
+				<div class="modal-footer">
+					<button id="submit" class="btn btn-primary" type="submit">submit</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</form>
+<button id="show" type="submit" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal">Show</button>
+</body>
+<script src="./lib/jquery-3.3.1.min.js"></script>
+<script src="./lib/bootstrap.min.js"></script>
+<script src="./lib/FileSaver.min.js"></script>
+<!--script src="./lib/validator.js"></script-->
+<script type="text/javascript">
+
+window.addEventListener('load', function () {
+	var form = document.getElementById('form');
+	form.addEventListener('submit', function (event) {
+	if (form.checkValidity() === false) {
+		event.preventDefault();
+		event.stopPropagation();
+	}
+	form.classList.add('was-validated');
+	}, false);
+}, false);
+
+$(document).on("click","#submit", function (event) {
+	parseData();
+});
+
+$(document).on("click","#show", function (event) {
+	if( $('input#version').val()=="" || $('input#project').val()=="" || $('input#storage_size').val()=="" || $('input#align').val()=="" || $('input#start_addr_2ndfw').val()=="" ){
+		$('#exampleModal').modal('hide');
+		verify();
+	}
+	else{
+		$('#exampleModal').modal('show');
+		showData();
+	}
+});
+
+$('#storage').change(function() {
+	if ( $('#storage').val() == "spi" ){
+		document.getElementById("bootargs").setAttribute("placeholder","bootargs.conf.spi");
+		document.getElementById("storage_size").setAttribute("placeholder","16");
+		$('[value="1024*1024"]').attr('selected', true);
+		$('[value="1024*1024*1024"]').attr('selected', false);
+		$('input[name=lzma][value="y"]').prop('checked', true);
+		document.getElementById('file_input7').disabled = true;
+		document.getElementById("count").disabled = true;
+	}
+	else if( $('#storage').val() == "emmc" ){
+		document.getElementById("bootargs").setAttribute("placeholder","bootargs.conf.emmc");
+		document.getElementById("storage_size").setAttribute("placeholder","8");
+		$('[value="1024*1024*1024"]').attr('selected', true);
+		$('[value="1024*1024"]').attr('selected', false);
+		$('input[name=lzma][value="n"]').prop('checked', true);
+		document.getElementById('file_input7').disabled = false;
+		document.getElementById("count").disabled = false;
+	}
+});
+
+$('input[type=radio][name=update_1stfw]').change(function() {
+	if (this.value == 'y') {
+		document.getElementById('seqnum_1stfw').disabled = false;
+	}
+	else {
+		document.getElementById('seqnum_1stfw').disabled = true;
+	}
+});
+
+$('input[type=radio][name=update_2ndfw]').change(function() {
+	if (this.value == 'y') {
+		document.getElementById('seqnum_2ndfw').disabled = false;
+	}
+	else {
+		document.getElementById('seqnum_2ndfw').disabled = true;
+	}
+});
+
+$('input[type=radio][name=burn_logo]').change(function() {
+	if (this.value == 'y') {
+		document.getElementById('file_input6').disabled = false;
+		$('#file_input6').siblings(".size").attr('disabled', false);
+	}
+	else {
+		document.getElementById('file_input6').disabled = true;
+		$('#file_input6').siblings(".size").attr('disabled', true);
+	}
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+	var fileControl = document.querySelector("#file_input1");
+	fileControl.addEventListener('change', getinfo);
+	//fileControl.item="linuxKernel";
+	fileControl.item="kernelDT";
+	var fileControl = document.querySelector("#file_input2");
+	fileControl.addEventListener('change', getinfo);
+	fileControl.item="rescueDT";
+	//fileControl.item="audioKernel";
+	var fileControl = document.querySelector("#file_input3");
+	fileControl.addEventListener('change', getinfo);
+	fileControl.item="rescueRootFS";
+	var fileControl = document.querySelector("#file_input4");
+	fileControl.addEventListener('change', getinfo);
+	fileControl.item="audioKernel";
+	//fileControl.item="rescueDT";
+	var fileControl = document.querySelector("#file_input5");
+	fileControl.addEventListener('change', getinfo);
+	//fileControl.item="kernelDT";
+	fileControl.item="linuxKernel";
+	var fileControl = document.querySelector("#file_input6");
+	fileControl.addEventListener('change', getinfo);
+	fileControl.item="bootlogo";
+	var fileControl = document.querySelector("#file_input7");
+	fileControl.addEventListener('change', getinfo_dir);
+	fileControl.item="partition";
+
+	function getinfo(event) {
+		var align = parseInt( $('input#align').val() );
+		var file = event.target.files[0];
+		var html =
+			'<div id="' + file.name + '" class="box" data-value="' + file.size + '">' + 
+			'<span class="name">file: ' + file.name +'</span><p class="size">size: ' + file.size +' byte'+ 
+			'</p></div>';
+
+		var filesDiv = document.querySelector('#' + event.target.item);
+		filesDiv.innerHTML = html;
+
+		document.getElementById(event.target.item).parentNode.setAttribute("value", file.name);
+		var zonesize = Math.ceil(parseInt(file.size) / align)*align;
+		$("#"+event.target.item).siblings(".size").attr("value", zonesize);
+	}
+
+	function getinfo_dir(event) {
+		var align = parseInt( $('input#align').val() );
+		var file = event.target.files[0].webkitRelativePath;
+		var folder = file.split("/");
+		var html =
+			'<div id="' + folder[0] + '" class="box">' +
+			'<span class="name">folder: ' + folder[0] +'</span></div>';
+
+		var filesDiv = document.querySelector('#' + event.target.item);
+		filesDiv.innerHTML = html;
+
+		document.getElementById(event.target.item).parentNode.setAttribute("value", folder[0]);
+	}
+});
+
+$('#count').change(function() {
+	var count = parseInt($('#count').val());
+	var html = "";
+
+	$("#normal_part").empty();
+	for(var i=1; i<count+1; i++){
+		html +=
+		'<fieldset><legend>Partition' + i + ':</legend>'+
+		'<div class="row"><div class="col"><label for="part'+i+'_type" class="form-inline">type: </label>'+
+		'<select id="part'+i+'_type" class="dropdown form-control">'+
+		'<option value="overlay" selected="selected">overlay</option>'+
+		'<option value="swap">swap</option>'+
+		'<option value="ext4">ext4</option>'+
+		'</select></div>'+
+		//"<input type='text' id='part"+i+"_type'/>"+
+		'<div class="col"><label for="part'+i+'_zone" class="form-inline">zone: </label>'+
+		'<input type="text" id="part'+i+'_zone" class="form-control"/></div></div></fieldset>';
+	}
+	$("#normal_part").append(html);
+});
+
+function verify(){
+	if( $('input#version').val()=="" ){
+		document.getElementById('version').focus();
+	}
+	else if( $('input#project').val()=="" ){
+		document.getElementById('project').focus();
+	}
+	else if( $('input#debug_level').val()=="" ){
+		document.getElementById('debug_level').focus();
+	}
+	else if( $('input#storage').val()=="" ){
+		document.getElementById('storage').focus();
+	}
+	else if( $('input#storage_size').val()=="" ){
+		document.getElementById('storage_size').focus();
+	}
+	else if( $('input#align').val()=="" ){
+		document.getElementById('align').focus();
+	}
+	else if( $('input#start_addr_2ndfw').val()=="" ){
+		document.getElementById('start_addr_2ndfw').focus();
+	}
+	else if( $('input#bootargs').val()=="" ){
+		document.getElementById('bootargs').focus();
+	}
+	else if( $('input#file_input1').val()=="" ){
+		document.getElementById('file_input1').focus();
+	}
+	else if( $('input#file_input2').val()=="" ){
+		document.getElementById('file_input2').focus();
+	}
+	else if( $('input#file_input3').val()=="" ){
+		document.getElementById('file_input3').focus();
+	}
+	else if( $('input#file_input4').val()=="" ){
+		document.getElementById('file_input4').focus();
+	}
+	else if( $('input#file_input5').val()=="" ){
+		document.getElementById('file_input5').focus();
+	}
+}
+
+function showData(){
+	var item =["", "kernelDT", "rescueDT", "rescueRootFS", "audioKernel", "linuxKernel", ""];
+	var stg = $('#storage').val();
+	var output="<tr><th>#fw</th><th>fwpart_name</th><th>file_name</th><th>actual_size(dec)</th><th>zone_size(dec)</th>";
+	var addr_1 = stg == "spi" ? parseInt("0x130000"): parseInt("0xa31000");
+	var addr_2 = parseInt( "0x"+$('input#start_addr_2ndfw').val() );
+	var err_row=[];// show illegal zone
+	var top1staddr = 0;
+
+	for(var j=2; j>0; j--){
+		for(var i=6; i>0; i--){
+			if($("input[name='update_1stfw']:checked").val() == "n" && j == 1) break;
+			if($("input[name='update_2ndfw']:checked").val() == "n" && j == 2) break;
+			var addr = j==1 ? addr_1 : addr_2;
+
+			for (var k = 1; k < i; k++){
+				addr+= parseInt($('input#file_input' + k).siblings("input").val());
+			}
+
+			var bootlogo_addr = addr;
+			var bootpart_addr = 0;
+			if(i == 6){	// add top memory_addr
+				if(j==2 && stg=="emmc"){
+					if( $("input[name='burn_logo']:checked").val() == 'y' )
+						bootlogo_addr += parseInt($('input#file_input6').siblings("input").val());
+					bootpart_addr = bootlogo_addr + parseInt($('input#file_input7').siblings("input").val());
+				}
+				else{
+					bootlogo_addr = addr;
+					bootpart_addr = addr;
+				}
+				//if( $("input[name='burn_logo']:checked").val() == 'y' )
+					output +="<td style='border:none;position:relative;top:27px;color:#888888'>0x"+bootpart_addr.toString(16)+"</td></tr>";
+				if (j == 2 && stg=="emmc"){
+					output +=
+					"<tr name='row_data'>"+	// add bootpart
+					"<td>squashfs</td>"+
+					"<td>bootpart</td>"+
+					"<td>"+$("input#file_input7").parent('div').attr('value')+"</td>"+
+					"<td>-</td>"+
+					"<td>"+$('input#file_input7').siblings("input").val()+"</td>"+
+					"<td name='memory_addr' style='border:none;position:relative;top:27px;color:#888888'>0x"+bootlogo_addr.toString(16)+"</td>"+
+					"</tr>";
+					if( $("input[name='burn_logo']:checked").val() == 'y' ){
+						output += "<tr name='row_data'>"+	// add bootlogo
+						"<td>"+j+"fw</td>"+
+						"<td>bootlogo</td>"+
+						"<td>"+$("input#file_input6").parent('div').attr('value')+"</td>"+
+						"<td>"+$("input#file_input6").siblings("div").children('div').attr('data-value')+"</td>"+
+						"<td>"+$('input#file_input6').siblings("input").val()+"</td>"+
+						"<td name='memory_addr' style='border:none;position:relative;top:27px;color:#888888'>0x"+addr.toString(16)+"</td>"+
+						"</tr>";
+					}
+				}
+				else top1staddr = parseInt( "0x" + addr ); //get top of lst addr
+			}
+			else {
+			output +=
+				"<tr name='row_data"+ i +"'>"+
+				"<td>"+j+"fw</td>"+
+				"<td>"+item[i]+"</td>"+
+				"<td>"+$("input#file_input" + i).parent('div').attr('value')+"</td>"+
+				"<td>"+$("input#file_input" + i).siblings("div").children('div').attr('data-value')+"</td>"+
+				"<td>"+$('input#file_input' + i).siblings("input").val()+"</td>"+
+				"<td name='memory_addr' style='border:none;position:relative;top:27px;color:#888888'>0x"+addr.toString(16)+"</td>"+
+				"</tr>";
+
+				if(parseInt( $("input#file_input" + i).siblings("div").children('div').attr('data-value')) >
+					parseInt($('input#file_input' + i).siblings("input").val()) ){
+					err_row.push(i);
+				}
+			}
+		}
+		if (j == 2) output += "<tr><th name='freespace'></th><th></th><th>Free Space</th><th></th><th></th>";
+	}
+	document.getElementById("showtable").innerHTML = output;
+
+	err_row.forEach(function(item, index, array) {
+		$("[name='row_data"+item+"']").css("color", "red");
+	});
+	if( top1staddr > addr_2) $("[name='freespace']").css("color", "red"); // check free space
+}
+
+function parseData(){
+	var debug = "";
+	var burn_bootpart = $('#storage').val() == "spi" ? "n" : "y";
+	$('input:checkbox:checked[name="debug_level"]').each(function(i) {
+		debug += this.value + "+";
+	});
+	debug= debug.substring(0, debug.length-1);
+
+	var context=
+		"version=" + $('input#version').val() + "\n" +
+		"project=" + $('input#project').val() + "\n" +
+		"debug_level=$((" + debug + "))\n" +
+		"#storage [spi|emmc|nand]\nstorage=" + $('#storage').val() + "\n" +
+		"storage_size=$((" + $('input#storage_size').val() + "*" + $('#unit').val() + "))\n" +
+		"storage_align=$((" + $('input#align').val() + "))\n" +
+		//"storage_start_addr=$((" + $('input#start_addr_1stfw').val() + "))\n" +
+		"storage_2ndfw_addr=$((0x" + $('input#start_addr_2ndfw').val() + "))\n" +
+		"bootargs=" + $('input#bootargs').val() + "\n" +
+
+		"lzma=" + $("input[name='lzma']:checked"). val() + "\n" +
+		"update_1stfw=" + $("input[name='update_1stfw']:checked").val() + "\n" +
+		"update_2ndfw=" + $("input[name='update_2ndfw']:checked").val() + "\n" +
+		"burn_fwtbl=y\n" +
+		"seqnum_1stfw=$((" + $('input#seqnum_1stfw').val() + "))\n" +
+		"seqnum_2ndfw=$((" + $('input#seqnum_2ndfw').val() + "))\n" +
+		"burn_bootpart=" + burn_bootpart + "\n" +
+		"burn_factory=" + $("input[name='burn_factory']:checked").val() + "\n";
+
+	var item =["", "kerneldtb", "rescuedtb", "rescuefs", "bluecore", "kernel", "bootlogo"];
+	var fw1_addr = "storage_start_addr";
+	var fw2_addr = "storage_2ndfw_addr";
+
+	var i=1
+	for(; i<item.length-1; i++){
+		var tmp =
+		"#"+item[i] + "\n" +
+		item[i]+"_file=" + $("input#file_input" + i).parent('div').attr('value') + "\n" +// file name
+		item[i]+"_zone=$((" + $('input#file_input' + i).siblings("input").val() + "))\n" +
+		item[i]+"_1stfw_addr=$((" + fw1_addr + "))\n" +
+		item[i]+"_2ndfw_addr=$((" + fw2_addr + "))\n" ;
+		context +=tmp;
+
+		fw1_addr = item[i] + "_1stfw_addr+" + item[i] + "_zone" ;
+		fw2_addr = item[i] + "_2ndfw_addr+" + item[i] + "_zone" ;
+	}
+
+	if($("input[name='burn_logo']:checked").val() == "y"){
+		context +=
+			item[i]+"_file=" + $("input#file_input6").parent('div').attr('value') + "\n" +
+			item[i]+"_zone=$((" + $('input#file_input5').siblings("input").val() + "))\n" +
+			item[i]+"_1stfw_addr=$((" + fw1_addr + "))\n" +
+			item[i]+"_2ndfw_addr=$((" + fw2_addr + "))\n" ;
+
+		fw1_addr = item[i] + "_1stfw_addr+" + item[i] + "_zone" ;
+		fw2_addr = item[i] + "_2ndfw_addr+" + item[i] + "_zone" ;
+	}
+	else{
+		context +=
+			item[i]+"_file=\n" +
+			item[i]+"_zone=$(())\n";
+	}
+
+	context +=
+	"encrypted_bluecore=" + $("input[name='bluecore_encryption']:checked").val() + "\n" +
+	"#part type [squashfs|swap|ext4|ubifs]" + "\n" +
+	"bootpart_dir=" + $("input#file_input" + item.length).parent('div').attr('value') + "\n" +
+	"bootpart_type=squashfs\n" +
+	"bootpart_zone=$((" + $('input#file_input' + item.length).siblings("input.size").val() + "))" + "\n" +
+	"bootpart_addr=$(("+ fw2_addr + "))\n";
+
+	if( $('#storage').val() == 'emmc'){
+		var count = parseInt($('#count').val());
+		context +=
+		"#installer forces to enables overlayfs and reserve mmcblk0p2 in the same size\n"+
+		"normalpart_count=$((" + count + "))\n";
+
+		for(i=1; i<count+1; i++){
+			context +=
+			"normalpart" + i + "_type="+ $("#part" + i + "_type").val() + "\n" +
+			"normalpart" + i + "_zone=$(("+ $("input#part" + i + "_zone").val() +"))\n";
+			if(i == 1)
+				context += "normalpart" + i + "_addr=$((bootpart_addr+bootpart_zone))\n";
+			else {
+				var j =i-1;
+				context += "normalpart" + i + "_addr=$((bootpart"+j+"_addr+bootpart"+j+"_zone))\n";
+			}
+		}
+	}
+	else if($('#storage').val() == 'spi'){
+		var count = parseInt($('#count').val());
+		context +=
+		"#installer forces to enables overlayfs and reserve mmcblk0p2 in the same size\n"+
+		"normalpart_count=$((0))\n";
+	}
+
+	if( $("input[name='burn_logo']:checked").val() == 'n' ) context = context.replace("burn_bootlogo=y", "burn_bootlogo=n");
+	context=context.replace("burn_rescuefs", "burn_rescue_rootfs");
+	context=context.replace("bootlogo_1stfw_addr=$((kernel_1stfw_addr+kernel_zone))", "bootlogo_1stfw_addr=$((kernel_2ndfw_addr+kernel_zone))");
+
+	var file = new File([context], "feeds.conf."+$('#storage').val(), {type: "text/plain;charset=utf-8"});
+	saveAs(file);
+}
+</script>
+</html>

@@ -92,7 +92,7 @@ static int rtk_sfc_read_hdr(uint * c, uint max, u64 * id,
 
 static ssize_t rtk_sfc_pstore_read(u64 * id, enum pstore_type_id *type,
 				   int *count, struct timespec *time,
-				   char **buf, bool * compressed,
+				   char **buf, bool * compressed,  ssize_t *ecc_notice_size,
 				   struct pstore_info *psi)
 {
 	ssize_t size;

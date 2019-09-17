@@ -157,7 +157,7 @@
 #define RTK_PINCTRL_PIN_ejtag_vcpu_loc			PINCTRL_PIN(P_ISO_BASE + 106, "ejtag_vcpu_loc")
 #define RTK_PINCTRL_PIN_ejtag_scpu_loc			PINCTRL_PIN(P_ISO_BASE + 107, "ejtag_scpu_loc")
 #define RTK_PINCTRL_PIN_dmic_loc			PINCTRL_PIN(P_ISO_BASE + 108, "dmic_loc")
-#define RTK_PINCTRL_PIN_iso_gspi_loc			PINCTRL_PIN(P_ISO_BASE + 109, "iso_gspi")
+#define RTK_PINCTRL_PIN_iso_gspi_loc			PINCTRL_PIN(P_ISO_BASE + 109, "iso_gspi_loc")
 
 
 
@@ -334,7 +334,7 @@ static const struct rtk_pin_regmap pin_regmap[] = {
 	{.pmux_base = PMUX_BASE_ISO, .pmux_regoff = 0x120, .pmux_regbit = 19, .pmux_regbitmsk = 0x3,	.pcof_regoff = PCOF_UNSUPPORT, .pcof_regbit = 0, .pcof_cur_strgh = PADDRI_UNSUPPORT}, /*(P_ISO_BASE + 106, "ejtag_vcpu_loc")*/
 	{.pmux_base = PMUX_BASE_ISO, .pmux_regoff = 0x120, .pmux_regbit = 21, .pmux_regbitmsk = 0x3,	.pcof_regoff = PCOF_UNSUPPORT, .pcof_regbit = 0, .pcof_cur_strgh = PADDRI_UNSUPPORT}, /*(P_ISO_BASE + 107, "ejtag_scpu_loc")*/
 	{.pmux_base = PMUX_BASE_ISO, .pmux_regoff = 0x120, .pmux_regbit = 24, .pmux_regbitmsk = 0x3,	.pcof_regoff = PCOF_UNSUPPORT, .pcof_regbit = 0, .pcof_cur_strgh = PADDRI_UNSUPPORT}, /*(P_ISO_BASE + 108, "dmic_loc")*/
-	{.pmux_base = PMUX_BASE_ISO, .pmux_regoff = 0x120, .pmux_regbit = 26, .pmux_regbitmsk = 0x3,	.pcof_regoff = PCOF_UNSUPPORT, .pcof_regbit = 0, .pcof_cur_strgh = PADDRI_UNSUPPORT}, /*(P_ISO_BASE + 109, "iso_gspi")*/
+	{.pmux_base = PMUX_BASE_ISO, .pmux_regoff = 0x120, .pmux_regbit = 26, .pmux_regbitmsk = 0x3,	.pcof_regoff = PCOF_UNSUPPORT, .pcof_regbit = 0, .pcof_cur_strgh = PADDRI_UNSUPPORT}, /*(P_ISO_BASE + 109, "iso_gspi_loc")*/
 };
 
 
@@ -479,13 +479,13 @@ static const struct RTK_desc_pin rtk_pins[] = {
 		RTK_FUNCTION(0x1, "etn_led"),
 		RTK_FUNCTION(0x2, "pwm2"),
 		RTK_FUNCTION(0x3, "etn_phy"),
-		RTK_FUNCTION(0x1, "rgmii")),
+		RTK_FUNCTION(0x4, "rgmii")),
 	RTK_PIN(RTK_PINCTRL_PIN_gpio_15,
 		RTK_FUNCTION(0x0, "gpio"),
 		RTK_FUNCTION(0x1, "etn_led"),
 		RTK_FUNCTION(0x2, "pwm3"),
 		RTK_FUNCTION(0x3, "etn_phy"),
-		RTK_FUNCTION(0x1, "rgmii")),
+		RTK_FUNCTION(0x4, "rgmii")),
 	RTK_PIN(RTK_PINCTRL_PIN_gpio_16,
 		RTK_FUNCTION(0x0, "gpio"),
 		RTK_FUNCTION(0x1, "i2c1")),
@@ -897,7 +897,7 @@ static const struct RTK_desc_pin rtk_pins[] = {
 		RTK_FUNCTION(0x2, "dmic_loc1")),
 	RTK_PIN(RTK_PINCTRL_PIN_iso_gspi_loc,
 		RTK_FUNCTION(0x1, "iso_gspi_loc0"),
-		RTK_FUNCTION(0x2, "iso_gspi_loc1 ")),
+		RTK_FUNCTION(0x2, "iso_gspi_loc1")),
 
 };
 

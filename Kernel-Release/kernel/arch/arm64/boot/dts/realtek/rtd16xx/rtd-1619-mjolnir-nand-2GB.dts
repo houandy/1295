@@ -34,12 +34,12 @@
 /memreserve/ ION_AUDIO_HEAP_PHYS_0  ION_AUDIO_HEAP_SIZE_0;
 /memreserve/ ION_MEDIA_HEAP_PHYS_1  ION_MEDIA_HEAP_SIZE_1;
 
-#include "rtd-16xx.dtsi"
+#include "rtd-1619-mjolnir.dtsi"
 #include "rtd-1619-usb.dtsi"
 #include "rtd-1619-sata.dtsi"
 
 / {
-	model= "Realtek_Mjolnir_2GB";
+	model= "Realtek_Mjolnir_2GB_NAND";
 	model_hex= <0x00000653>;
 
 	/*
@@ -146,6 +146,12 @@
 
 		rpc@0 {
 			reg = <RPC_COMM_PHYS RPC_COMM_SIZE>;
+		};
+		
+		avlog {
+			sync_lock = <&sb2_lock_avlog>;
+			sync_lock_timeout = <500>; /* ms */
+			log_check_period = <500>; /* ms */
 		};
 	};
 

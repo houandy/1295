@@ -36,7 +36,6 @@
 #include <asm/cacheflush.h>
 #include <asm/suspend.h>
 #include <soc/realtek/memory.h>
-#include <soc/realtek/rtk_cpu.h>
 #include <uapi/linux/psci.h>
 
 #include "rtd16xx_suspend.h"

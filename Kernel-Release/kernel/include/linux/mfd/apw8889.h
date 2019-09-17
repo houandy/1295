@@ -160,12 +160,12 @@
 #define APW8889_DC6_SLPVOLT_MASK        (0x3F)
 #define APW8889_DC6_SLPVOLT_SHIFT       (0)
 #define APW8889_DC6_SLPVOLT_WIDTH       (6)
-#define APW8889_LDO1_NRMVOLT_MASK       (0x3F)
+#define APW8889_LDO1_NRMVOLT_MASK       (0x1F)
 #define APW8889_LDO1_NRMVOLT_SHIFT      (0)
 #define APW8889_LDO1_NRMVOLT_WIDTH      (5)
-#define APW8889_LDO1_SLPVOLT_MASK       (0x3F)
+#define APW8889_LDO1_SLPVOLT_MASK       (0x1F)
 #define APW8889_LDO1_SLPVOLT_SHIFT      (0)
-#define APW8889_LDO1_SLPVOLT_WIDTH      (6)
+#define APW8889_LDO1_SLPVOLT_WIDTH      (5)
 
 /* register field: CLAMP */
 #define APW8889_DC2_CLAMP_MASK          (0x4)

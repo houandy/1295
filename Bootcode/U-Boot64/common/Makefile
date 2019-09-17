@@ -315,12 +315,14 @@ endif
 
 CFLAGS_env_embedded.o := -Wa,--no-warn -DENV_CRC=$(shell tools/envcrc 2>/dev/null)
 
+obj-$(CONFIG_CMD_RTKETHSPEED) += cmd_rtkethspeed.o
 obj-$(CONFIG_CMD_RTKSPI) += cmd_rtkspi.o
 obj-$(CONFIG_CMD_RTKRNG) += cmd_rtkrng.o
 obj-$(CONFIG_CMD_RTKGPT) += cmd_rtkgpt.o
 obj-$(CONFIG_CMD_RTKMKFAT) += cmd_rtkmkfat.o
 obj-$(CONFIG_CMD_RTKFDT) += cmd_rtkfdt.o
 obj-$(CONFIG_CMD_RTKPWM) += cmd_rtkpwm.o
+obj-$(CONFIG_CMD_RTKLSADC) += cmd_rtklsadc.o
 obj-$(CONFIG_CMD_KEY_BURNING) += cmd_burn.o cmd_verify.o
 obj-y += cmd_uart_read_write.o
 

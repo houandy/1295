@@ -480,12 +480,16 @@ static const u32 map_reg_to_clk[8] = {0x02,0x03,0x04,0x05,0xFF,0x00,0x01,0xFF};
 	} while(0)			
 
 #define  rtkemmc_mdelay(x)  \
-	set_current_state(TASK_INTERRUPTIBLE); \
-	schedule_timeout(msecs_to_jiffies(x))
+	do {    \
+		set_current_state(TASK_INTERRUPTIBLE); \
+		schedule_timeout(msecs_to_jiffies(x))  \
+	} while(0)
 
 #define rtkemmc_writel(val, addr) \
-	sync(emmc_port);					\
-	writel(val, addr);					
+	do {    \
+		sync(emmc_port);					\
+		writel(val, addr);					\
+	} while(0)
 		
 #define INT_BLOCK_R_GAP 0x200
 #define INT_BLOCK_W_GAP 5

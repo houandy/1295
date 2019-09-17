@@ -38,7 +38,7 @@
 	chosen {
 		linux,initrd-start = <ROOTFS_RESCUE_START>;
 		linux,initrd-end = <ROOTFS_RESCUE_END>;
-		bootargs ="earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200 init=/init androidboot.hardware=hank androidboot.storage=emmc loglevel=4";
+		bootargs ="earlycon=uart8250,mmio32,0x98007800 console=ttyS0,460800 init=/init androidboot.hardware=hank androidboot.storage=emmc loglevel=4";
 	};
 
 	memory@0 {
@@ -139,6 +139,10 @@
 
 	sdmmc@98010400 {
 		status = "disabled";
+	};
+
+	emmc@98012000 {
+		kernel_hs400_tuning = <1>;
 	};
 
 	mcp@0 {

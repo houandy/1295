@@ -82,6 +82,7 @@
 	#define CONFIG_IPS
 	#ifdef CONFIG_IPS
 		/*#define CONFIG_IPS_LEVEL_2*/ /* enable this to set default IPS mode to IPS_LEVEL_2 */
+		/*#define CONFIG_FWLPS_IN_IPS*/
 	#endif
 
 	#define CONFIG_LPS
@@ -94,6 +95,7 @@
 		#define CONFIG_XMIT_THREAD_MODE
 		#define LPS_RPWM_WAIT_MS 300
 		/*#define CONFIG_LPS_PG*/
+		#define DBG_CHECK_FW_PS_STATE
 	#endif
 
 	#ifdef CONFIG_LPS
@@ -102,7 +104,7 @@
 
 #endif
 
-//#define CONFIG_PCI_ASPM
+/*#define CONFIG_PCI_ASPM*/
 #ifdef CONFIG_PCI_ASPM
 #define CONFIG_PCI_DYNAMIC_ASPM
 #endif
@@ -186,9 +188,6 @@
 #endif
 
 #define RTW_NOTCH_FILTER 0 /* 0:Disable, 1:Enable, */
-
-#define CONFIG_TX_MCAST2UNI		/* Support IP multicast->unicast*/
-/*#define CONFIG_CHECK_AC_LIFETIME 1*/	/* Check packet lifetime of 4 ACs. */
 
 #define CONFIG_BEAMFORMING
 
@@ -322,3 +321,4 @@
 /* #define CONFIG_8822CE_INT_MIGRATION */
 
 #define CONFIG_PCI_TX_POLLING
+/*#define CONFIG_PCI_TX_POLLING_V2*/

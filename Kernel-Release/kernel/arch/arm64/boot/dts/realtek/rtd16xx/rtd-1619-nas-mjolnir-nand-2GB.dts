@@ -10,10 +10,10 @@
 /* /memreserve/ 0x32b00000 0x12C00000; */
 
 /memreserve/ SYS_BOOTCODE_MEMBASE SYS_BOOTCODE_MEMSIZE;
-/memreserve/ RPC_COMM_PHYS RPC_COMM_SIZE;
-/memreserve/ RPC_RINGBUF_PHYS RPC_RINGBUF_SIZE;
+/* /memreserve/ RPC_COMM_PHYS RPC_COMM_SIZE; */
+/* /memreserve/ RPC_RINGBUF_PHYS RPC_RINGBUF_SIZE; */
 /* /memreserve/ ROOTFS_NORMAL_START ROOTFS_NORMAL_SIZE; */
-/memreserve/ ACPU_IDMEM_PHYS ACPU_IDMEM_SIZE;
+/* /memreserve/ ACPU_IDMEM_PHYS ACPU_IDMEM_SIZE; */
 
 #define MEDIA_REQ_SIZE_0 (0x0ce00000) // 206M
 #define ION_MEDIA_HEAP_PHYS_0 (MEM_SLOT(0, PHYS, MEDIA_REQ_SIZE_0))
@@ -209,4 +209,11 @@
 			/delete-property/ phys;
 		};
 	};
+	rtk_pm@0 {
+		wakeup-flags = <0x3d>; /* Bits [5] CEC [4] timer [3]Alarm [2]GPIO [1]IR [0]LAN  */
+	};	
+	spi_0: spi@9801BD00 {
+		status = "okay";
+	};	
+	
 };

@@ -8,7 +8,7 @@ PLATFORM = LINUX
 #PLATFORM = CYGWIN
 
 MYLIB   = lib/libmcp.a
-HOSTCC      = gcc
+HOSTCC  = gcc
 AR      = ar
 VPATH   = obj inc src 
 OPENSSL_PATH ?= /usr/local/ssl

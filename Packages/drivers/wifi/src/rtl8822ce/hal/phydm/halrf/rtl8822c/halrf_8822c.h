@@ -69,7 +69,9 @@ void get_delta_swing_table_8822c_ex(
 
 void halrf_dac_cal_all_8822c(void *dm_void);
 
-void halrf_dac_cal_8822c(void *dm_void);
+void halrf_dac_cal_8822c(void *dm_void, boolean force);
+
+void halrf_dack_dbg_8822c(void *dm_void);
 
 void phy_lc_calibrate_8822c(
 	void *dm_void);
@@ -86,4 +88,7 @@ void phy_set_rf_path_switch_8822c(
 
 void halrf_rxbb_dc_cal_8822c(void *dm_void);
 
+void halrf_rfk_handshake_8822c(void *dm_void, boolean is_before_k);
+
+void halrf_dack_restore_8822c(void *dm_void);
 #endif /*__HALRF_8822C_H__*/

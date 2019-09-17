@@ -147,10 +147,13 @@
 		/* #define CONFIG_SYS_FACTORY_READ_ONLY */
 	#endif
 
-	/* ENV */
-	#undef CONFIG_ENV_SIZE
+	/* ENV */
+
+	#undef CONFIG_ENV_SIZE
+
 	#ifdef CONFIG_ENV_IS_IN_FACTORY
-	#define CONFIG_ENV_SIZE (8192)
+	#define CONFIG_ENV_SIZE (8192)
+
 	#else
 	#define CONFIG_ENV_IS_IN_SPI
 	#undef CONFIG_ENV_ADDR
@@ -197,7 +200,6 @@
 	#define CONFIG_RESCUE_FROM_USB_AUDIO_CORE	"bluecore.audio"
 #endif /* CONFIG_RESCUE_FROM_USB */
 #endif
-
 
 #define COUNTER_FREQUENCY               27000000 // FIXME, need to know what impact it will cause
 

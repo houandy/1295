@@ -18,7 +18,7 @@
 /* Framebuffer */
 /memreserve/ 0x15000000 0x17BB000;
 
-#include "rtd-139x.dtsi"
+#include "rtd-1395-papermulberry.dtsi"
 
 / {
 	model= "Realtek_RTD1355";
@@ -204,12 +204,3 @@
 	status = "disabled";
 };
 
-/delete-node/ &opp1400;
-/delete-node/ &opp1300;
-/delete-node/ &opp1200;
-&opp900 {
-	opp-suspend;
-};
-/delete-node/ &gopp750;
-/delete-node/ &gopp700;
-/delete-node/ &gopp600;

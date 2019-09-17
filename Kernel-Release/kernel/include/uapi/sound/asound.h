@@ -473,6 +473,11 @@ struct snd_pcm_mmap_control {
 	snd_pcm_uframes_t avail_min;	/* RW: min available frames for wakeup */
 };
 
+struct AUDIO_RPC_EQUALIZER_MODE {
+	int mode;
+	int gain[10];
+};
+
 #define SNDRV_PCM_SYNC_PTR_HWSYNC	(1<<0)	/* execute hwsync */
 #define SNDRV_PCM_SYNC_PTR_APPL		(1<<1)	/* get appl_ptr from driver (r/w op) */
 #define SNDRV_PCM_SYNC_PTR_AVAIL_MIN	(1<<2)	/* get avail_min from driver */

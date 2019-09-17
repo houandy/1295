@@ -18,7 +18,7 @@
 #define NAND_BLOCK_SIZE_256KB				(256 * 1024UL)
 #define NAND_BOOTARRAY_FW_TABLE_BLK			(6)
 #define TEE_OS_MAX_SIZE                     (768 * 1024UL)
-#define DTE_BOOOTCODE_MAX_SIZE              (256 * 1024UL)
+#define DTE_BOOOTCODE_MAX_SIZE              (1536 * 1024UL)
 #define DTE_BOOOTCODE_RTK_MAX_SIZE          (1536 * 1024UL)
 
 void printUsage()

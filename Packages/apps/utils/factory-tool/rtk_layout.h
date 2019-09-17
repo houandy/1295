@@ -23,6 +23,17 @@
     #define FACTORY_SIZE        0x20000
 #endif /* CHIP_TYPE */
 
+#elif STOR_TYPE_NAND
+
+#define ENV_TOTAL_SIZE  8192
+#ifdef CHIP_TYPE_THOR
+    #define FACTORY_START_ADDR  0xE60000
+    #define FACTORY_SIZE        0x400000
+#elif CHIP_TYPE_KYLIN
+    #define FACTORY_START_ADDR  0x4C0000
+    #define FACTORY_SIZE        0x80000
+#endif /* CHIP_TYPE */
+
 #else
 /* define default value to avoid compiler complaint, should never get here */
 #define ENV_TOTAL_SIZE      131072

@@ -498,9 +498,37 @@ int DC_Set_ION_Share_Memory(struct fb_info *fb, VENUSFB_MACH_INFO *video_info,
 	DC_INFO * pdc_info = (DC_INFO*)video_info->dc_info;
 	DC_UNREFERENCED_PARAMETER (fb);
 	DC_UNREFERENCED_PARAMETER (video_info);
+	extern int osd_status;
 
 	if (pdc_info->gpsIONClient == NULL)
 		pdc_info->gpsIONClient = ion_client_create(rtk_phoenix_ion_device, "dc2vo");
+    //For supporting osd-init in rtk fb driver
+    if (osd_status == 1){
+		if ((param->sfd_rbHeader== 0)&&(param->sfd_rbBase == 0)) {
+        /*  +---------------+
+            | RingBuffer 64k|
+            +---------------+
+            | RingBuffer 1k |
+            +---------------+
+            | RefClk    1k  |
+            +---------------+    */
+
+        struct ion_handle *handle;
+        handle = ion_import_dma_buf(pdc_info->gpsIONClient, dma_buf_get(param->sfd_refclk));
+        pdc_info->RING_HEADER_BASE = ion_map_kernel(pdc_info->gpsIONClient,handle);
+        pdc_info->RING_HEADER = (void*)((unsigned long)pdc_info->RING_HEADER_BASE + 64*1024);
+        pdc_info->REF_CLK = (void*)((unsigned long)pdc_info->RING_HEADER + 1024);
+
+        dprintk("[%s] refclk sfd:%d handle:%p vAddr:%p\n",__func__,
+                param->sfd_refclk, handle, pdc_info->REF_CLK);
+        dprintk("[%s] rbHeader sfd:%d handle:%p vAddr:%p\n",__func__,
+                param->sfd_rbHeader, handle, pdc_info->RING_HEADER);
+        dprintk("[%s] rbHeaderBase sfd:%d handle:%p vAddr:%p\n",__func__,
+                param->sfd_rbBase, handle, pdc_info->RING_HEADER_BASE);
+
+        return 0;
+		}
+    }
 
 	if (param->sfd_refclk != 0) {
 		struct ion_handle *refclk_handle;
@@ -1183,6 +1211,13 @@ static int dc_do_simple_post_config(VENUSFB_MACH_INFO * video_info, void *arg)
 	int complete_fence_fd;
 	struct dc_buffer buf;
 	int ret = 0;
+	extern int osd_status;
+	struct fb_info *fb;
+
+	if (osd_status==1){
+		pr_info("[%d] osd-init enabled\n", __LINE__);
+		fb  = pdc_info->pfbi;
+	}
 
 	//complete_fence_fd = get_unused_fd();
 	complete_fence_fd = get_unused_fd_flags(O_CLOEXEC);
@@ -1195,6 +1230,12 @@ static int dc_do_simple_post_config(VENUSFB_MACH_INFO * video_info, void *arg)
 	if (ret < 0) {
 		eprintk("[%s %d] ret = %d\n", __func__, __LINE__, ret);
 		goto err_import;
+	}
+	if (osd_status==1){
+		if (buf.phyAddr==0)
+		buf.phyAddr=fb->fix.smem_start
+	                            + fb->fix.line_length * fb->var.yoffset
+	                            + fb->var.xoffset *  (fb->var.bits_per_pixel / 8);
 	}
 
 	complete_fence = dc_simple_post(pdc_info, &buf);
@@ -1410,6 +1451,61 @@ static int dc_queue_vo_buffer(DC_INFO *pdc_info, struct dc_buffer *buffer)
 	return 0;
 }
 
+static int dc_queue_vo_buffer_partial(DC_INFO *pdc_info, struct dc_buffer *buffer)
+{
+	VIDEO_GRAPHIC_PICTURE_OBJECT_VERSION obj;
+
+	if (!(pdc_info->flags & RPC_READY)) {
+		eprintk("[%s %d] pdc_info->RING_HEADER = %p\n",
+			__func__, __LINE__, pdc_info->RING_HEADER);
+		buffer->id = eFrameBufferSkip;
+		return 0;
+	}
+
+	if (pdc_info->flags & SUSPEND) {
+		buffer->id = eFrameBufferSkip;
+		return 0;
+	}
+
+	obj.header.type = VIDEO_GRAPHIC_INBAND_CMD_TYPE_PICTURE_OBJECT;
+	obj.header.size = sizeof(VIDEO_GRAPHIC_PICTURE_OBJECT_VERSION);
+	obj.version = RTK_VERSION_0;
+	obj.format = buffer->format;
+	obj.PTSH = 0;
+	obj.PTSL = 0;
+	obj.context = (unsigned int) buffer->context;
+	obj.colorkey = -1;
+	obj.alpha = buffer->alpha;
+	obj.x = 0;
+	obj.y = 0;
+	obj.width = buffer->width;
+	obj.height = buffer->height;
+	obj.address = buffer->phyAddr;
+	obj.pitch = buffer->stride;
+	obj.address_right = 0;
+	obj.pitch_right = 0;
+	obj.picLayout = INBAND_CMD_GRAPHIC_2D_MODE;
+	// partial update only support non-afbc
+	obj.afbc = 0;
+	obj.afbc_block_split = 0;
+	obj.afbc_yuv_transform = 0;
+	obj.partialSrcWin_x = buffer->partial_x;
+	obj.partialSrcWin_y = buffer->partial_y;
+	obj.partialSrcWin_w = buffer->partial_w;
+	obj.partialSrcWin_h = buffer->partial_h;
+
+	if (ICQ_WriteCmd(&obj, pdc_info->RING_HEADER, pdc_info->RING_HEADER_BASE)) {
+		eprintk("[%s %d]ERROR!! Write CMD Error!\n",__FUNCTION__, __LINE__);
+		return -EAGAIN;
+	}
+
+#ifdef CONFIG_RTK_RPC
+	dc2vo_send_interrupt();
+#endif
+
+	return 0;
+}
+
 static int dc_queue_framebuffer(DC_INFO *pdc_info, struct dc_buffer *buffer)
 {
 
@@ -1436,6 +1532,23 @@ static int dc_queue_framebuffer_target(DC_INFO *pdc_info, struct dc_buffer *buff
 		goto err;
 
 	if(dc_queue_vo_buffer(pdc_info, buffer))
+		goto err;
+
+	return 0;
+
+err:
+	return -EAGAIN;
+}
+
+static int dc_queue_framebuffer_partial(DC_INFO *pdc_info, struct dc_buffer *buffer)
+{
+
+	dprintk("[%s %d]\n", __func__, __LINE__);
+
+	if(dc_prepare_framebuffer_target(pdc_info, buffer))
+		goto err;
+
+	if(dc_queue_vo_buffer_partial(pdc_info, buffer))
 		goto err;
 
 	return 0;
@@ -1522,6 +1635,8 @@ static int dc_vo_post(DC_INFO *pdc_info, struct dc_buffer *buf)
 		ret = dc_queue_user_buffer(pdc_info, buf);
 	} else if (buf->id == eFrameBufferTarget) {
 		ret = dc_queue_framebuffer_target(pdc_info, buf);
+	} else if (buf->id == eFrameBufferPartial) {
+		ret = dc_queue_framebuffer_partial(pdc_info, buf);
 	} else if (buf->id == eFrameBufferSkip) {
 		dprintk("eFrameBufferSkip!");
 	} else
@@ -1554,6 +1669,7 @@ static int dc_vo_complete(DC_INFO *pdc_info, struct dc_buffer *buf)
 				break;
 			}
 		case eFrameBufferTarget:
+		case eFrameBufferPartial:
 			{
 				unsigned int maxWaitVsync = -1U;
 				unsigned int waitContext;
@@ -1830,7 +1946,14 @@ int DC_Init(VENUSFB_MACH_INFO * video_info, struct fb_info *fbi, int irq)
 	pr_info("[%s] start\n", __func__);
 
 	if (DCINIT)
+	{
+#ifdef CONFIG_VFB_RTK //def __LINUX_MEDIA_NAS_
+		//Fix Graphic(/dev/fb0) and Video(/dev/fb1) use the same dc2vo issue
+	        if(video_info->dc_info == NULL)
+        	    video_info->dc_info = gpdc_info;
+#endif
 		goto DONE;
+	}
 
 	if (video_info->dc_info == NULL) {
 

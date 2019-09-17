@@ -4,7 +4,7 @@
 # r8125 is the Linux device driver released for Realtek 2.5Gigabit Ethernet
 # controllers with PCI-Express interface.
 #
-# Copyright(c) 2018 Realtek Semiconductor Corp. All rights reserved.
+# Copyright(c) 2019 Realtek Semiconductor Corp. All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the Free
@@ -1496,9 +1496,9 @@ static inline u16 map_phy_ocp_addr(u16 PageNum, u8 RegNum)
         return OcpPhyAddress;
 }
 
-static void mdio_real_direct_write_phy_ocp(struct rtl8125_private *tp,
-                u16 RegAddr,
-                u16 value)
+static void mdio_real_write_phy_ocp(struct rtl8125_private *tp,
+                                    u16 RegAddr,
+                                    u16 value)
 {
         void __iomem *ioaddr = tp->mmio_addr;
         u32 data32;
@@ -1526,27 +1526,13 @@ static void mdio_direct_write_phy_ocp(struct rtl8125_private *tp,
 {
         if (tp->rtk_enable_diag) return;
 
-        mdio_real_direct_write_phy_ocp(tp, RegAddr, value);
+        mdio_real_write_phy_ocp(tp, RegAddr, value);
 }
 
 static void rtl8125_mdio_write_phy_ocp(struct rtl8125_private *tp,
                                        u16 PageNum,
                                        u32 RegAddr,
                                        u32 value)
-{
-        u16 ocp_addr;
-
-        if (tp->rtk_enable_diag) return;
-
-        ocp_addr = map_phy_ocp_addr(PageNum, RegAddr);
-
-        mdio_direct_write_phy_ocp(tp, ocp_addr, value);
-}
-
-static void rtl8125_mdio_real_write_phy_ocp(struct rtl8125_private *tp,
-                u16 PageNum,
-                u32 RegAddr,
-                u32 value)
 {
         u16 ocp_addr;
 
@@ -1563,7 +1549,7 @@ static void mdio_real_write(struct rtl8125_private *tp,
                 tp->cur_page = value;
                 return;
         }
-        rtl8125_mdio_real_write_phy_ocp(tp, tp->cur_page, RegAddr, value);
+        rtl8125_mdio_write_phy_ocp(tp, tp->cur_page, RegAddr, value);
 }
 
 void rtl8125_mdio_write(struct rtl8125_private *tp,
@@ -1582,15 +1568,15 @@ void rtl8125_mdio_prot_write(struct rtl8125_private *tp,
         mdio_real_write(tp, RegAddr, value);
 }
 
-void rtl8125_mdio_prot_direct_write_phy_ocp(struct rtl8125_private *tp,
-                u32 RegAddr,
-                u32 value)
+void rtl8125_mdio_prot_write_phy_ocp(struct rtl8125_private *tp,
+                                     u32 RegAddr,
+                                     u32 value)
 {
-        mdio_real_direct_write_phy_ocp(tp, RegAddr, value);
+        mdio_real_write_phy_ocp(tp, RegAddr, value);
 }
 
-static u32 mdio_real_direct_read_phy_ocp(struct rtl8125_private *tp,
-                u16 RegAddr)
+static u32 mdio_real_read_phy_ocp(struct rtl8125_private *tp,
+                                  u16 RegAddr)
 {
         void __iomem *ioaddr = tp->mmio_addr;
         u32 data32;
@@ -1619,7 +1605,7 @@ static u32 mdio_direct_read_phy_ocp(struct rtl8125_private *tp,
 {
         if (tp->rtk_enable_diag) return 0xffffffff;
 
-        return mdio_real_direct_read_phy_ocp(tp, RegAddr);
+        return mdio_real_read_phy_ocp(tp, RegAddr);
 }
 
 static u32 rtl8125_mdio_read_phy_ocp(struct rtl8125_private *tp,
@@ -1628,28 +1614,15 @@ static u32 rtl8125_mdio_read_phy_ocp(struct rtl8125_private *tp,
 {
         u16 ocp_addr;
 
-        if (tp->rtk_enable_diag) return 0xffffffff;
-
         ocp_addr = map_phy_ocp_addr(PageNum, RegAddr);
 
-        return mdio_real_direct_read_phy_ocp(tp, ocp_addr);
-}
-
-static u32 rtl8125_mdio_real_read_phy_ocp(struct rtl8125_private *tp,
-                u16 PageNum,
-                u32 RegAddr)
-{
-        u16 ocp_addr;
-
-        ocp_addr = map_phy_ocp_addr(PageNum, RegAddr);
-
-        return mdio_real_direct_read_phy_ocp(tp, ocp_addr);
+        return mdio_direct_read_phy_ocp(tp, ocp_addr);
 }
 
 static u32 mdio_real_read(struct rtl8125_private *tp,
                           u32 RegAddr)
 {
-        return rtl8125_mdio_real_read_phy_ocp(tp, tp->cur_page, RegAddr);
+        return rtl8125_mdio_read_phy_ocp(tp, tp->cur_page, RegAddr);
 }
 
 u32 rtl8125_mdio_read(struct rtl8125_private *tp,
@@ -1666,10 +1639,10 @@ u32 rtl8125_mdio_prot_read(struct rtl8125_private *tp,
         return mdio_real_read(tp, RegAddr);
 }
 
-u32 rtl8125_mdio_prot_direct_read_phy_ocp(struct rtl8125_private *tp,
-                u32 RegAddr)
+u32 rtl8125_mdio_prot_read_phy_ocp(struct rtl8125_private *tp,
+                                   u32 RegAddr)
 {
-        return mdio_real_direct_read_phy_ocp(tp, RegAddr);
+        return mdio_real_read_phy_ocp(tp, RegAddr);
 }
 
 static void ClearAndSetEthPhyBit(struct rtl8125_private *tp, u8  addr, u16 clearmask, u16 setmask)
@@ -2595,7 +2568,7 @@ rtl8125_switch_to_timer_interrupt(struct rtl8125_private *tp, void __iomem *ioad
         if (tp->use_timer_interrrupt) {
                 RTL_W32(TIMER_INT0_8125, timer_count);
                 RTL_W32(TCTR0_8125, timer_count);
-                RTL_W32(IMR0_8125, tp->intr_mask);
+                RTL_W32(IMR0_8125, tp->timer_intr_mask);
 
 #ifdef ENABLE_DASH_SUPPORT
                 if (tp->DASH)
@@ -3187,9 +3160,15 @@ rtl8125_hw_d3_para(struct net_device *dev)
                 break;
         }
 
-        if (tp->mcfg == CFG_METHOD_2 ||
-            tp->mcfg == CFG_METHOD_3) {
+#ifdef ENABLE_REALWOW_SUPPORT
+        rtl8125_set_realwow_d3_para(dev);
+#endif
+
+        switch (tp->mcfg) {
+        case CFG_METHOD_2:
+        case CFG_METHOD_3:
                 rtl8125_mac_ocp_write(tp, 0xEA18, 0x0064);
+                break;
         }
 
         rtl8125_set_pci_99_180_exit_driver_para(dev);
@@ -4799,6 +4778,19 @@ rtl8125_exit_oob(struct net_device *dev)
 #endif
         }
 
+#ifdef ENABLE_REALWOW_SUPPORT
+        rtl8125_realwow_hw_init(dev);
+#else
+
+        //Disable realwow  function
+        switch (tp->mcfg) {
+        case CFG_METHOD_2:
+        case CFG_METHOD_3:
+                rtl8125_mac_ocp_write(tp, 0xC0BC, 0x00FF);
+                break;
+        }
+#endif //ENABLE_REALWOW_SUPPORT
+
         rtl8125_nic_reset(dev);
 
         switch (tp->mcfg) {
@@ -5983,7 +5975,7 @@ rtl8125_real_set_phy_mcu_8125_3(struct net_device *dev)
         mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
         mdio_direct_write_phy_ocp(tp, 0xA438, 0x80a1);
         mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_direct_write_phy_ocp(tp, 0xA438, 0x80a4);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x80aa);
         mdio_direct_write_phy_ocp(tp, 0xA438, 0xd718);
         mdio_direct_write_phy_ocp(tp, 0xA438, 0x607b);
         mdio_direct_write_phy_ocp(tp, 0xA438, 0x40da);
@@ -6129,15 +6121,21 @@ rtl8125_real_set_phy_mcu_8125_3(struct net_device *dev)
         mdio_direct_write_phy_ocp(tp, 0xA438, 0xa301);
         mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
         mdio_direct_write_phy_ocp(tp, 0xA438, 0x0648);
-        mdio_direct_write_phy_ocp(tp, 0xA438, 0xc306);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xc520);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xa201);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd701);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x252d);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1646);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0xd708);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x4006);
         mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
-        mdio_direct_write_phy_ocp(tp, 0xA438, 0x15f8);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1646);
         mdio_direct_write_phy_ocp(tp, 0xA438, 0x1800);
         mdio_direct_write_phy_ocp(tp, 0xA438, 0x0308);
         mdio_direct_write_phy_ocp(tp, 0xA436, 0xA026);
         mdio_direct_write_phy_ocp(tp, 0xA438, 0x0307);
         mdio_direct_write_phy_ocp(tp, 0xA436, 0xA024);
-        mdio_direct_write_phy_ocp(tp, 0xA438, 0x15f7);
+        mdio_direct_write_phy_ocp(tp, 0xA438, 0x1645);
         mdio_direct_write_phy_ocp(tp, 0xA436, 0xA022);
         mdio_direct_write_phy_ocp(tp, 0xA438, 0x0647);
         mdio_direct_write_phy_ocp(tp, 0xA436, 0xA020);
@@ -6743,11 +6741,7 @@ rtl8125_hw_phy_config(struct net_device *dev)
                                         BIT_1
                                        );
                 mdio_direct_write_phy_ocp(tp, 0xAD4C, 0x00A8);
-                ClearAndSetEthPhyOcpBit(tp,
-                                        0xAC5C,
-                                        BIT_5|BIT_4|BIT_3,
-                                        BIT_3
-                                       );
+                mdio_direct_write_phy_ocp(tp, 0xAC5C, 0x01FF);
                 ClearAndSetEthPhyOcpBit(tp,
                                         0xAC8A,
                                         BIT_7|BIT_6|BIT_5|BIT_4,
@@ -6882,6 +6876,11 @@ rtl8125_hw_phy_config(struct net_device *dev)
 
 
                 ClearEthPhyOcpBit(tp, 0xA454, BIT_0);
+
+
+                SetEthPhyOcpBit(tp, 0xA5D4, BIT_5);
+                ClearEthPhyOcpBit(tp, 0xAD4E, BIT_4);
+                SetEthPhyOcpBit(tp, 0xA86A, BIT_0);
 
 
                 SetEthPhyOcpBit(tp, 0xA442, BIT_11);
@@ -7034,6 +7033,10 @@ rtl8125_init_software_variable(struct net_device *dev)
                 tp->HwSuppNowIsOobVer = 1;
                 break;
         }
+
+#ifdef ENABLE_REALWOW_SUPPORT
+        rtl8125_get_realwow_hw_version(dev);
+#endif //ENABLE_REALWOW_SUPPORT
 
         if (HW_DASH_SUPPORT_DASH(tp) && rtl8125_check_dash(tp))
                 tp->DASH = 1;
@@ -8018,6 +8021,18 @@ rtl8125_do_ioctl(struct net_device *dev,
                 ret = rtl8125_dash_ioctl(dev, ifr);
                 break;
 #endif
+
+#ifdef ENABLE_REALWOW_SUPPORT
+        case SIOCDEVPRIVATE_RTLREALWOW:
+                if (!netif_running(dev)) {
+                        ret = -ENODEV;
+                        break;
+                }
+
+                ret = rtl8125_realwow_ioctl(dev, ifr);
+                break;
+#endif
+
         case SIOCRTLTOOL:
                 ret = rtl8125_tool_ioctl(tp, ifr);
                 break;
@@ -8270,96 +8285,111 @@ rtl8125_esd_timer(struct timer_list *t)
 
         pci_read_config_byte(pdev, PCI_COMMAND, &cmd);
         if (cmd != tp->pci_cfg_space.cmd) {
+                printk(KERN_ERR "%s: cmd = 0x%02x, should be 0x%02x \n.", dev->name, cmd, tp->pci_cfg_space.cmd);
                 pci_write_config_byte(pdev, PCI_COMMAND, tp->pci_cfg_space.cmd);
                 tp->esd_flag |= BIT_0;
         }
 
         pci_read_config_word(pdev, PCI_BASE_ADDRESS_0, &io_base_l);
         if (io_base_l != tp->pci_cfg_space.io_base_l) {
+                printk(KERN_ERR "%s: io_base_l = 0x%04x, should be 0x%04x \n.", dev->name, io_base_l, tp->pci_cfg_space.io_base_l);
                 pci_write_config_word(pdev, PCI_BASE_ADDRESS_0, tp->pci_cfg_space.io_base_l);
                 tp->esd_flag |= BIT_1;
         }
 
         pci_read_config_word(pdev, PCI_BASE_ADDRESS_2, &mem_base_l);
         if (mem_base_l != tp->pci_cfg_space.mem_base_l) {
+                printk(KERN_ERR "%s: mem_base_l = 0x%04x, should be 0x%04x \n.", dev->name, mem_base_l, tp->pci_cfg_space.mem_base_l);
                 pci_write_config_word(pdev, PCI_BASE_ADDRESS_2, tp->pci_cfg_space.mem_base_l);
                 tp->esd_flag |= BIT_2;
         }
 
         pci_read_config_word(pdev, PCI_BASE_ADDRESS_2 + 2, &mem_base_h);
         if (mem_base_h!= tp->pci_cfg_space.mem_base_h) {
+                printk(KERN_ERR "%s: mem_base_h = 0x%04x, should be 0x%04x \n.", dev->name, mem_base_h, tp->pci_cfg_space.mem_base_h);
                 pci_write_config_word(pdev, PCI_BASE_ADDRESS_2 + 2, tp->pci_cfg_space.mem_base_h);
                 tp->esd_flag |= BIT_3;
         }
 
         pci_read_config_word(pdev, PCI_BASE_ADDRESS_3, &resv_0x1c_l);
         if (resv_0x1c_l != tp->pci_cfg_space.resv_0x1c_l) {
+                printk(KERN_ERR "%s: resv_0x1c_l = 0x%04x, should be 0x%04x \n.", dev->name, resv_0x1c_l, tp->pci_cfg_space.resv_0x1c_l);
                 pci_write_config_word(pdev, PCI_BASE_ADDRESS_3, tp->pci_cfg_space.resv_0x1c_l);
                 tp->esd_flag |= BIT_4;
         }
 
         pci_read_config_word(pdev, PCI_BASE_ADDRESS_3 + 2, &resv_0x1c_h);
         if (resv_0x1c_h != tp->pci_cfg_space.resv_0x1c_h) {
+                printk(KERN_ERR "%s: resv_0x1c_h = 0x%04x, should be 0x%04x \n.", dev->name, resv_0x1c_h, tp->pci_cfg_space.resv_0x1c_h);
                 pci_write_config_word(pdev, PCI_BASE_ADDRESS_3 + 2, tp->pci_cfg_space.resv_0x1c_h);
                 tp->esd_flag |= BIT_5;
         }
 
         pci_read_config_word(pdev, PCI_BASE_ADDRESS_4, &resv_0x20_l);
         if (resv_0x20_l != tp->pci_cfg_space.resv_0x20_l) {
+                printk(KERN_ERR "%s: resv_0x20_l = 0x%04x, should be 0x%04x \n.", dev->name, resv_0x20_l, tp->pci_cfg_space.resv_0x20_l);
                 pci_write_config_word(pdev, PCI_BASE_ADDRESS_4, tp->pci_cfg_space.resv_0x20_l);
                 tp->esd_flag |= BIT_6;
         }
 
         pci_read_config_word(pdev, PCI_BASE_ADDRESS_4 + 2, &resv_0x20_h);
         if (resv_0x20_h != tp->pci_cfg_space.resv_0x20_h) {
+                printk(KERN_ERR "%s: resv_0x20_h = 0x%04x, should be 0x%04x \n.", dev->name, resv_0x20_h, tp->pci_cfg_space.resv_0x20_h);
                 pci_write_config_word(pdev, PCI_BASE_ADDRESS_4 + 2, tp->pci_cfg_space.resv_0x20_h);
                 tp->esd_flag |= BIT_7;
         }
 
         pci_read_config_word(pdev, PCI_BASE_ADDRESS_5, &resv_0x24_l);
         if (resv_0x24_l != tp->pci_cfg_space.resv_0x24_l) {
+                printk(KERN_ERR "%s: resv_0x24_l = 0x%04x, should be 0x%04x \n.", dev->name, resv_0x24_l, tp->pci_cfg_space.resv_0x24_l);
                 pci_write_config_word(pdev, PCI_BASE_ADDRESS_5, tp->pci_cfg_space.resv_0x24_l);
                 tp->esd_flag |= BIT_8;
         }
 
         pci_read_config_word(pdev, PCI_BASE_ADDRESS_5 + 2, &resv_0x24_h);
         if (resv_0x24_h != tp->pci_cfg_space.resv_0x24_h) {
+                printk(KERN_ERR "%s: resv_0x24_h = 0x%04x, should be 0x%04x \n.", dev->name, resv_0x24_h, tp->pci_cfg_space.resv_0x24_h);
                 pci_write_config_word(pdev, PCI_BASE_ADDRESS_5 + 2, tp->pci_cfg_space.resv_0x24_h);
                 tp->esd_flag |= BIT_9;
         }
 
         pci_read_config_byte(pdev, PCI_INTERRUPT_LINE, &ilr);
         if (ilr != tp->pci_cfg_space.ilr) {
+                printk(KERN_ERR "%s: ilr = 0x%02x, should be 0x%02x \n.", dev->name, ilr, tp->pci_cfg_space.ilr);
                 pci_write_config_byte(pdev, PCI_INTERRUPT_LINE, tp->pci_cfg_space.ilr);
                 tp->esd_flag |= BIT_10;
         }
 
         pci_read_config_word(pdev, PCI_SUBSYSTEM_VENDOR_ID, &resv_0x2c_l);
         if (resv_0x2c_l != tp->pci_cfg_space.resv_0x2c_l) {
+                printk(KERN_ERR "%s: resv_0x2c_l = 0x%04x, should be 0x%04x \n.", dev->name, resv_0x2c_l, tp->pci_cfg_space.resv_0x2c_l);
                 pci_write_config_word(pdev, PCI_SUBSYSTEM_VENDOR_ID, tp->pci_cfg_space.resv_0x2c_l);
                 tp->esd_flag |= BIT_11;
         }
 
         pci_read_config_word(pdev, PCI_SUBSYSTEM_VENDOR_ID + 2, &resv_0x2c_h);
         if (resv_0x2c_h != tp->pci_cfg_space.resv_0x2c_h) {
+                printk(KERN_ERR "%s: resv_0x2c_h = 0x%04x, should be 0x%04x \n.", dev->name, resv_0x2c_h, tp->pci_cfg_space.resv_0x2c_h);
                 pci_write_config_word(pdev, PCI_SUBSYSTEM_VENDOR_ID + 2, tp->pci_cfg_space.resv_0x2c_h);
                 tp->esd_flag |= BIT_12;
         }
 
         pci_sn_l = rtl8125_csi_read(tp, PCI_DEVICE_SERIAL_NUMBER);
         if (pci_sn_l != tp->pci_cfg_space.pci_sn_l) {
+                printk(KERN_ERR "%s: pci_sn_l = 0x%08x, should be 0x%08x \n.", dev->name, pci_sn_l, tp->pci_cfg_space.pci_sn_l);
                 rtl8125_csi_write(tp, PCI_DEVICE_SERIAL_NUMBER, tp->pci_cfg_space.pci_sn_l);
                 tp->esd_flag |= BIT_13;
         }
 
         pci_sn_h = rtl8125_csi_read(tp, PCI_DEVICE_SERIAL_NUMBER + 4);
         if (pci_sn_h != tp->pci_cfg_space.pci_sn_h) {
+                printk(KERN_ERR "%s: pci_sn_h = 0x%08x, should be 0x%08x \n.", dev->name, pci_sn_h, tp->pci_cfg_space.pci_sn_h);
                 rtl8125_csi_write(tp, PCI_DEVICE_SERIAL_NUMBER + 4, tp->pci_cfg_space.pci_sn_h);
                 tp->esd_flag |= BIT_14;
         }
 
         if (tp->esd_flag != 0) {
-                printk("esd_flag = 0x%04x\n", tp->esd_flag);
+                printk(KERN_ERR "%s: esd_flag = 0x%04x\n.\n", dev->name, tp->esd_flag);
                 netif_stop_queue(dev);
                 netif_carrier_off(dev);
                 rtl8125_hw_reset(dev);
@@ -8922,6 +8952,16 @@ rtl8125_hw_config(struct net_device *dev)
                 //IntMITI_0-IntMITI_31
                 for (i=0xA00; i<0xB00; i+=4)
                         RTL_W32(i, 0x00000000);
+                break;
+        }
+
+        //keep magic packet only
+        switch (tp->mcfg) {
+        case CFG_METHOD_2:
+        case CFG_METHOD_3:
+                mac_ocp_data = rtl8125_mac_ocp_read(tp, 0xC0B6);
+                mac_ocp_data &= ~(BIT_0);
+                rtl8125_mac_ocp_write(tp, 0xC0B6, mac_ocp_data);
                 break;
         }
 
@@ -10507,7 +10547,7 @@ static void rtl8125_down(struct net_device *dev)
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,11)
         /* Give a racing hard_start_xmit a few cycles to complete. */
-        synchronize_sched();  /* FIXME: should this be synchronize_irq()? */
+        synchronize_rcu();  /* FIXME: should this be synchronize_irq()? */
 #endif
 
         spin_lock_irqsave(&tp->lock, flags);
@@ -10562,6 +10602,14 @@ static int rtl8125_close(struct net_device *dev)
                                             tp->ShortPacketEmptyBufferPhy);
                         tp->ShortPacketEmptyBuffer = NULL;
                 }
+        } else {
+                spin_lock_irqsave(&tp->lock, flags);
+
+                rtl8125_hw_d3_para(dev);
+
+                rtl8125_powerdown_pll(dev);
+
+                spin_unlock_irqrestore(&tp->lock, flags);
         }
 
         return 0;

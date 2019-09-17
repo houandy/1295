@@ -2,12 +2,24 @@
  * common.h - Realtek Clock Common
  *
  * Copyright (C) 2016-2018 Realtek Semiconductor Corporation
- * Copyright (C) 2016-2018 Cheng-Yu Lee <cylee12@realtek.com>
+ *
+ * Author:
+ *      Cheng-Yu Lee <cylee12@realtek.com>
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
+
 #ifndef __CLK_REALTEK_COMMON_H
 #define __CLK_REALTEK_COMMON_H
 
@@ -17,6 +29,9 @@
 #include <linux/io.h>
 #include <linux/of.h>
 #include <linux/regmap.h>
+
+struct device;
+struct platform_device;
 
 /**
  * struct clk_reg - a clk core with hardware register access, which is provided
@@ -105,7 +120,8 @@ static inline unsigned int clk_reg_read(struct clk_reg *b, unsigned int offset)
 	return val;
 }
 
-static inline unsigned int clk_reg_read_notrace(struct clk_reg *b, unsigned int offset)
+static inline unsigned int clk_reg_read_notrace(struct clk_reg *b,
+						unsigned int offset)
 {
 	unsigned int val = 0;
 
@@ -118,10 +134,8 @@ static inline unsigned int clk_reg_read_notrace(struct clk_reg *b, unsigned int 
 	return val;
 }
 
-static inline void clk_reg_update(struct clk_reg *b,
-				  unsigned int offset,
-				  unsigned int mask,
-				  unsigned int val)
+static inline void clk_reg_update(struct clk_reg *b, unsigned int offset,
+				  unsigned int mask, unsigned int val)
 {
 	pr_debug("%s: off=%03x, mask=%08x, val=%08x\n", __func__, offset,
 		mask, val);
@@ -176,15 +190,6 @@ struct clk_composite_init_data {
 	struct clk *clk;
 };
 
-#ifdef CONFIG_COMMON_CLK_REALTEK_DEBUG
-bool is_clk_debug_enabled(void);
-#else /* !CONFIG_COMMON_CLK_REALTEK_DEBUG */
-static inline bool is_clk_debug_enabled(void)
-{
-	return false;
-}
-#endif /* CONFIG_COMMON_CLK_REALTEK_DEBUG */
-
 /**
  * struct clk_pm_data - for saving clk pm state
  *
@@ -213,85 +218,59 @@ struct clk_pm_data {
 
 #ifdef CONFIG_PM
 int clk_pm_init(struct clk *clk, struct clk_pm_data *pm_data,
-	unsigned int pm_flags);
+		unsigned int pm_flags);
 int clk_pm_data_save(struct clk_pm_data *pm_data);
 int clk_pm_data_restore(struct clk_pm_data *pm_data);
+
 #else /* CONFIG_PM */
-static inline int clk_pm_init(struct clk *clk, struct clk_pm_data *pm_data,
-	unsigned int pm_flags)
+
+static inline
+int clk_pm_init(struct clk *clk, struct clk_pm_data *pm_data,
+		unsigned int pm_flags)
 {
 	return 0;
 }
 
-static inline int clk_pm_data_save(struct clk_pm_data *pm_data)
+static inline
+int clk_pm_data_save(struct clk_pm_data *pm_data)
 {
 	return 0;
 }
 
-static inline int clk_pm_data_restore(struct clk_pm_data *pm_data)
+static inline
+int clk_pm_data_restore(struct clk_pm_data *pm_data)
 {
 	return 0;
 }
+
 #endif /* CONFIG_PM */
 
 /**
- * struct cc_desc - description of clock controller
+ * struct cc_platform_data - description of clock controller
  *
  * @init_data      init data of clk_reg
  * @data           onecell data of clock provider
  * @pm_data        data of clk_pm
  */
-struct cc_desc {
+struct cc_platform_data {
 	struct clk_reg_init_data init_data;
+	int clk_num;
 	struct clk_onecell_data data;
 #ifdef CONFIG_PM
 	struct clk_pm_data *pm_data;
 #endif
 };
 
-static inline struct cc_desc *devm_cc_alloc(struct device *dev, int max_clk)
-{
-	struct cc_desc *ccd;
-
-	ccd = devm_kzalloc(dev, sizeof(*ccd), GFP_KERNEL);
-	if (!ccd)
-		return NULL;
-
-	ccd->data.clk_num = max_clk;
-	ccd->data.clks = devm_kcalloc(dev, max_clk,
-		sizeof(*ccd->data.clks), GFP_KERNEL);
-	if (!ccd->data.clks)
-		return NULL;
-#ifdef CONFIG_PM
-	ccd->pm_data = devm_kcalloc(dev, max_clk,
-		sizeof(*ccd->pm_data), GFP_KERNEL);
-	if (!ccd->pm_data)
-		return NULL;
-#endif
-	return ccd;
-}
-
-int cc_init_hw(struct device *dev, struct cc_desc *ccd, int cc_index,
-	struct clk_hw *hw);
-int cc_init_composite_clk(struct device *dev, struct cc_desc *ccd,
-	int cc_index, struct clk_composite_init_data *init);
-
-/*
- * platform specific functions
- */
-
-/**
- * cc_init_clocks - platform specific init function, should init data and
- *                  pm_data in cc_desc for platform driver.
- *
- * @dev - deivce of cc with cc_desc in drvier data
- */
-int cc_init_clocks(struct device *dev);
-
-/**
- * cc_clock_num - returns clock number in the platform cc
- */
-int cc_clock_num(void);
+struct cc_platform_data *devm_cc_alloc_platform_data(struct device *dev,
+						     int max_clk);
+int cc_probe_platform(struct platform_device *pdev,
+		      struct cc_platform_data *ccd,
+		      int (*init_cb)(struct device *dev));
+int cc_init_hw(struct device *dev, struct cc_platform_data *ccd,
+	       int cc_index, struct clk_hw *hw);
+int cc_init_composite_clk(struct device *dev, struct cc_platform_data *ccd,
+			  int cc_index, struct clk_composite_init_data *init);
+extern const struct dev_pm_ops cc_pm_ops;
 
 #endif /* __CLK_REALTEK_COMMON_H */
 

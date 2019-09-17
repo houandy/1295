@@ -238,6 +238,9 @@ static void hdcp_wq_authentication_failure(void)
 		hdcp.auth_state = HDCP_STATE_AUTH_FAILURE;
 		hdcp_set_state(&mdev, hdcp.auth_state);
 		return;
+	} else if ((hdcp.hdcp_state == HDCP_DISABLED) && (hdcp.auth_state == HDCP_STATE_DISABLED)) {
+		HDCP_INFO("Already disabled, skip failure process");
+		return;
 	}
 
 	hdcp_lib_auto_ri_check(false);
@@ -422,6 +425,11 @@ static void hdcp_work_queue(struct work_struct *work)
 static struct delayed_work *hdcp_submit_work(int event, int delay)
 {
 	struct hdcp_delayed_work *work;
+
+	if (hdcp.hdcp_enabled == 0) {
+		HDCP_INFO("Cancel submit work because hdcp_enabled is 0");
+		return 0;
+	}
 
 	work = kmalloc(sizeof(struct hdcp_delayed_work), GFP_ATOMIC);
 

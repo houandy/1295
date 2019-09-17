@@ -43,6 +43,7 @@ extern int getISOGPIO(int ISOGPIO_NUM);
 #define ACRECOVERY_PATH		FACTORY_HEADER_FILE_NAME"ACRECOVERY"
 #define POWER_STAT_PATH		FACTORY_HEADER_FILE_NAME"SHUTDOWN"
 #define POWER_UP_RTC_PATH	FACTORY_HEADER_FILE_NAME"RTC"
+#define WAKE_ON_LAN_PATH	FACTORY_HEADER_FILE_NAME"WAKEONLAN"
 
 #define SUSPEND_ISO_GPIO_SIZE 86
 
@@ -51,7 +52,7 @@ struct suspend_param {
 	unsigned int timerout_val;
 	char wu_gpio_en[SUSPEND_ISO_GPIO_SIZE];
 	char wu_gpio_act[SUSPEND_ISO_GPIO_SIZE];
-	struct RTK119X_ipc_shm irda_info;
+	struct RTK119X_ipc_shm_ir irda_info;
 }__attribute__((packed));
 
 struct suspend_param *pcpu_data;
@@ -247,20 +248,37 @@ int customize_check_normal_boot(void)
 		goto bootup;
 	}
 #endif
+	if (!factory_read(WAKE_ON_LAN_PATH, &dst_addr, &dst_length)) {
+		unsigned int lanwake = rtd_inl(0x980160d0);
+		printf("%s: wake-on-lan detected\n", __func__);
+		rtd_outl(0x980160d0, lanwake | 0x80000000);
+	}
+
 
 #ifdef CONFIG_POWER_DOWN_S5
+
+#if defined(CONFIG_CMD_I2C) && defined(CONFIG_APW8889_S5)
+	printf("pmic-apw8889: config sleep mode\n");
+	run_command_list("i2c dev 0", -1, 0);
+	run_command_list("i2c mw 12 08 33", -1, 0);
+#if defined(CONFIG_APW8889_S5_DC5_SHUTDOWN)
+	run_command_list("i2c mw 12 09 32", -1, 0);
+#endif
+	run_command_list("i2c mw 12 11 28", -1, 0);
+	run_command_list("i2c mw 12 12 1C", -1, 0);
+#endif
 
 	memset(&tmp_ipc_ir, 0, sizeof(tmp_ipc_ir));
 	IR_init();
 	IR_config_wakeup_keys(&tmp_ipc_ir);
-	set_shared_memory_ir_tbl(&tmp_ipc_ir);
 
 	/* Send to wake up source to pcpu fw by bl31 */
 	pcpu_data = malloc(sizeof(struct suspend_param));
 	memset(pcpu_data, 0, sizeof(struct suspend_param));
-	pcpu_data->wakeup_source = SWAPEND32(fWAKEUP_ON_IR | fWAKEUP_ON_GPIO);
+	pcpu_data->wakeup_source = SWAPEND32(fWAKEUP_ON_IR | fWAKEUP_ON_GPIO | fWAKEUP_ON_LAN);
 	pcpu_data->wu_gpio_en[PWR_KEY_IGPIO] = 1;
 	pcpu_data->wu_gpio_act[PWR_KEY_IGPIO] = 0;
+	pcpu_data->irda_info = tmp_ipc_ir;
 	flush_cache((unsigned int)(uintptr_t)pcpu_data, sizeof(struct suspend_param));
 	cmd_bl31_set_pm_param((unsigned int)(uintptr_t)pcpu_data);
 

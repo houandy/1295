@@ -29,7 +29,7 @@
 
 #define BOOTCODE_SIZE_ADDR				0XB801A60C
 #define SIMULATION_DUMP_ADDR			(0xA3000000 - UBOOT_DDR_OFFSET)	// dump bootcode array to DDR
-#define NAND_BOOT_BACKUP_COUNT			3								// number of backup bootcode in NAND flash
+#define NAND_BOOT_BACKUP_COUNT			2								// number of backup bootcode in NAND flash
 
 #define BOOTCODE_MAX_SIZE               0xC0000
 #define SECURE_OS_MAX_SIZE              0xC0000
@@ -281,25 +281,25 @@ unsigned int get_chip_rev_id()
  ************************************************************************/
 int dvrmain	( int argc, char * const argv[] )
 {
-    // spi used
-    unsigned char * spi_scpu_resetrom_addr;
+	// spi used
+	unsigned char * spi_scpu_resetrom_addr;
 	unsigned char * spi_pcpu_resetrom_addr;
-    unsigned char * spi_acpu_resetrom_addr;
+	unsigned char * spi_acpu_resetrom_addr;
 	unsigned char * spi_bootarray_fw_table_addr;
-    unsigned char * spi_param_addr;
+	unsigned char * spi_param_addr;
 	unsigned int 	spi_scs_len = 0;
 
-    unsigned char * spi_next_fw_start_addr;
+	unsigned char * spi_next_fw_start_addr;
 
-    unsigned int  scpu_resetrom_size;
+	unsigned int  scpu_resetrom_size;
 	unsigned int  pcpu_resetrom_size;
-    unsigned int  acpu_resetrom_size;
+	unsigned int  acpu_resetrom_size;
 	unsigned int  bootarray_fw_table_size;
 
-            unsigned int  programmed_fw_bootarray_fw_table_nand_128KB_size;
-            unsigned int  programmed_fw_bootarray_fw_table_nand_256KB_size;
-            unsigned char * programmed_fw_table_base_128KB;
-            unsigned char * programmed_fw_table_base_256KB;
+	unsigned int  programmed_fw_bootarray_fw_table_nand_128KB_size;
+	unsigned int  programmed_fw_bootarray_fw_table_nand_256KB_size;
+	unsigned char * programmed_fw_table_base_128KB;
+	unsigned char * programmed_fw_table_base_256KB;
 
 	unsigned int  nocs_certificate_size;
 	unsigned int  atf_certificate_size;
@@ -312,31 +312,31 @@ int dvrmain	( int argc, char * const argv[] )
 	unsigned int  rtk_params_area_size;
 	unsigned int  auxcode_area_size;
 	unsigned int  dte_bootcode_area_size;
-    unsigned char * env_param_addr;
+	unsigned char * env_param_addr;
 
 	//DTE_Bootcode_RTK (LK or Uboot64)
-    unsigned int    dte_bootcode_rtk_area_size;
+	unsigned int    dte_bootcode_rtk_area_size;
 
 	unsigned char * programmed_secure_os_base;
 	unsigned int	programmed_secure_os_size;
 
-    unsigned char * programmed_bl31_base;
+	unsigned char * programmed_bl31_base;
 	unsigned int	programmed_bl31_size;
 
 	//PCPU Code Area
 	unsigned char * programmed_pcpu_code_base;
 	unsigned int	programmed_pcpu_code_size;
 
-    unsigned char   flash_type;
-    unsigned char   flash_magicno;
-    unsigned int    idx, i, j;
-    unsigned int    temp, reg_addr;
+	unsigned char   flash_type;
+	unsigned char   flash_magicno;
+	unsigned int    idx, i, j;
+	unsigned int    temp, reg_addr;
 	void * device;
-    int res;
-    int save_nand_env;
+	int res;
+	int save_nand_env;
 
-    unsigned int  block_size;
-    unsigned int  total_block_cnt;
+	unsigned int  block_size;
+	unsigned int  total_block_cnt;
 
     t_extern_param param;
     t_extern_param *orignal_param;
@@ -512,11 +512,11 @@ int dvrmain	( int argc, char * const argv[] )
 				prints("Error: nand bootarray_fw_table_size for page size 256KB is not equal to 1KB !! \n");
 				return -1;
 			}
-                                programmed_fw_bootarray_fw_table_nand_128KB_size 	  = (unsigned int )(&nand_bootarray_fw_table_128KB_end - nand_bootarray_fw_table_128KB);
-                                programmed_fw_bootarray_fw_table_nand_256KB_size 	  = (unsigned int )(&nand_bootarray_fw_table_256KB_end - nand_bootarray_fw_table_256KB);
+			programmed_fw_bootarray_fw_table_nand_128KB_size 	  = (unsigned int )(&nand_bootarray_fw_table_128KB_end - nand_bootarray_fw_table_128KB);
+			programmed_fw_bootarray_fw_table_nand_256KB_size 	  = (unsigned int )(&nand_bootarray_fw_table_256KB_end - nand_bootarray_fw_table_256KB);
 
-                                programmed_fw_table_base_128KB = nand_bootarray_fw_table_128KB;
-                                programmed_fw_table_base_256KB = nand_bootarray_fw_table_256KB;
+			programmed_fw_table_base_128KB = nand_bootarray_fw_table_128KB;
+			programmed_fw_table_base_256KB = nand_bootarray_fw_table_256KB;
 
 			bootarray_fw_table_size 	  = programmed_fw_bootarray_fw_table_nand_128KB_size;
     		break;
@@ -617,6 +617,11 @@ int dvrmain	( int argc, char * const argv[] )
 				break;
 		}
 
+		pagesize = ((n_device_type *)device)->PageSize;
+		blocksize = ((n_device_type *)device)->BlockSize;
+
+		g_BlockSize  = blocksize;
+		pagePerBlock = blocksize / pagesize;
 
 		// init (setup block state table and erase old bootcode blocks)
 		#ifdef FOR_ICE_LOAD
@@ -630,12 +635,6 @@ int dvrmain	( int argc, char * const argv[] )
 			rtprintf("do_init_n falied\n");
 			return -2;
 		}
-
-		pagesize = ((n_device_type *)device)->PageSize;
-		blocksize = ((n_device_type *)device)->BlockSize;
-
-		g_BlockSize=blocksize;
-		pagePerBlock = blocksize / pagesize;
 
 	    /******************************
 	     * copy parameters in flash to DDR
@@ -691,43 +690,43 @@ int dvrmain	( int argc, char * const argv[] )
         }
         current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
 
-        // backup copy of bootcode_tw_table
-        for (i = 0; i < NAND_BOOT_BACKUP_COUNT; i++)
-        {
-                #ifdef FOR_ICE_LOAD
-                prints("\n");
-                prints("Wrtie Backup bootcode_tw_table in Block No. 0x");
-                print_hex(current_block);
-                prints(", Size: 0x");
-                print_hex(bootarray_fw_table_size);
-                prints(", Tag: 0x");
-                print_hex(BLOCK_BOOTCODE);
-                prints("\n");
-                #endif
+		// backup copy of bootcode_tw_table
+		for (i = 0; i < NAND_BOOT_BACKUP_COUNT; i++)
+		{
+			#ifdef FOR_ICE_LOAD
+			prints("\n");
+			prints("Wrtie Backup bootcode_tw_table in Block No. 0x");
+			print_hex(current_block);
+			prints(", Size: 0x");
+			print_hex(bootarray_fw_table_size);
+			prints(", Tag: 0x");
+			print_hex(BLOCK_BOOTCODE);
+			prints("\n");
+			#endif
 
-                end_page = (*do_write)( device, (unsigned char *)DATA_TMP_ADDR, &current_block, bootarray_fw_table_size, BLOCK_BOOTCODE, 0);
+			end_page = (*do_write)( device, (unsigned char *)DATA_TMP_ADDR, &current_block, bootarray_fw_table_size, BLOCK_BOOTCODE, 0);
 
-                if (end_page == -1) {
-                #ifdef FOR_ICE_LOAD
-                    prints("backup of bootcode_tw_table error!!\n");
-                #endif
-                    rtprintf("backup of bootcode_tw_table error!!\n");
-                    return -104;
-                }
-                current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
-            }
+			if (end_page == -1) {
+			#ifdef FOR_ICE_LOAD
+				prints("backup of bootcode_tw_table error!!\n");
+			#endif
+				rtprintf("backup of bootcode_tw_table error!!\n");
+				return -104;
+			}
+			current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
+		}
 
         /******************************
             * start to program SCS_area = NOCS Certificate + SCS_Params_Area
         ******************************/
-        copy_memory((unsigned char *)DATA_TMP_ADDR, nocs_certificate, nocs_certificate_size);
-        copy_memory((unsigned char *)DATA_TMP_ADDR+nocs_certificate_size, scs_params_area, scs_params_area_size);
-        scs_area_size = nocs_certificate_size + scs_params_area_size;
-        // align to page size boundary
-        temp = (scs_area_size) % pagesize;
-        if (temp) {
-                set_memory((unsigned char *)(DATA_TMP_ADDR + scs_area_size), 0xff, pagesize - temp);
-        }
+		copy_memory((unsigned char *)DATA_TMP_ADDR, nocs_certificate, nocs_certificate_size);
+		copy_memory((unsigned char *)DATA_TMP_ADDR+nocs_certificate_size, scs_params_area, scs_params_area_size);
+		scs_area_size = nocs_certificate_size + scs_params_area_size;
+		// align to page size boundary
+		temp = (scs_area_size) % pagesize;
+		if (temp) {
+			set_memory((unsigned char *)(DATA_TMP_ADDR + scs_area_size), 0xff, pagesize - temp);
+		}
         current_block = NF_SCS_AREA_BLOCK;
 
         temp = (BOOTCODE_MAX_SIZE) / blocksize;
@@ -756,40 +755,40 @@ int dvrmain	( int argc, char * const argv[] )
         }
         current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
 
-        // backup copy of SCS Area
-        for (i = 0; i < NAND_BOOT_BACKUP_COUNT; i++)
-        {
-                #ifdef FOR_ICE_LOAD
-                prints("\n");
-                prints("Wrtie Backup SCS Area in Block No. 0x");
-                print_hex(current_block);
-                prints(", Size: 0x");
-                print_hex(scs_area_size);
-                prints(", Tag: 0x");
-                print_hex(BLOCK_BOOTCODE);
-                prints("\n");
-                #endif
+		// backup copy of SCS Area
+		for (i = 0; i < NAND_BOOT_BACKUP_COUNT; i++)
+		{
+			#ifdef FOR_ICE_LOAD
+			prints("\n");
+			prints("Wrtie Backup SCS Area in Block No. 0x");
+			print_hex(current_block);
+			prints(", Size: 0x");
+			print_hex(scs_area_size);
+			prints(", Tag: 0x");
+			print_hex(BLOCK_BOOTCODE);
+			prints("\n");
+			#endif
 
-                end_page = (*do_write)( device, (unsigned char *)DATA_TMP_ADDR, &current_block, scs_area_size, BLOCK_BOOTCODE, 0);
+			end_page = (*do_write)( device, (unsigned char *)DATA_TMP_ADDR, &current_block, scs_area_size, BLOCK_BOOTCODE, 0);
 
-                if (end_page == -1) {
-                #ifdef FOR_ICE_LOAD
-                    prints("backup of SCS Area error!!\n");
-                #endif
-                    rtprintf("backup of SCS Area error!!\n");
-                    return -104;
-                }
-                current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
-            }
+			if (end_page == -1) {
+			#ifdef FOR_ICE_LOAD
+				prints("backup of SCS Area error!!\n");
+			#endif
+				rtprintf("backup of SCS Area error!!\n");
+				return -104;
+			}
+			current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
+		}
         /******************************
             * start to program Auxcode_area
         ******************************/
         copy_memory((unsigned char *)DATA_TMP_ADDR, auxcode_area, auxcode_area_size);
         // align to page size boundary
         temp = (auxcode_area_size) % pagesize;
-        if (temp) {
-                set_memory((unsigned char *)(DATA_TMP_ADDR + auxcode_area_size), 0xff, pagesize - temp);
-        }
+		if (temp) {
+			set_memory((unsigned char *)(DATA_TMP_ADDR + auxcode_area_size), 0xff, pagesize - temp);
+		}
         current_block = NF_AUXCODE_AREA_BLOCK;
 
         temp = (BOOTCODE_MAX_SIZE) / blocksize;
@@ -818,31 +817,31 @@ int dvrmain	( int argc, char * const argv[] )
         }
         current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
 
-        // backup copy of auxcode
-        for (i = 0; i < NAND_BOOT_BACKUP_COUNT; i++)
-        {
-                #ifdef FOR_ICE_LOAD
-                prints("\n");
-                prints("Wrtie Backup auxcode in Block No. 0x");
-                print_hex(current_block);
-                prints(", Size: 0x");
-                print_hex(dte_bootcode_rtk_area_size);
-                prints(", Tag: 0x");
-                print_hex(BLOCK_BOOTCODE);
-                prints("\n");
-                #endif
+		// backup copy of auxcode
+		for (i = 0; i < NAND_BOOT_BACKUP_COUNT; i++)
+		{
+			#ifdef FOR_ICE_LOAD
+			prints("\n");
+			prints("Wrtie Backup auxcode in Block No. 0x");
+			print_hex(current_block);
+			prints(", Size: 0x");
+			print_hex(dte_bootcode_rtk_area_size);
+			prints(", Tag: 0x");
+			print_hex(BLOCK_BOOTCODE);
+			prints("\n");
+			#endif
 
-                end_page = (*do_write)( device, (unsigned char *)DATA_TMP_ADDR, &current_block, auxcode_area_size, BLOCK_BOOTCODE, 0);
+			end_page = (*do_write)( device, (unsigned char *)DATA_TMP_ADDR, &current_block, auxcode_area_size, BLOCK_BOOTCODE, 0);
 
-                if (end_page == -1) {
-                #ifdef FOR_ICE_LOAD
-                    prints("backup of auxcode error!!\n");
-                #endif
-                    rtprintf("backup of auxcode error!!\n");
-                    return -104;
-                }
-                current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
-            }
+			if (end_page == -1) {
+			#ifdef FOR_ICE_LOAD
+				prints("backup of auxcode error!!\n");
+			#endif
+				rtprintf("backup of auxcode error!!\n");
+				return -104;
+			}
+			current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
+        }
 
         /******************************
             * start to program dte_bootcode_area
@@ -851,9 +850,9 @@ int dvrmain	( int argc, char * const argv[] )
 
         // align to page size boundary
         temp = (dte_bootcode_area_size) % pagesize;
-        if (temp) {
-                set_memory((unsigned char *)(DATA_TMP_ADDR + dte_bootcode_area_size), 0xff, pagesize - temp);
-        }
+		if (temp) {
+			set_memory((unsigned char *)(DATA_TMP_ADDR + dte_bootcode_area_size), 0xff, pagesize - temp);
+		}
         current_block = NF_DTE_BOOTCODE_BLOCK;
 
         temp = (BOOTCODE_MAX_SIZE) / blocksize;
@@ -882,31 +881,31 @@ int dvrmain	( int argc, char * const argv[] )
         }
         current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
 
-        // backup copy of dte_bootcode_area
-        for (i = 0; i < NAND_BOOT_BACKUP_COUNT; i++)
+		// backup copy of dte_bootcode_area
+		for (i = 0; i < NAND_BOOT_BACKUP_COUNT; i++)
         {
-                #ifdef FOR_ICE_LOAD
-                prints("\n");
-                prints("Wrtie Backup dte_bootcode in Block No. 0x");
-                print_hex(current_block);
-                prints(", Size: 0x");
-                print_hex(dte_bootcode_area_size);
-                prints(", Tag: 0x");
-                print_hex(BLOCK_BOOTCODE);
-                prints("\n");
-                #endif
+			#ifdef FOR_ICE_LOAD
+			prints("\n");
+			prints("Wrtie Backup dte_bootcode in Block No. 0x");
+			print_hex(current_block);
+			prints(", Size: 0x");
+			print_hex(dte_bootcode_area_size);
+			prints(", Tag: 0x");
+			print_hex(BLOCK_BOOTCODE);
+			prints("\n");
+			#endif
 
-                end_page = (*do_write)( device, (unsigned char *)DATA_TMP_ADDR, &current_block, dte_bootcode_area_size, BLOCK_BOOTCODE, 0);
+			end_page = (*do_write)( device, (unsigned char *)DATA_TMP_ADDR, &current_block, dte_bootcode_area_size, BLOCK_BOOTCODE, 0);
 
-                if (end_page == -1) {
-                #ifdef FOR_ICE_LOAD
-                    prints("backup of dte_bootcode_area error!!\n");
-                #endif
-                    rtprintf("backup of dte_bootcode_area error!!\n");
-                    return -104;
-                }
-                current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
-            }
+			if (end_page == -1) {
+			#ifdef FOR_ICE_LOAD
+				prints("backup of dte_bootcode_area error!!\n");
+			#endif
+				rtprintf("backup of dte_bootcode_area error!!\n");
+				return -104;
+			}
+			current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
+		}
 
         /******************************
             * start to program Cert_area = PCPU Certificate + ATF Cert + AFW Cert + DTE FW Cert
@@ -949,31 +948,31 @@ int dvrmain	( int argc, char * const argv[] )
         }
         current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
 
-        // backup copy of cert_area
-        for (i = 0; i < NAND_BOOT_BACKUP_COUNT; i++)
-        {
-                #ifdef FOR_ICE_LOAD
-                prints("\n");
-                prints("Wrtie Backup cert_area in Block No. 0x");
-                print_hex(current_block);
-                prints(", Size: 0x");
-                print_hex(cert_area_size);
-                prints(", Tag: 0x");
-                print_hex(BLOCK_BOOTCODE);
-                prints("\n");
-                #endif
+		// backup copy of cert_area
+		for (i = 0; i < NAND_BOOT_BACKUP_COUNT; i++)
+		{
+			#ifdef FOR_ICE_LOAD
+			prints("\n");
+			prints("Wrtie Backup cert_area in Block No. 0x");
+			print_hex(current_block);
+			prints(", Size: 0x");
+			print_hex(cert_area_size);
+			prints(", Tag: 0x");
+			print_hex(BLOCK_BOOTCODE);
+			prints("\n");
+			#endif
 
-                end_page = (*do_write)( device, (unsigned char *)DATA_TMP_ADDR, &current_block, cert_area_size, BLOCK_BOOTCODE, 0);
+			end_page = (*do_write)( device, (unsigned char *)DATA_TMP_ADDR, &current_block, cert_area_size, BLOCK_BOOTCODE, 0);
 
-                if (end_page == -1) {
-                #ifdef FOR_ICE_LOAD
-                    prints("backup of cert_area error!!\n");
-                #endif
-                    rtprintf("backup of cert_area error!!\n");
-                    return -104;
-                }
-                current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
-            }
+			if (end_page == -1) {
+			#ifdef FOR_ICE_LOAD
+				prints("backup of cert_area error!!\n");
+			#endif
+				rtprintf("backup of cert_area error!!\n");
+				return -104;
+			}
+			current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
+		}
 
         /******************************
             * start to program rtk_params_area
@@ -982,9 +981,9 @@ int dvrmain	( int argc, char * const argv[] )
 
         // align to page size boundary
         temp = (rtk_params_area_size) % pagesize;
-        if (temp) {
-                set_memory((unsigned char *)(DATA_TMP_ADDR + rtk_params_area_size), 0xff, pagesize - temp);
-        }
+		if (temp) {
+			set_memory((unsigned char *)(DATA_TMP_ADDR + rtk_params_area_size), 0xff, pagesize - temp);
+		}
         current_block = NF_RTK_PARAMS_AREA_BLOCK;
 
         temp = (BOOTCODE_MAX_SIZE) / blocksize;
@@ -1013,31 +1012,31 @@ int dvrmain	( int argc, char * const argv[] )
         }
         current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
 
-        // backup copy of rtk_params_area
-        for (i = 0; i < NAND_BOOT_BACKUP_COUNT; i++)
-        {
-                #ifdef FOR_ICE_LOAD
-                prints("\n");
-                prints("Wrtie Backup rtk_params_area in Block No. 0x");
-                print_hex(current_block);
-                prints(", Size: 0x");
-                print_hex(rtk_params_area_size);
-                prints(", Tag: 0x");
-                print_hex(BLOCK_BOOTCODE);
-                prints("\n");
-                #endif
+		// backup copy of rtk_params_area
+		for (i = 0; i < NAND_BOOT_BACKUP_COUNT; i++)
+		{
+			#ifdef FOR_ICE_LOAD
+			prints("\n");
+			prints("Wrtie Backup rtk_params_area in Block No. 0x");
+			print_hex(current_block);
+			prints(", Size: 0x");
+			print_hex(rtk_params_area_size);
+			prints(", Tag: 0x");
+			print_hex(BLOCK_BOOTCODE);
+			prints("\n");
+			#endif
 
-                end_page = (*do_write)( device, (unsigned char *)DATA_TMP_ADDR, &current_block, rtk_params_area_size, BLOCK_BOOTCODE, 0);
+			end_page = (*do_write)( device, (unsigned char *)DATA_TMP_ADDR, &current_block, rtk_params_area_size, BLOCK_BOOTCODE, 0);
 
-                if (end_page == -1) {
-                #ifdef FOR_ICE_LOAD
-                    prints("backup of rtk_params_area error!!\n");
-                #endif
-                    rtprintf("backup of rtk_params_area error!!\n");
-                    return -104;
-                }
-                current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
-            }
+			if (end_page == -1) {
+			#ifdef FOR_ICE_LOAD
+				prints("backup of rtk_params_area error!!\n");
+			#endif
+				rtprintf("backup of rtk_params_area error!!\n");
+				return -104;
+			}
+			current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
+		}
 
         /******************************
             * start to program bl31
@@ -1077,31 +1076,31 @@ int dvrmain	( int argc, char * const argv[] )
         }
         current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
 
-        // backup copy of bl31
-        for (i = 0; i < NAND_BOOT_BACKUP_COUNT; i++)
-        {
-                #ifdef FOR_ICE_LOAD
-                prints("\n");
-                prints("Wrtie Backup bl31 in Block No. 0x");
-                print_hex(current_block);
-                prints(", Size: 0x");
-                print_hex(programmed_bl31_size);
-                prints(", Tag: 0x");
-                print_hex(BLOCK_BOOTCODE);
-                prints("\n");
-                #endif
+		// backup copy of bl31
+		for (i = 0; i < NAND_BOOT_BACKUP_COUNT; i++)
+		{
+			#ifdef FOR_ICE_LOAD
+			prints("\n");
+			prints("Wrtie Backup bl31 in Block No. 0x");
+			print_hex(current_block);
+			prints(", Size: 0x");
+			print_hex(programmed_bl31_size);
+			prints(", Tag: 0x");
+			print_hex(BLOCK_BOOTCODE);
+			prints("\n");
+			#endif
 
-                end_page = (*do_write)( device, (unsigned char *)DATA_TMP_ADDR, &current_block, programmed_bl31_size, BL31_MAGIC_NUM, 0);
+			end_page = (*do_write)( device, (unsigned char *)DATA_TMP_ADDR, &current_block, programmed_bl31_size, BL31_MAGIC_NUM, 0);
 
-                if (end_page == -1) {
-                #ifdef FOR_ICE_LOAD
-                    prints("backup of bl31 error!!\n");
-                #endif
-                    rtprintf("backup of bl31 error!!\n");
-                    return -104;
-                }
-                current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
-            }
+			if (end_page == -1) {
+			#ifdef FOR_ICE_LOAD
+				prints("backup of bl31 error!!\n");
+			#endif
+				rtprintf("backup of bl31 error!!\n");
+				return -104;
+			}
+			current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
+		}
 
         /******************************
             * start to program tee_os
@@ -1141,31 +1140,31 @@ int dvrmain	( int argc, char * const argv[] )
         }
         current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
 
-        // backup copy of secure_os
-        for (i = 0; i < NAND_BOOT_BACKUP_COUNT; i++)
-        {
-                #ifdef FOR_ICE_LOAD
-                prints("\n");
-                prints("Wrtie Backup secure_os in Block No. 0x");
-                print_hex(current_block);
-                prints(", Size: 0x");
-                print_hex(programmed_secure_os_size);
-                prints(", Tag: 0x");
-                print_hex(BLOCK_BOOTCODE);
-                prints("\n");
-                #endif
+		// backup copy of secure_os
+		for (i = 0; i < NAND_BOOT_BACKUP_COUNT; i++)
+		{
+			#ifdef FOR_ICE_LOAD
+			prints("\n");
+			prints("Wrtie Backup secure_os in Block No. 0x");
+			print_hex(current_block);
+			prints(", Size: 0x");
+			print_hex(programmed_secure_os_size);
+			prints(", Tag: 0x");
+			print_hex(BLOCK_BOOTCODE);
+			prints("\n");
+			#endif
 
-                end_page = (*do_write)( device, (unsigned char *)DATA_TMP_ADDR, &current_block, programmed_secure_os_size, SECURE_OS_MAGIC_NUM, 0);
+			end_page = (*do_write)( device, (unsigned char *)DATA_TMP_ADDR, &current_block, programmed_secure_os_size, SECURE_OS_MAGIC_NUM, 0);
 
-                if (end_page == -1) {
-                #ifdef FOR_ICE_LOAD
-                    prints("backup of secure_os error!!\n");
-                #endif
-                    rtprintf("backup of secure_os error!!\n");
-                    return -104;
-                }
-                current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
-            }
+			if (end_page == -1) {
+			#ifdef FOR_ICE_LOAD
+				prints("backup of secure_os error!!\n");
+			#endif
+				rtprintf("backup of secure_os error!!\n");
+				return -104;
+			}
+			current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
+		}
 
         /******************************
             * start to program dte_bootcode_rtk
@@ -1205,31 +1204,31 @@ int dvrmain	( int argc, char * const argv[] )
         }
         current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
 
-        // backup copy of dte_bootcode_rtk
-        for (i = 0; i < NAND_BOOT_BACKUP_COUNT; i++)
-        {
-                #ifdef FOR_ICE_LOAD
-                prints("\n");
-                prints("Wrtie Backup dte_bootcode_rtk_area in Block No. 0x");
-                print_hex(current_block);
-                prints(", Size: 0x");
-                print_hex(dte_bootcode_rtk_area_size);
-                prints(", Tag: 0x");
-                print_hex(BLOCK_BOOTCODE);
-                prints("\n");
-                #endif
+		// backup copy of dte_bootcode_rtk
+		for (i = 0; i < NAND_BOOT_BACKUP_COUNT; i++)
+		{
+			#ifdef FOR_ICE_LOAD
+			prints("\n");
+			prints("Wrtie Backup dte_bootcode_rtk_area in Block No. 0x");
+			print_hex(current_block);
+			prints(", Size: 0x");
+			print_hex(dte_bootcode_rtk_area_size);
+			prints(", Tag: 0x");
+			print_hex(BLOCK_BOOTCODE);
+			prints("\n");
+			#endif
 
-                end_page = (*do_write)( device, (unsigned char *)DATA_TMP_ADDR, &current_block, dte_bootcode_rtk_area_size, BLOCK_BOOTCODE, 0);
+			end_page = (*do_write)( device, (unsigned char *)DATA_TMP_ADDR, &current_block, dte_bootcode_rtk_area_size, BLOCK_BOOTCODE, 0);
 
-                if (end_page == -1) {
-                #ifdef FOR_ICE_LOAD
-                    prints("backup of dte_bootcode_rtk error!!\n");
-                #endif
-                    rtprintf("backup of dte_bootcode_rtk error!!\n");
-                    return -104;
-                }
-                current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
-            }
+			if (end_page == -1) {
+			#ifdef FOR_ICE_LOAD
+				prints("backup of dte_bootcode_rtk error!!\n");
+			#endif
+				rtprintf("backup of dte_bootcode_rtk error!!\n");
+				return -104;
+			}
+			current_block = current_block + NF_BOOTCODE_BLOCK_AMOUNT;
+		}
 
 /*===================================thor nand dvrmain end====================================================================*/
 #if 0
@@ -1628,7 +1627,7 @@ int dvrmain	( int argc, char * const argv[] )
 
 	    (*do_init)(device);
 
-		//erase first 832KB or 1MB
+		//erase first 832KB or 1MB for bootcode fw size
 		#ifdef FOR_ICE_LOAD
         prints("spi : erase 0x");
         print_hex(MAX_BOOTCODE_FW_SIZE);

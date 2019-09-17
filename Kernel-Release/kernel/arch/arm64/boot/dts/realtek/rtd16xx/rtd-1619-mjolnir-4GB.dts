@@ -40,12 +40,12 @@
 /memreserve/ ION_AUDIO_HEAP_PHYS_0  ION_AUDIO_HEAP_SIZE_0;
 /memreserve/ ION_MEDIA_HEAP_PHYS_1  ION_MEDIA_HEAP_SIZE_1;
 
-#include "rtd-16xx.dtsi"
+#include "rtd-1619-mjolnir.dtsi"
 #include "rtd-1619-usb.dtsi"
 #include "rtd-1619-sata.dtsi"
 
 / {
-	model= "Realtek_Mjolnir_2GB";
+	model= "Realtek_Mjolnir_4GB";
 	model_hex= <0x00000653>;
 
 	/*
@@ -164,6 +164,12 @@
 		rpc@0 {
 			reg = <RPC_COMM_PHYS RPC_COMM_SIZE>;
 		};
+		
+		avlog {
+			sync_lock = <&sb2_lock_avlog>;
+			sync_lock_timeout = <500>; /* ms */
+			log_check_period = <500>; /* ms */
+		};
 	};
 
 	rtk,ion {
@@ -216,6 +222,34 @@
 		buffer-cnt = <3>;
 		resolution = <1920 1080>;
 		fps = <60>;
+	};
+
+	dptx@9803D000 {
+		compatible = "Realtek,rtk-dptx";
+		reg = <0x0 0x9803D000 0x0 0x1000>,
+			<0x0 0x98000000 0x0 0x1000>,
+			<0x0 0x98009400 0x0 0x600>,
+			<0x0 0x98080000 0x0 0x2000>;
+		interrupts = <0 29 4>; /*gen Ri*/
+		clocks = <&clk_en_4 CLK_EN_EDP>,
+			<&clk_en_4 CLK_EN_TSIO_TRX>,
+			<&clk_en_1 CLK_EN_TVE>,
+			<&clk_en_1 CLK_EN_VO>;
+		clock-names = "clk_en_edp",
+			"clk_en_tsio_trx",
+			"clk_en_tve",
+			"clk_en_vo";
+		resets = <&iso_rst RSTN_DP>,
+			<&crst RSTN_EDP>,
+			<&crst RSTN_TVE>,
+			<&crst RSTN_VO>;
+		reset-names = "dp",
+			"edp",
+			"tve",
+			"vo";
+		dp_hpd {
+			gpios = <&rtk_iso_gpio 25 0 0>; /*HPD, input, default N/A */
+		};
 	};
 
 	sata_phy: sata_phy@9803FF60 {

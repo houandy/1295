@@ -206,7 +206,8 @@ static void mux_irq_handle(struct irq_desc *desc)
 	}
 
 	/* as a transmission interface, SPI wont do too much here */
-	if (irq == 1 && status | 0x08000000)
+	if ((irq == 17 && (status & 0x08000000)) ||
+		(irq == 18 && (status & 0x00000040)))
 		goto out;
 
 	spin_lock(&irq_mux_lock);
@@ -215,7 +216,7 @@ static void mux_irq_handle(struct irq_desc *desc)
 
 	if (check_status == status) {
 		if (count > 1) {
-			pr_err("[%s] (%u) %s irq status is not change"
+			pr_err("[%s] (%u) %s irq status is not change. "
 				"clear it! (st:0x%08x en:0x%08x)\n",
 				DEV_NAME,
 				irq,

@@ -20,6 +20,8 @@
 #define   _4M_BYTE	4*1024*1024U
 #define   _8M_BYTE	8*1024*1024U
 
+#define DEFAULT_NAND_ERASESIZE 0x20000
+
 static char MTD_CHAR_DEV_PATH[][20]=
 {
     "/dev/mtd/disc",
@@ -499,12 +501,53 @@ inline unsigned long long SIZE_ALIGN_BOUNDARY_MORE(unsigned long long len, unsig
     return (((len - 1) & ~((size) - 1)) + size);
 }
 
+unsigned int get_nand_factory_start_addr(unsigned int* factory_start_ptr, unsigned int *erase_size_ptr, unsigned int *factory_size_ptr)
+{
+    unsigned int erase_size = *erase_size_ptr;
+    unsigned int factory_start = *factory_start_ptr;
+    unsigned int factory_size = *factory_size_ptr;
+    unsigned int rsv_size = 0;
+    unsigned int ret = 0;
+
+    switch(factory_start)
+    {
+        /* KYLIN NAND (NAS) */
+        case 0x4C0000:
+            /* CONFIG_SYS_NO_BL31 */
+            rsv_size = erase_size * (6+4+4);
+            rsv_size += SIZE_ALIGN_BOUNDARY_MORE(0xC0000, erase_size)*4;
+            rsv_size += SIZE_ALIGN_BOUNDARY_MORE(factory_size, erase_size);
+            ret = rsv_size - factory_size;
+            break;
+
+        /* KYLIN NAND */
+        case 0x940000:
+            rsv_size = erase_size * (6+4+4+4+4+4);
+            rsv_size += SIZE_ALIGN_BOUNDARY_MORE(0xC0000, erase_size)*(4+4);
+            rsv_size += SIZE_ALIGN_BOUNDARY_MORE(factory_size, erase_size);
+            ret = rsv_size - factory_size;
+            break;
+
+        /* THOR NAND */
+        case 0xE60000:
+            if (erase_size == 0x40000)
+                ret = erase_size * 70;
+            else
+                ret = erase_size * 115;
+            break;
+
+        default:
+            break;
+    }
+
+    return ret;
+}
+
 int get_flsh_info(BOOTTYPE* flash_type, unsigned int* factory_start, unsigned int* factory_size, unsigned int* erasesize)
 {
     char* dev_path;
     int dev_fd;
     int ret;
-    unsigned int reservedSize, ubootSize;
     struct mtd_info_user64 meminfo;
     struct mtd_info_user meminfo32;
 
@@ -557,22 +600,11 @@ int get_flsh_info(BOOTTYPE* flash_type, unsigned int* factory_start, unsigned in
             if (meminfo.type == MTD_NANDFLASH)
             {
                 *flash_type = BOOT_NAND;
+                *factory_start = FACTORY_START_ADDR;
+                *factory_size = FACTORY_SIZE;
                 *erasesize = meminfo.erasesize;
-                ubootSize = _512K_BYTE;
-#ifdef NAS_ENABLE
-                /* For SLC, erase block < 512KB */
-                /* Min factory size is 4 blocks */
-                if(meminfo.erasesize < 0x80000)
-                    *factory_size = meminfo.erasesize * 4;
-                else
-#endif
-                    *factory_size = _8M_BYTE;
-                reservedSize = SIZE_ALIGN_BOUNDARY_MORE(ubootSize, meminfo.erasesize)*4;
-                reservedSize += SIZE_ALIGN_BOUNDARY_MORE(*factory_size, meminfo.erasesize);
-                reservedSize += (6+1*4) * meminfo.erasesize; //NF profile+BBT=6blocks, hwsetting=1block
-                // add extra 20% space for safety.
-                reservedSize = SIZE_ALIGN_BOUNDARY_MORE(reservedSize*1.2, meminfo.erasesize);
-                *factory_start = reservedSize - *factory_size;
+                if (meminfo.erasesize != DEFAULT_NAND_ERASESIZE)
+                    *factory_start = get_nand_factory_start_addr(factory_start, erasesize, factory_size);
             }
             else if(meminfo.type == MTD_NORFLASH)
             {

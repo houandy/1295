@@ -26,6 +26,7 @@
 #include <linux/watchdog.h>
 #include <linux/interrupt.h>
 #include <linux/sysrq.h>
+#include <soc/realtek/rtk_wdt.h>
 
 #define TCWCR 0x0
 #define TCWTR 0x4
@@ -53,6 +54,8 @@ struct rtk_wdt {
 	void __iomem *iso_base;
 	unsigned int expire;
 	int 	irq;
+	struct notifier_block iso_reset_nb;
+	struct notifier_block sysrq_nb;
 };
 
 typedef enum {
@@ -64,6 +67,24 @@ typedef enum {
 
 static WAKE_UP_REAONS wake_up_reason = WAKE_PWR;
 struct rtk_wdt *rtk_wdt_p = NULL;
+static ATOMIC_NOTIFIER_HEAD(rtk_wdt_notifier_chain);
+
+int rtk_wdt_register_notifier(struct notifier_block *nb)
+{
+	return atomic_notifier_chain_register(&rtk_wdt_notifier_chain, nb);
+}
+EXPORT_SYMBOL_GPL(rtk_wdt_register_notifier);
+
+int rtk_wdt_unregister_notifier(struct notifier_block *nb)
+{
+	return atomic_notifier_chain_unregister(&rtk_wdt_notifier_chain, nb);
+}
+EXPORT_SYMBOL_GPL(rtk_wdt_unregister_notifier);
+
+static int __rtk_wdt_notify(void)
+{
+	return atomic_notifier_call_chain(&rtk_wdt_notifier_chain, 0 , NULL);
+}
 
 static int wakeupreason_config(char *str)
 {
@@ -229,30 +250,41 @@ static irqreturn_t rtk_wdt_irq(int irq, void *devid)
 
 	rtk_wdt_stop(&(wdt->wdt));
 
+	__rtk_wdt_notify();
+        return IRQ_HANDLED;
+}
+
+static int rtk_wdt_sysrq_cb(struct notifier_block *nb,
+			    unsigned long v, void *p)
+{
 	handle_sysrq('9');
 	dump_stack();
-	handle_sysrq('w'); 	
-	handle_sysrq('l'); 
+	handle_sysrq('w');
+	handle_sysrq('l');
 	/* dump memory stats */
-	handle_sysrq('m'); 
+	handle_sysrq('m');
 	handle_sysrq('p');
-	handle_sysrq('q'); 
+	handle_sysrq('q');
 	/* dump scheduler state */
-	handle_sysrq('t'); 
+	handle_sysrq('t');
 	handle_sysrq('z');
+	return NOTIFY_OK;
+}
+
+static int rtk_wdt_iso_reset_cb(struct notifier_block *nb,
+				unsigned long v, void *p)
+{
+	struct rtk_wdt *wdt = container_of(nb, struct rtk_wdt, iso_reset_nb);
+	void *base = wdt->iso_base;
 
 	mdelay(200);
 	/* only ISO watchdog can handle oe ouptput , force us to use it instead of MISC watchdog*/
-	base = wdt->iso_base;
-	writel(0xA5, base + TCWCR);        
-	writel(0x01, base + TCWTR);        
+	writel(0xA5, base + TCWCR);
+	writel(0x01, base + TCWTR);
 	writel((0x0 * ISO_WDT_1MS_CNT), base + TCWOV);
-	writel(0x000000FF, base + TCWCR);        
-
-
-        return IRQ_HANDLED;
-	
-
+	writel(0x000000FF, base + TCWCR);
+	for (;;);
+	return NOTIFY_OK;
 }
 
 int set_wdt_oe(void)
@@ -288,6 +320,8 @@ static const struct watchdog_ops rtk_wdt_ops = {
 
 static int rtk_wdt_probe(struct platform_device *pdev)
 {
+	struct device *dev = &pdev->dev;
+	struct device_node *np;
 	struct rtk_wdt *rtk_wdt;
 	struct resource *res;
 	int ret = 0;
@@ -299,28 +333,30 @@ static int rtk_wdt_probe(struct platform_device *pdev)
 	if (!rtk_wdt)
 		return -ENOMEM;
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (WARN_ON(!(pdev->dev.of_node))) {
+		pr_err("Error: No node\n");
+		return -ENODEV;
+	}
 
-	rtk_wdt->wdt_base = devm_ioremap_resource(&pdev->dev, res);
+	np = pdev->dev.of_node;
 
+	rtk_wdt->wdt_base =of_iomap(np, 0);
 	if (IS_ERR(rtk_wdt->wdt_base))
 		return PTR_ERR(rtk_wdt->wdt_base);
 
-        res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
-
-	rtk_wdt->iso_base = devm_ioremap_resource(&pdev->dev, res);
+	rtk_wdt->iso_base = of_iomap(np, 2);
 	if (IS_ERR(rtk_wdt->iso_base))
 		return PTR_ERR(rtk_wdt->iso_base);
 
 	/* set pin direction for pmic reset signal */
-	if (!of_property_read_u32_index(pdev->dev.of_node,
+	if (!of_property_read_u32_index(np,
 		"rst-oe-for-init", 0, &init_oe)) {
 		pr_err("[%s] init_oe = 0x%x \n", KBUILD_MODNAME, init_oe);
 		writel(0x00800000, rtk_wdt->iso_base + TCWOV_RSTB_CNT);
 		writel(init_oe, rtk_wdt->iso_base + TCWOV_RSTB_PAD);
 	}
 
-	if (!of_property_read_u32_index(pdev->dev.of_node,
+	if (!of_property_read_u32_index(np,
 		"rst-oe", 0, &watchdog_oe))
 		pr_info("[%s] rst-oe = 0x%x\n", KBUILD_MODNAME, watchdog_oe);
 
@@ -347,6 +383,18 @@ static int rtk_wdt_probe(struct platform_device *pdev)
 	ret = register_restart_handler(&rtk_wdt->restart_nb);
 	if (ret)
 		dev_err(&pdev->dev, "failed to setup restart handler\n");
+
+	rtk_wdt->iso_reset_nb.notifier_call = rtk_wdt_iso_reset_cb;
+	rtk_wdt->iso_reset_nb.priority = RTK_WATCHDOG_NMI_PRI_ISO_RESET;
+	ret = rtk_wdt_register_notifier(&rtk_wdt->iso_reset_nb);
+	if (ret)
+		dev_warn(dev, "failed to register rtk_wdt notifier: %d\n", ret);
+
+	rtk_wdt->sysrq_nb.notifier_call = rtk_wdt_sysrq_cb;
+	rtk_wdt->sysrq_nb.priority = RTK_WATCHDOG_NMI_PRI_SYSRQ;
+	ret = rtk_wdt_register_notifier(&rtk_wdt->sysrq_nb);
+	if (ret)
+		dev_warn(dev, "failed to register rtk_wdt notifier: %d\n", ret);
 
 	platform_set_drvdata(pdev, rtk_wdt);
 
@@ -383,6 +431,8 @@ static int rtk_wdt_remove(struct platform_device *pdev)
 {
 	struct rtk_wdt *wdt = platform_get_drvdata(pdev);
 
+	rtk_wdt_unregister_notifier(&wdt->sysrq_nb);
+	rtk_wdt_unregister_notifier(&wdt->iso_reset_nb);
 	unregister_restart_handler(&wdt->restart_nb);
 	watchdog_unregister_device(&wdt->wdt);
 

@@ -36,10 +36,6 @@
 	status = "okay";
 };
 
-&i2c_4{
-	status = "okay";
-};
-
 &i2c_5{
 	status = "okay";
 };
@@ -64,23 +60,11 @@
 	status = "okay";
 };
 
-&dvfs{
-	status = "okay";
-};
-
 &gpu{
 	status = "okay";
 };
 
 &cpu_tm{
-	status = "okay";
-};
-
-&md{
-	status = "okay";
-};
-
-&se{
 	status = "okay";
 };
 

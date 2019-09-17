@@ -8,6 +8,9 @@
  * Time initialization.
  */
 #include <common.h>
+#include <asm/io.h>
+#include <asm/arch/cpu.h>
+#include <asm/arch/fw_info.h>
 #include <asm/arch/sys_proto.h>
 
 DECLARE_GLOBAL_DATA_PTR;
@@ -34,8 +37,15 @@ int checkboard(void)
  */
 int board_init(void)
 {
-	//gd->bd->bi_arch_number = MACH_TYPE_RTK_RTD1395;
-	/* boot param removed since ATAG is not used anymore*/
+
+	__raw_writel(0x00000000, AARCH_REGISTER); // Clear the status of aarch register
+#ifdef CONFIG_RTK_ARM32
+	/* 0x1 for bl31 goto aarch32 resume flow */
+	__raw_writel(__raw_readl(AARCH_REGISTER) | (0x1 << 0), AARCH_REGISTER);
+#else
+	/* 0x0 for bl31 goto aarch64 resume flow */
+	__raw_writel(__raw_readl(AARCH_REGISTER) | (0x0 << 0), AARCH_REGISTER);
+#endif
 
 	return 0;
 }

@@ -125,12 +125,15 @@ static int rtk_usb_phy_init(struct usb_phy *phy)
 	struct rtk_usb_phy_s *rtk_phy = (struct rtk_usb_phy_s*) phy;
 	int ret = 0;
 	int i;
+	unsigned long phy_init_time = jiffies;
 
 	dev_info(phy->dev, "%s Init RTK USB 3.0 PHY\n", __func__);
 	for (i = 0; i < rtk_phy->phyN; i++) {
 		ret = do_rtk_usb_phy_init(phy, i);
 	}
-	dev_info(phy->dev, "%s Initialized RTK USB 3.0 PHY\n", __func__);
+	dev_info(phy->dev, "%s Initialized RTK USB 3.0 PHY (take %dms)\n",
+		    __func__,
+		    jiffies_to_msecs(jiffies - phy_init_time));
 	return ret;
 }
 
@@ -486,7 +489,11 @@ err:
 
 static int rtk_usb3phy_remove(struct platform_device *pdev)
 {
-	//struct rtk_usb_phy_s *rtk_usb_phy = platform_get_drvdata(pdev);
+	struct rtk_usb_phy_s *rtk_usb_phy = platform_get_drvdata(pdev);
+
+#ifdef CONFIG_DYNAMIC_DEBUG
+	debugfs_remove_recursive(rtk_usb_phy->debug_dir);
+#endif
 
 	//usb_remove_phy(&rtk_usb_phy->phy);
 

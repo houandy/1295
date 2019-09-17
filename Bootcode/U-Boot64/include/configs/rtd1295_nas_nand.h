@@ -61,6 +61,8 @@
 	#endif
 	
 	/* #define CONFIG_NAND_ON_THE_FLY_TEST_KEY */
+	#undef CONFIG_KERNELARGS
+	#define CONFIG_KERNELARGS	"init=/etc/init root=/dev/ubiblock0_0 ubi.mtd=/ ubi.block=0,rootfs rootfstype=squashfs rootwait ubi.mtd=etc"
 	
 #endif
 

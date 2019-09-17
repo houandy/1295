@@ -111,7 +111,7 @@ static u8 pci_write_port_not_xmitframe(void *d,  u32 size, u8 *pBuf,  u8 qsel)
 
 	udelay(100);
 
-	pci_free_consistent(pdev, sizeof(*txbd), txbd, txbd_dma);
+	pci_free_consistent(pdev, sizeof(struct tx_buf_desc), txbd, txbd_dma);
 
 	pci_unmap_single(pdev, mapping, size + TX_WIFI_INFO_SIZE,
 		PCI_DMA_FROMDEVICE);

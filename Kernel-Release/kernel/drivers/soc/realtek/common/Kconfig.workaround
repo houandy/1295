@@ -1,5 +1,4 @@
-config RTK_WORKAROUND_ARM_PMUV3
+config RTK_WORKAROUND_MALI_UTGARD_PM_RUNTIME_KEEP_ON
 	bool
-	depends on ARM_PMUV3 && ARCH_RTD139x
+	depends on ARCH_RTD139x
 	default y
-

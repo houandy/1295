@@ -50,6 +50,11 @@
 	#define BIT_ULL(nr)				(1ULL << (nr))
 	#define BITS_PER_BYTE				8
 	#define reinit_completion(x)			((x)->done = 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,12,0)
+	static inline bool usb_device_no_sg_constraint(struct usb_device *udev)
+	{
+		return 0;
+	}
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
 	#define NETIF_F_HW_VLAN_CTAG_RX			NETIF_F_HW_VLAN_RX
 	#define NETIF_F_HW_VLAN_CTAG_TX			NETIF_F_HW_VLAN_TX
@@ -453,6 +458,7 @@
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3,7,0) */
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3,8,0) */
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0) */
+#endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3,12,0) */
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3,13,0) */
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3,14,0) */
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(3,15,0) */

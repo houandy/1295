@@ -195,8 +195,6 @@ static atomic_t s_interrupt_flag_ve2;
 static wait_queue_head_t s_interrupt_wait_q_ve2;
 
 static spinlock_t s_vpu_lock = __SPIN_LOCK_UNLOCKED(s_vpu_lock);
-static spinlock_t s_ve1_lock = __SPIN_LOCK_UNLOCKED(s_ve1_lock);
-static spinlock_t s_ve2_lock = __SPIN_LOCK_UNLOCKED(s_ve2_lock);
 static DEFINE_SEMAPHORE(s_vpu_sem);
 static struct list_head s_vbp_head = LIST_HEAD_INIT(s_vbp_head);
 static struct list_head s_inst_list_head = LIST_HEAD_INIT(s_inst_list_head);
@@ -414,13 +412,8 @@ int vpu_hw_reset(u32 coreIdx)
 #if 1 /* RTK, workaround for demo */
 	DPRINTK("%s request vpu reset from application\n", DEV_NAME);
 
-	rstc = reset_control_get(p_vpu_dev, coreIdx == 0 ? "ve1" : "ve2");
-	if (IS_ERR_OR_NULL(rstc))
-		DPRINTK("%s failed to get reset control for core %d\n", DEV_NAME, coreIdx);
-	else {
-		reset_control_reset(rstc);
-		reset_control_put(rstc);
-	}
+	rstc = (coreIdx == 0 ? rstc_ve1 : rstc_ve2);
+	reset_control_reset(rstc);
 
 	ve1_wrapper_setup((1 << coreIdx));
 #endif
@@ -622,10 +615,8 @@ static irqreturn_t ve1_irq_handler(int irq, void *dev_id)
 		kill_fasync(&dev->async_queue, SIGIO, POLL_IN); /* notify the interrupt to user space */
 
 	if (vpu_int_sts_ve1) {
-		spin_lock_irqsave(&s_ve1_lock, flags);
 		dev->interrupt_reason_ve1 = interrupt_reason_ve1;
 		atomic_set(&s_interrupt_flag_ve1, 1);
-		spin_unlock_irqrestore(&s_ve1_lock, flags);
 		wake_up_interruptible(&s_interrupt_wait_q_ve1);
 		//DPRINTK("%s [-]%s\n", DEV_NAME, __func__);
 	}
@@ -662,10 +653,8 @@ static irqreturn_t ve2_irq_handler(int irq, void *dev_id)
 		kill_fasync(&dev->async_queue, SIGIO, POLL_IN);	/* notify the interrupt to user space */
 
 	if (vpu_int_sts_ve2) {
-		spin_lock_irqsave(&s_ve2_lock, flags);
 		dev->interrupt_reason_ve2 = interrupt_reason_ve2;
 		atomic_set(&s_interrupt_flag_ve2, 1);
-		spin_unlock_irqrestore(&s_ve2_lock, flags);
 		wake_up_interruptible(&s_interrupt_wait_q_ve2);
 		//DPRINTK("%s [-]%s\n", DEV_NAME, __func__);
 	}
@@ -815,11 +804,9 @@ static long vpu_ioctl(struct file *filp, u_int cmd, u_long arg)
 			}
 
 			//DPRINTK("[VPUDRV] s_interrupt_flag_ve1(%d), reason(0x%08lx)\n", atomic_read(&s_interrupt_flag_ve1), dev->interrupt_reason_ve1);
-			spin_lock_irqsave(&s_ve1_lock, flags);
 			atomic_set(&s_interrupt_flag_ve1, 0);
 			info.intr_reason = dev->interrupt_reason_ve1;
 			dev->interrupt_reason_ve1 = 0;
-			spin_unlock_irqrestore(&s_ve1_lock, flags);
 		} else { /* VE2 */
 			smp_rmb();
 			ret = wait_event_interruptible_timeout(s_interrupt_wait_q_ve2, atomic_read(&s_interrupt_flag_ve2) != 0, msecs_to_jiffies(info.timeout));
@@ -834,11 +821,9 @@ static long vpu_ioctl(struct file *filp, u_int cmd, u_long arg)
 			}
 
 			//DPRINTK("[VPUDRV] s_interrupt_flag_ve2(%d), reason(0x%08lx)\n", atomic_read(&s_interrupt_flag_ve2), dev->interrupt_reason_ve2);
-			spin_lock_irqsave(&s_ve2_lock, flags);
 			atomic_set(&s_interrupt_flag_ve2, 0);
 			info.intr_reason = dev->interrupt_reason_ve2;
 			dev->interrupt_reason_ve2 = 0;
-			spin_unlock_irqrestore(&s_ve2_lock, flags);
 		}
 
 		ret = copy_to_user((void __user *)arg, &info, sizeof(vpudrv_intr_info_t));

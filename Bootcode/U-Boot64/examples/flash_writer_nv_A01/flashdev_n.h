@@ -74,7 +74,7 @@ typedef struct  __attribute__ ((__packed__)){
 
 // block count for each image
 #define TEE_OS_MAX_SIZE                    (768*1024)
-#define DTE_BOOTCODE_MAX_SIZE              (256*1024)
+#define DTE_BOOTCODE_MAX_SIZE              (1536*1024)
 #define DTE_BOOTCODE_RTK_MAX_SIZE          (1536*1024)
 #define BOOTARRAY_FW_TABLE_BLOCK_CNT       1
 #define SCS_AREA_BLOCK_CNT                 1 // NOCS certificate + SCS params
@@ -95,6 +95,13 @@ typedef struct  __attribute__ ((__packed__)){
                                            + BL31_BLOCK_CNT \
                                            + TEE_OS_BLOCK_CNT \
                                            + DTE_BOOTCODE_RTK_BLOCK_CNT)
+
+#define BLOCK_SIZE_128K                    (128 * 1024)
+#define BLOCK_SIZE_256K                    (256 * 1024)
+
+#define NAND_NUM_OF_BOOT_FW_COPIES        3
+#define BOOTARRAY_BLOCK_LIMIT             (NF_BOOTCODE_START_BLOCK \
+                                          + NF_BOOTCODE_BLOCK_AMOUNT * NAND_NUM_OF_BOOT_FW_COPIES)
 
 /************************************************************************
  *  Public function

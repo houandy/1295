@@ -30,11 +30,11 @@
 #include <linux/slab.h>
 #include <linux/io.h>
 #include <linux/irqchip/arm-gic.h>
+#include <linux/cpumask.h>
 #include <asm/system_misc.h>
 #include <asm/cacheflush.h>
 #include <asm/suspend.h>
 #include <soc/realtek/memory.h>
-#include <soc/realtek/rtk_cpu.h>
 
 #include "rtd139x_suspend.h"
 
@@ -44,6 +44,9 @@
 #define SUSPEND_VERSION_MASK(v) ((v&0xffff) << 16)
 #define BT_WAKEUP_IGPIO(n) (0x1 << n)//n:0 to 20
 #define CPU0_RESUME_ADDR 0x000006A4
+
+extern void rtk_cpu_power_down(int cpu);
+extern void rtk_cpu_power_up(int cpu);
 
 static int suspend_version = 2;
 static unsigned int suspend_context;
@@ -171,6 +174,7 @@ int rtk_suspend_wakeup_acpu(void)
 	writel(0x0000ace7, RTK_CRT_BASE + 0x320);
 	writel(0x0000000c, RTK_CRT_BASE + 0x328);
 	__delay(1000);
+
 	return 0;
 }
 
@@ -549,7 +553,11 @@ static int rtk_suspend_to_ram(void)
 #else // #ifndef CONFIG_RTK_VMX_ULTRA
 	cpu0_resume_addr = ioremap(0x98007660, sizeof(*cpu0_resume_addr));
 	writel_relaxed(__pa(cpu_resume), cpu0_resume_addr);
+#if defined(CONFIG_CPU_V7)
+	v7_flush_kern_dcache_area((__force void *)cpu0_resume_addr, sizeof(*cpu0_resume_addr));
+#else
 	__flush_dcache_area((__force void *)cpu0_resume_addr, sizeof(*cpu0_resume_addr));
+#endif
 	iounmap(cpu0_resume_addr);
 #endif
 
@@ -580,8 +588,6 @@ static int rtk_suspend_to_ram(void)
 	writel(readl(RTK_ISO_BASE + 0x0410) & ~BIT(10), RTK_ISO_BASE + 0x0410);
 
 	rtk_suspend_irq_report(IRQ_REPORT_PRINT);
-
-	rtk_suspend_wakeup_acpu();
 
 	flush_cache_all();
 
@@ -704,11 +710,21 @@ void rtk_suspend_gpip_output_change_resume(void)
 
 }
 
+static void rtk_suspend_cpu_pwr_down(void) {
+	unsigned int cpu = 1;
+
+	for (cpu = 1 ; cpu < NR_CPUS ; cpu++) {
+		rtk_cpu_power_down(cpu);
+	}
+}
+
 static int rtk_suspend_enter(suspend_state_t suspend_state)
 {
 	int ret = 0;
 
 	pr_info("[%s] Platform Suspend Enter ...\n", DEV_NAME);
+
+	rtk_suspend_cpu_pwr_down();
 
 	if (!rtk_suspend_valid(suspend_state)) {
 		pr_err("[%s] suspend_state:%d not support !\n",
@@ -741,7 +757,6 @@ static int rtk_suspend_enter(suspend_state_t suspend_state)
 
 		pr_info("[%s] Platform Resume ...\n", DEV_NAME);
 
-		notify_acpu(NOTIFY_RESUME_PLATFORM);
 		rtk_suspend_gpip_output_change_resume();
 
 		break;
@@ -777,6 +792,23 @@ static int rtk_suspend_begin(suspend_state_t suspend_state)
 	return 0;
 }
 
+static void rtk_suspend_wake(void)
+{
+	pr_info("[%s] Suspend wake\n", DEV_NAME);
+
+	/* Enable ACPU clock */
+	writel_relaxed(readl(RTK_CRT_BASE + 0x10) | 0x40000034, RTK_CRT_BASE + 0x10);
+
+	rtk_suspend_wakeup_acpu();
+}
+
+static void rtk_suspend_finish(void)
+{
+	pr_info("[%s] Suspend finish\n", DEV_NAME);
+
+	notify_acpu(NOTIFY_RESUME_PLATFORM);
+}
+
 static void rtk_suspend_end(void)
 {
 	pr_info("[%s] Suspend End\n", DEV_NAME);
@@ -790,6 +822,8 @@ const struct platform_suspend_ops rtk_suspend_ops = {
 	.end = rtk_suspend_end,
 	.enter = rtk_suspend_enter,
 	.valid = rtk_suspend_valid,
+	.finish = rtk_suspend_finish,
+	.wake = rtk_suspend_wake,
 };
 
 static void rtk_poweroff(void)

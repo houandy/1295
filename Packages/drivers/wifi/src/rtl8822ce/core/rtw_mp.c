@@ -376,6 +376,14 @@ void mpt_InitHWConfig(PADAPTER Adapter)
 #if defined(CONFIG_RTL8822C)
 	else if( IS_HARDWARE_TYPE_8822C(Adapter)) {
 		rtw_write16(Adapter, REG_RXFLTMAP1_8822C, 0x2000);
+		/* 0x7D8[31] : time out enable when cca is not assert
+			0x60D[7:0] : time out value (Unit : us)*/
+		rtw_write8(Adapter, 0x7db, 0xc0);
+		RTW_INFO(" 0x7d8 = 0x%x\n", rtw_read8(Adapter, 0x7d8));
+		rtw_write8(Adapter, 0x60d, 0x0c);
+		RTW_INFO(" 0x60d = 0x%x\n", rtw_read8(Adapter, 0x60d));
+		phy_set_bb_reg(Adapter, 0x1c44, BIT10, 0x1);
+		RTW_INFO(" 0x1c44 = 0x%x\n", phy_query_bb_reg(Adapter, 0x1c44, bMaskDWord));
 	}
 #endif
 
@@ -498,9 +506,7 @@ static void  PHY_SetRFPathSwitch(PADAPTER padapter , BOOLEAN bMain) {
 #endif
 	} else if (IS_HARDWARE_TYPE_8822C(padapter)) {
 #ifdef CONFIG_RTL8822C
-		/* remove for MP EVM Fail, need to review by willis 20180809
 		phy_set_rf_path_switch_8822c(phydm, bMain);
-		*/
 #endif
 	}
 }
@@ -2407,7 +2413,7 @@ u32 mp_query_psd(PADAPTER pAdapter, u8 *data)
 				sprintf(data, "%s%x ", data, (psdbuf[i]));
 				i++;
 			}
-	
+
 		if (psdbuf)
 			rtw_mfree(psdbuf, sizeof(u32)*256);
 
@@ -3035,9 +3041,10 @@ u32 mpt_ProQueryCalTxPower(
 
 	TxPower = rtw_hal_get_tx_power_index(pAdapter, RfPath, mgn_rate, pHalData->current_channel_bw, pHalData->current_channel, &tic);
 
-	RTW_INFO("bw=%d, ch=%d, rate=%d, txPower:%u(0x%02x) = %u + (%d=%d:%d) + (%d) + (%d) + (%d)\n",
-		pHalData->current_channel_bw, pHalData->current_channel, mgn_rate
-		, TxPower, TxPower, tic.pg, (tic.by_rate > tic.limit ? tic.limit : tic.by_rate), tic.by_rate, tic.limit, tic.tpt, tic.ebias, tic.btc);
+	RTW_INFO("TXPWR: [%c][%s]ch:%u, %s %uT, pwr_idx:%u(0x%02x) = %u + (%d=%d:%d) + (%d) + (%d) + (%d) + (%d)\n"
+		, rf_path_char(RfPath), ch_width_str(pHalData->current_channel_bw), pHalData->current_channel, MGN_RATE_STR(mgn_rate), tic.ntx_idx + 1
+		, TxPower, TxPower, tic.pg, (tic.by_rate > tic.limit ? tic.limit : tic.by_rate), tic.by_rate, tic.limit, tic.tpt
+		, tic.ebias, tic.btc, tic.dpd);
 
 	pAdapter->mppriv.txpoweridx = (u8)TxPower;
 	if (RfPath == RF_PATH_A)

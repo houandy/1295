@@ -38,23 +38,20 @@
 #include "pwrctrl-pd.h"
 
 static DEFINE_SPINLOCK(iso_power_lock);
-static struct rtk_sram_pd gpu_pd = INIT_SRAM_PD(gpu, 0xb60, 7, &iso_power_lock);
+static struct rtk_sram_pd gpu_pd = INIT_SRAM_PD(gpu, 0xb60, 0xf, &iso_power_lock);
 static struct rtk_sram_pd ve1_pd = INIT_SRAM_ASYNC_POWER_CONTROL(ve1, 0xb00, 0xf, 10, &iso_power_lock);
 static struct rtk_sram_pd ve2_pd = INIT_SRAM_ASYNC_POWER_CONTROL(ve2, 0xb20, 0xf, 10, &iso_power_lock);
 static struct rtk_sram_pd ve3_pd = INIT_SRAM_ASYNC_POWER_CONTROL(ve3, 0x290, 0xf, 10, &iso_power_lock);
-static struct rtk_sram_pd hdmirx_pd = INIT_SRAM_POWER_CONTROL(hdmirx, 0x260, 0xf, &iso_power_lock);
 static struct simple_pd ve1_iso = INIT_ISO_POWER_CONTROL(ve1, 0xfd0, BIT(0), &iso_power_lock);
 static struct simple_pd ve2_iso = INIT_ISO_POWER_CONTROL(ve2, 0xfd0, BIT(1), &iso_power_lock);
 static struct simple_pd ve3_iso = INIT_ISO_POWER_CONTROL(ve3, 0xfd0, BIT(10), &iso_power_lock);
 static struct simple_pd gpu_iso = INIT_ISO_POWER_CONTROL(gpu, 0xfd0, BIT(3), &iso_power_lock);
-static struct simple_pd hdmirx_iso = INIT_ISO_POWER_CONTROL(hdmirx, 0xfd0, BIT(9), &iso_power_lock);
 
 #define PD_SIMPLE_ISO_VE1               (PD_MAX)
 #define PD_SIMPLE_ISO_VE2               (PD_MAX+1)
 #define PD_SIMPLE_ISO_VE3               (PD_MAX+2)
 #define PD_SIMPLE_ISO_GPU               (PD_MAX+3)
-#define PD_SIMPLE_ISO_HDMIRX            (PD_MAX+4)
-#define INTERNAL_PD_MAX                 (PD_MAX+5)
+#define INTERNAL_PD_MAX                 (PD_MAX+4)
 
 static int ve1_manual_power_callback(struct notifier_block *nb,
 				     unsigned long action,
@@ -109,11 +106,12 @@ static int power_chain_callback(struct notifier_block *nb, unsigned long action,
 
 static int iso_power_controller_setup_topology(void)
 {
+	ve2_pd.core.pc.flags |= POWER_CONTROL_FLAG_IGNORE_UNUSED;
+	ve2_iso.core.pc.flags |= POWER_CONTROL_FLAG_IGNORE_UNUSED;
 	simple_pd_add_power_chain(&ve1_iso, &ve1_pd.core.pc, power_chain_callback);
 	simple_pd_add_power_chain(&ve2_iso, &ve2_pd.core.pc, power_chain_callback);
 	simple_pd_add_power_chain(&ve3_iso, &ve3_pd.core.pc, power_chain_callback);
 	simple_pd_add_power_chain(&gpu_iso, &gpu_pd.core.pc, power_chain_callback);
-	simple_pd_add_power_chain(&hdmirx_iso, &hdmirx_pd.core.pc, power_chain_callback);
 	return 0;
 }
 
@@ -122,12 +120,10 @@ static struct pwrctrl_pd *iso_ppds[INTERNAL_PD_MAX] = {
 	[PD_SRAM_VE2] = &ve2_pd.core,
 	[PD_SRAM_VE3] = &ve3_pd.core,
 	[PD_SRAM_GPU] = &gpu_pd.core,
-	[PD_SRAM_HDMIRX] = &hdmirx_pd.core,
 	[PD_SIMPLE_ISO_VE1] = &ve1_iso.core,
 	[PD_SIMPLE_ISO_VE2] = &ve2_iso.core,
 	[PD_SIMPLE_ISO_VE3] = &ve3_iso.core,
 	[PD_SIMPLE_ISO_GPU] = &gpu_iso.core,
-	[PD_SIMPLE_ISO_HDMIRX] = &hdmirx_iso.core,
 };
 
 static int iso_power_controller_ready(struct power_controller_data *data)

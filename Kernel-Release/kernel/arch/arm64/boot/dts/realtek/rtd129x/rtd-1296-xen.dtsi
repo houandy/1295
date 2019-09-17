@@ -28,8 +28,6 @@
 			clocks = <&cc CC_PLL_SCPU>;
 			cpu-supply = <&cpu_supp>;
 			operating-points-v2 = <&cpu_opps>;
-			cooling-min-level = <0>;
-			cooling-max-level = <11>;
 			#cooling-cells = <2>;
 		};
 
@@ -43,8 +41,6 @@
 			clocks = <&cc CC_PLL_SCPU>;
 			cpu-supply = <&cpu_supp>;
 			operating-points-v2 = <&cpu_opps>;
-			cooling-min-level = <0>;
-			cooling-max-level = <11>;
 			#cooling-cells = <2>;
 		};
 
@@ -58,8 +54,6 @@
 			clocks = <&cc CC_PLL_SCPU>;
 			cpu-supply = <&cpu_supp>;
 			operating-points-v2 = <&cpu_opps>;
-			cooling-min-level = <0>;
-			cooling-max-level = <11>;
 			#cooling-cells = <2>;
 		};
 
@@ -73,8 +67,6 @@
 			clocks = <&cc CC_PLL_SCPU>;
 			cpu-supply = <&cpu_supp>;
 			operating-points-v2 = <&cpu_opps>;
-			cooling-min-level = <0>;
-			cooling-max-level = <11>;
 			#cooling-cells = <2>;
 		};
 

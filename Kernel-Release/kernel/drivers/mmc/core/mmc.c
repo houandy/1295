@@ -27,7 +27,13 @@
 #include "sd_ops.h"
 
 #ifdef CONFIG_MMC_RTK_EMMC
+#if defined(CONFIG_ARCH_RTD13xx)
+#include "../host/reg_mmc_rtd13xx.h"
+#elif defined(CONFIG_ARCH_RTD119X)
+#include "../host/reg_mmc_rtd119x.h"
+#else
 #include "../host/reg_mmc.h"
+#endif
 #endif
 
 #define DEFAULT_CMD6_TIMEOUT_MS	500

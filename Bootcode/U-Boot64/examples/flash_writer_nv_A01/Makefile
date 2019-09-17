@@ -83,6 +83,9 @@ else
 GEN_RSA_PATTERN      = $(SCRIPT_DIR)/gen_rsa_pattern64_0001.pl
 endif
 
+RELEASE_FOLDER = $(TOP_DIR)/Release_folder
+RELEASE_FLAG := $(wildcard $(RELEASE_FOLDER))
+
 HW_SETTING_MAKER_DIR = $(TOOLS_DIR)/hw_setting_maker
 HW_SETTING_DIR       =$(TOP_DIR)/hw_setting
 HW_SETTING_TARGET = $(HW_SETTING_DIR)/out/$(Board_HWSETTING).bin
@@ -177,6 +180,7 @@ RTK_PARAMS_AREA = $(BIND_FOLDER)/RTK_Params_Area.bin
 RTK_PARAMS_AREA_DIGEST = $(BIND_FOLDER)/RTK_Params_Area_digest.bin
 RTK_PARAMS_AREA_DIGEST_ENC = $(BIND_FOLDER)/RTK_Params_Area_digest_enc.bin
 RTK_PARAMS_AREA_FINAL= $(BIND_FOLDER)/RTK_Params_Area_final.bin
+RTK_PARAMS_AREA_FINAL_PRE_BUILD = $(IMAGE_DIR)/$(Config_RTK_PARAM_AREA_File_Name)
 
 OBFUSE  = $(OBFUSE_DIR)/obfuse
 TRUE_SYB             = TRUE
@@ -228,40 +232,17 @@ SCPU_RESET_TARGET               = $(TOP_DIR)/bootimage/$(CHIP_ID)/scpu_reset_rom
 PCPU_RESET_TARGET               = $(TOP_DIR)/bootimage/$(CHIP_ID)/pcpu_reset_rom.bin
 ACPU_RESET_TARGET               = $(TOP_DIR)/bootimage/$(CHIP_ID)/acpu_reset_rom.bin
 
-AUXCODE_TARGET	      		= $(TOP_DIR)/bootimage/$(CHIP_ID)/$(Config_Auxcode_File_Name)
-AUXCODE_TARGET2				= $(BIND_FOLDER)/auxcode.bin
-AUXCODE_TARGET_AES			= $(BIND_FOLDER)/auxcode.bin.aes
-#Area is Auxcode(plaintext) + RTK control data
-AUXCODE_AREA				= $(BIND_FOLDER)/Auxcode_Area.bin
-#Area2 is Auxcode(plaintext) + RTK control data + RTK signature + Nagra Control data
-AUXCODE_AREA2				= $(BIND_FOLDER)/Auxcode_Area2.bin
-AUXCODE_AREA_RTK_DIGEST 	= $(BIND_FOLDER)/Auxcode_Area_RTK_digest.bin
-AUXCODE_AREA_RTK_DIGEST_ENC = $(BIND_FOLDER)/Auxcode_Area_RTK_digest_enc.bin
-AUXCODE_AREA_NAGRA_DIGEST 	= $(BIND_FOLDER)/Auxcode_Area_NAGRA_digest.bin
-AUXCODE_AREA_NAGRA_DIGEST_ENC = $(BIND_FOLDER)/Auxcode_Area_NAGRA_digest_enc.bin
 AUXCODE_AREA_FINAL			= $(BIND_FOLDER)/Auxcode_Area_final.bin
+AUXCODE_AREA_FINAL_SRC		= $(TOP_DIR)/bootimage/$(CHIP_ID)/Auxcode_Area_final.bin
 
-PCPU_CODE_TARGET	      		= $(TOP_DIR)/bootimage/$(CHIP_ID)/$(Config_PCPU_Code_File_Name)
-PCPU_CODE_TARGET2	      		= $(BIND_FOLDER)/pcpu_code.bin
-PCPU_CODE_TARGET_AES			= $(BIND_FOLDER)/pcpu_code.bin.aes
-PCPU_CODE_AREA				= $(BIND_FOLDER)/PCPU_Code_Area.bin
-PCPU_CODE_AREA_DIGEST 		= $(BIND_FOLDER)/PCPU_Code_Area_digest.bin
-PCPU_CODE_AREA_DIGEST_ENC 	= $(BIND_FOLDER)/PCPU_Code_Area_digest_enc.bin
 PCPU_CODE_AREA_FINAL			= $(BIND_FOLDER)/PCPU_Code_Area_final.bin
+PCPU_CODE_AREA_FINAL_SRC		= $(TOP_DIR)/bootimage/$(CHIP_ID)/$(Config_PCPU_Code_File_Name)
 
-SECURE_OS_TARGET	      		= $(TOP_DIR)/bootimage/$(CHIP_ID)/$(Config_SECURE_OS_File_Name)
-SECURE_OS_TARGET_AES			= $(BIND_FOLDER)/secure_os.bin.aes
-SECURE_OS_AREA				= $(BIND_FOLDER)/Secure_OS_Area.bin
-SECURE_OS_AREA_DIGEST 		= $(BIND_FOLDER)/Secure_OS_Area_digest.bin
-SECURE_OS_AREA_DIGEST_ENC 	= $(BIND_FOLDER)/Secure_OS_Area_digest_enc.bin
 SECURE_OS_AREA_FINAL			= $(BIND_FOLDER)/Secure_OS_Area_final.bin
+SECURE_OS_AREA_FINAL_SRC		= $(TOP_DIR)/bootimage/$(CHIP_ID)/Secure_OS_Area_final.bin
 
-BL31_TARGET	      		= $(TOP_DIR)/bootimage/$(CHIP_ID)/$(Config_BL31_File_Name)
-BL31_TARGET_AES			= $(BIND_FOLDER)/bl31.bin.aes
-BL31_AREA				= $(BIND_FOLDER)/BL31_Area.bin
-BL31_AREA_DIGEST 		= $(BIND_FOLDER)/BL31_Area_digest.bin
-BL31_AREA_DIGEST_ENC 	= $(BIND_FOLDER)/BL31_Area_digest_enc.bin
 BL31_AREA_FINAL			= $(BIND_FOLDER)/BL31_Area_final.bin
+BL31_AREA_FINAL_SRC		= $(TOP_DIR)/bootimage/$(CHIP_ID)/BL31_Area_final.bin
 
 DTE_BOOTCODE_TARGET	      		= $(TOP_DIR)/bootimage/$(CHIP_ID)/$(Config_DTE_Bootcode_File_Name)
 DTE_BOOTCODE_TARGET2			= $(BIND_FOLDER)/dte_bootcode.bin
@@ -278,11 +259,15 @@ else
 	DTE_BOOTCODE_RTK_TARGET       = $(TOP_DIR)/../../u-boot.bin
 endif
 
+DTE_BOOTCODE_RTK_TARGET2			= $(BIND_FOLDER)/dte_bootcode_rtk.bin
 DTE_BOOTCODE_RTK_TARGET_AES			= $(BIND_FOLDER)/dte_bootcode_rtk.bin.aes
 DTE_BOOTCODE_RTK_AREA				= $(BIND_FOLDER)/DTE_Bootcode_RTK_Area.bin
 DTE_BOOTCODE_RTK_AREA_DIGEST 		= $(BIND_FOLDER)/DTE_Bootcode_RTK_Area_digest.bin
 DTE_BOOTCODE_RTK_AREA_DIGEST_ENC 	= $(BIND_FOLDER)/DTE_Bootcode_RTK_Area_digest_enc.bin
 DTE_BOOTCODE_RTK_AREA_FINAL			= $(BIND_FOLDER)/DTE_Bootcode_RTK_Area_final.bin
+
+UDA_EMMC_BIND_TARGET 			= $(BIND_FOLDER)/uda_emmc.bind.bin
+BOOT_EMMC_BIND_TARGET			= $(BIND_FOLDER)/boot_emmc.bind.bin
 
 #---------------------------NOCS DATA START------------------------------#
 NOCS_ARGS= "address_of_scs_params_area="$(Address_of_SCS_Params_Area) \
@@ -406,18 +391,8 @@ NOCS_ARGS += "flash_protection_key="$(IMAGE_DIR)/$(FlashProtectionKey) \
 "atf_protection_key="$(IMAGE_DIR)/$(ATFProtectionKey) \
 "dte_protection_key="$(IMAGE_DIR)/$(DTEProtectionKey)
 
-NOCS_ARGS +="auxcode_file_path="$(AUXCODE_TARGET) \
-"pcpu_code_file_path="$(PCPU_CODE_TARGET) \
-"dte_bootcode_file_path="$(DTE_BOOTCODE_TARGET) \
+NOCS_ARGS +="dte_bootcode_file_path="$(DTE_BOOTCODE_TARGET) \
 "dte_bootcode_rtk_file_path="$(DTE_BOOTCODE_RTK_TARGET)
-
-ifeq ($(Config_SECURE_OS), TRUE)
-	NOCS_ARGS +="secure_os_file_path="$(SECURE_OS_TARGET)
-endif
-
-ifeq ($(Config_BL31), TRUE)
-	NOCS_ARGS +="bl31_file_path="$(BL31_TARGET)
-endif
 
 ifdef Size_of_SCS_Auxcode_Area
 	NOCS_ARGS +="size_of_scs_auxcode_area="$(Size_of_SCS_Auxcode_Area)
@@ -425,6 +400,18 @@ else
 	NOCS_ARGS +="size_of_scs_auxcode_area=0x10000"
 endif
 
+#If Size_of_DTEBootcode_RTK_Area is not defined in .inc file, it will be 1M as default
+ifdef Size_of_DTEBootcode_RTK_Area
+	NOCS_ARGS +="dte_bootcode_rtk_area_size="$(Size_of_DTEBootcode_RTK_Area)
+else
+	NOCS_ARGS +="dte_bootcode_rtk_area_size=0x100000"
+endif
+
+ifeq ($(strip $(RELEASE_FLAG)),)
+	NOCS_ARGS +="release_flag="0x0
+else
+	NOCS_ARGS +="release_flag="0x1
+endif
 
 TARGET_EXE             = $(TOP_DIR)/dvrboot.exe
 
@@ -592,6 +579,7 @@ clean:
 	-rm -f $(TOP_DIR)/image/rsa_key2_2048.pem.bin
 	-rm -f $(TOP_DIR)/image/rsa_key2_2048.pem.bin.rev
 	-rm -f $(TOP_DIR)/image/rsa_key2_2048.pem.text
+	-rm -f $(TOP_DIR)/image/bootarray_fw_table_rsa_key.pem.text
 	-rm -f $(TOP_DIR)/include/project_config_f.h
 	-rm -f $(TOP_DIR)/tools/RtSSL/RtSSL
 	-rm -f $(TOP_DIR)/tools/hw_setting_maker/generate_config
@@ -622,7 +610,18 @@ $(obj)%.bin:	$(obj)%
 		# pack related binary files for install_a
 		@rm -rf install_a
 		@mkdir -p install_a
+ifeq ($(FLASH_TYPE), EMMC_FLASH)
+		cat $(UDA_EMMC_BIND_TARGET) > install_a/uda_emmc.bind.bin
+		cat $(BOOT_EMMC_BIND_TARGET) > install_a/boot_emmc.bind.bin
+else # not EMMC_FLASH
 		cat $(DTE_BOOTCODE_RTK_AREA_FINAL) > install_a/lk.bin
+		cat $(NAND_BOOTARRAY_FW_TABLE_FINAL_128KB) > install_a/bootarray_fw_table_128KB.bin
+		cat $(NAND_BOOTARRAY_FW_TABLE_FINAL_256KB) > install_a/bootarray_fw_table_256KB.bin
+		cat $(NOCS_CERTIFICATE_FINAL) $(SCS_PARAMS_AREA_FINAL) > install_a/scs_area.bin
+		cat $(AUXCODE_AREA_FINAL) > install_a/auxcode.bin
+		cat $(DTE_BOOTCODE_AREA_FINAL) > install_a/dte_bootcode.bin
+		cat $(ATF_CERTIFICATE_FINAL) $(PCPU_CERTIFICATE_FINAL) $(AFW_CERTIFICATE_FINAL) $(DTE_FW_CERTIFICATE_FINAL) > install_a/certificate_area.bin
+		cat $(RTK_PARAMS_AREA_FINAL) > install_a/rtk_params.bin
 
 ifeq ($(Config_SECURE_OS), TRUE)
 		cat $(SECURE_OS_AREA_FINAL) > install_a/tee_area.bin
@@ -631,6 +630,7 @@ ifeq ($(Config_BL31), TRUE)
 		cat $(BL31_AREA_FINAL) > install_a/bl31_area.bin
 endif
 
+endif
 		@cd install_a/; tar cf ../../../bootloader_lk.tar *
 		#@rm -rf install_a/
 
@@ -696,6 +696,7 @@ $(NF_PROFILER_EXE):
 	cd $(NF_PROFILER_DIR);\
 	make clean; make;
 rsa_key: $(RTSSL_EXE)
+ifeq ($(strip $(RELEASE_FLAG)),)
 	chmod +x reverse.pl
 	chmod +x bin2ascii
 	chmod +x $(RTSSL_EXE)
@@ -716,18 +717,20 @@ rsa_key: $(RTSSL_EXE)
 	$(REVERSE_PL) $(IMAGE_DIR)/$(DTE_FW_EXTERNAL_PUBLIC_RSA_KEY).bin > $(IMAGE_DIR)/$(DTE_FW_EXTERNAL_PUBLIC_RSA_KEY).bin.rev
 	$(STR2BIN) `$(RTSSL_EXE) rsa -print -modulous -i $(IMAGE_DIR)/$(AFW_EXTERNAL_PUBLIC_RSA_KEY)` > $(IMAGE_DIR)/$(AFW_EXTERNAL_PUBLIC_RSA_KEY).bin
 	$(REVERSE_PL) $(IMAGE_DIR)/$(AFW_EXTERNAL_PUBLIC_RSA_KEY).bin > $(IMAGE_DIR)/$(AFW_EXTERNAL_PUBLIC_RSA_KEY).bin.rev
+endif
 
 nocs_data_block:
+ifeq ($(strip $(RELEASE_FLAG)),)
 	# obfuse 10: nagra_ta_protection_root_key, 12: atf_protection_root_key, 14: dte_protection_root_key, 18: aux_protection_key
-
 ifeq ($(FlashProtectionRootKey), "")
 	$(OBFUSE) $(RTSSL_EXE) 18 $(AES_SCK1_PATH) $(AES_VENDOR_ID_PATH) $(AES_MODULE_ID_PATH) $(IMAGE_DIR)/$(FlashProtectionKey) $(IMAGE_DIR)/$(FlashProtectionKey).enc
-else ifndef FlashProtectionRootKey
+else 
+ifndef FlashProtectionRootKey
 	$(OBFUSE) $(RTSSL_EXE) 18 $(AES_SCK1_PATH) $(AES_VENDOR_ID_PATH) $(AES_MODULE_ID_PATH) $(IMAGE_DIR)/$(FlashProtectionKey) $(IMAGE_DIR)/$(FlashProtectionKey).enc
 else
 	openssl enc -e -aes-128-ecb -K `hexdump -e '16/1 "%02x"' $(IMAGE_DIR)/$(FlashProtectionRootKey)` -nopad -in $(IMAGE_DIR)/$(FlashProtectionKey) -out $(IMAGE_DIR)/$(FlashProtectionKey).enc
 endif
-
+endif
 	$(OBFUSE) $(RTSSL_EXE) 10 $(AES_SCK1_PATH) $(AES_VENDOR_ID_PATH) $(AES_MODULE_ID_PATH) $(IMAGE_DIR)/$(NagraTAProtectionKey) $(IMAGE_DIR)/$(NagraTAProtectionKey).enc
 	$(OBFUSE) $(RTSSL_EXE) 12 $(AES_SCK1_PATH) $(AES_VENDOR_ID_PATH) $(AES_MODULE_ID_PATH) $(IMAGE_DIR)/$(ATFProtectionKey) $(IMAGE_DIR)/$(ATFProtectionKey).enc
 	$(OBFUSE) $(RTSSL_EXE) 14 $(AES_SCK1_PATH) $(AES_VENDOR_ID_PATH) $(AES_MODULE_ID_PATH) $(IMAGE_DIR)/$(DTEProtectionKey) $(IMAGE_DIR)/$(DTEProtectionKey).enc
@@ -755,24 +758,15 @@ endif
 	#generate SCS_Params
 	$(SHA_EXE) $(SCS_PARAMS_AREA) tmp_padding.bin $(SCS_PARAMS_AREA_DIGEST);rm tmp_padding.bin
 	$(call hwrsa-sign-npinv64, $(IMAGE_DIR)/$(SCS_EXTERNAL_PUBLIC_RSA_KEY), $(SCS_PARAMS_AREA_DIGEST), $(SCS_PARAMS_AREA_DIGEST_ENC))
-	cat $(SCS_PARAMS_AREA).tmp1 $(HW_SETTING_TARGET_SIG) $(SCS_PARAMS_AREA).tmp2 $(IMAGE_DIR)/$(FlashProtectionKey).enc $(SCS_PARAMS_AREA_DIGEST_ENC) > $(SCS_PARAMS_AREA_FINAL)
-	#generate RTK_Params
-	$(SHA_EXE) $(RTK_PARAMS_AREA) tmp_padding.bin $(RTK_PARAMS_AREA_DIGEST);rm tmp_padding.bin
-	$(call hwrsa-sign-npinv64, $(IMAGE_DIR)/$(ATF_EXTERNAL_PUBLIC_RSA_KEY), $(RTK_PARAMS_AREA_DIGEST), $(RTK_PARAMS_AREA_DIGEST_ENC))
-	cat $(RTK_PARAMS_AREA).tmp $(IMAGE_DIR)/$(ATFProtectionKey).enc $(IMAGE_DIR)/$(DTEProtectionKey).enc $(RTK_PARAMS_AREA_DIGEST_ENC) > $(RTK_PARAMS_AREA_FINAL)
-	#generate Auxcode_Area : double signature
-	$(SHA_EXE) $(AUXCODE_AREA) tmp_padding.bin $(AUXCODE_AREA_RTK_DIGEST);rm tmp_padding.bin
-	$(call hwrsa-sign-npinv64, $(IMAGE_DIR)/$(ATF_EXTERNAL_PUBLIC_RSA_KEY), $(AUXCODE_AREA_RTK_DIGEST), $(AUXCODE_AREA_RTK_DIGEST_ENC))
-	cat $(AUXCODE_AREA) $(AUXCODE_AREA_RTK_DIGEST_ENC) $(AUXCODE_AREA).tmp2 > $(AUXCODE_AREA2)
-	$(SHA_EXE) $(AUXCODE_AREA2) tmp_padding.bin $(AUXCODE_AREA_NAGRA_DIGEST);rm tmp_padding.bin
-	$(call hwrsa-sign-npinv64, $(IMAGE_DIR)/$(SCS_EXTERNAL_PUBLIC_RSA_KEY), $(AUXCODE_AREA_NAGRA_DIGEST), $(AUXCODE_AREA_NAGRA_DIGEST_ENC))
-	$(OBFUSE) $(RTSSL_EXE) 18 $(AES_SCK1_PATH) $(AES_VENDOR_ID_PATH) $(AES_MODULE_ID_PATH) $(AUXCODE_TARGET2) $(AUXCODE_TARGET_AES)
-	cat $(AUXCODE_TARGET_AES) $(AUXCODE_AREA).tmp $(AUXCODE_AREA_RTK_DIGEST_ENC) $(AUXCODE_AREA).tmp2 $(AUXCODE_AREA_NAGRA_DIGEST_ENC) > $(AUXCODE_AREA_FINAL)
-	#generate PCPU_Code_Area
-	$(SHA_EXE) $(PCPU_CODE_AREA) tmp_padding.bin $(PCPU_CODE_AREA_DIGEST);rm tmp_padding.bin
-	$(call hwrsa-sign-npinv64, $(IMAGE_DIR)/$(PCPU_EXTERNAL_PUBLIC_RSA_KEY), $(PCPU_CODE_AREA_DIGEST), $(PCPU_CODE_AREA_DIGEST_ENC))
-	openssl enc -e -aes-128-cbc -K `hexdump -e '16/1 "%02x"' $(PCPU_AES_KEY)` -nopad -iv 00000000000000000000000000000000 -in $(PCPU_CODE_TARGET2) -out $(PCPU_CODE_TARGET_AES)
-	cat $(PCPU_CODE_TARGET_AES) $(PCPU_CODE_AREA).tmp $(PCPU_CODE_AREA_DIGEST_ENC) > $(PCPU_CODE_AREA_FINAL)
+	cat $(SCS_PARAMS_AREA).tmp1 $(HW_SETTING_TARGET_SIG) $(SCS_PARAMS_AREA).tmp2 $(IMAGE_DIR)/$(FlashProtectionKey).enc $(SCS_PARAMS_AREA_DIGEST_ENC) > $(SCS_PARAMS_AREA_FINAL)	
+
+	#copy RTK_Params
+	cat $(RTK_PARAMS_AREA_FINAL_PRE_BUILD) > $(RTK_PARAMS_AREA_FINAL)
+
+	#copy Auxcode_Area 
+	cp -f $(AUXCODE_AREA_FINAL_SRC) $(AUXCODE_AREA_FINAL)
+	#copy PCPU_Code_Area
+	cp -f $(PCPU_CODE_AREA_FINAL_SRC) $(PCPU_CODE_AREA_FINAL)
 	#generate DTE_Bootcode_Area
 	$(SHA_EXE) $(DTE_BOOTCODE_AREA) tmp_padding.bin $(DTE_BOOTCODE_AREA_DIGEST);rm tmp_padding.bin
 	$(call hwrsa-sign-npinv64, $(IMAGE_DIR)/$(SCS_EXTERNAL_PUBLIC_RSA_KEY), $(DTE_BOOTCODE_AREA_DIGEST), $(DTE_BOOTCODE_AREA_DIGEST_ENC))
@@ -783,17 +777,28 @@ else
 	cat $(DTE_BOOTCODE_AREA) $(DTE_BOOTCODE_AREA_DIGEST_ENC) > $(DTE_BOOTCODE_AREA_FINAL)
 endif
 
+#release case
+else 
+	#In release mode, nocs_data_maker will only process the dte_bootcode_rtk area data (padding to be the fixed 1.5M)
+	./nocs_data_maker.pl $(NOCS_ARGS)
+	cp -f $(RELEASE_FOLDER)/* $(BIND_FOLDER)/
+endif
+
+
 hw_setting: $(HW_SETTING_MAKER_AP)
+ifeq ($(strip $(RELEASE_FLAG)),)	
 	$(HW_SETTING_MAKER_DIR)/$(HW_SETTING_MAKER_AP) $(HW_SETTING_TARGET_RAW_FILE) $(HW_SETTING_TARGET) $(HW_SETTING_TARGET_SLIM)
 	$(OBFUSE) $(RTSSL_EXE) 12 $(AES_SCK1_PATH) $(AES_VENDOR_ID_PATH) $(AES_MODULE_ID_PATH) $(HW_SETTING_TARGET) $(HW_SETTING_TARGET_ENC)
 	$(SHA_EXE) $(HW_SETTING_TARGET) tmp_padding.bin $(HW_SETTING_TARGET_DIGEST);rm tmp_padding.bin
 	$(SHA_EXE) $(HW_SETTING_TARGET_SLIM) tmp_padding.bin $(HW_SETTING_TARGET_DIGEST2);rm tmp_padding.bin
 	$(call hwrsa-sign-npinv64, $(IMAGE_DIR)/$(BOOTARRAY_FW_TABLE_RSA_KEY), $(HW_SETTING_TARGET_DIGEST), $(HW_SETTING_TARGET_DIGEST_ENC))
-	$(call hwrsa-sign-npinv64, $(IMAGE_DIR)/$(ATF_EXTERNAL_PUBLIC_RSA_KEY), $(HW_SETTING_TARGET_DIGEST2), $(HW_SETTING_TARGET_DIGEST_ENC2))
 	cat $(HW_SETTING_TARGET_ENC) $(HW_SETTING_TARGET_DIGEST_ENC) > $(HW_SETTING_TARGET_FINAL)
+	$(call hwrsa-sign-npinv64, $(IMAGE_DIR)/$(ATF_EXTERNAL_PUBLIC_RSA_KEY), $(HW_SETTING_TARGET_DIGEST2), $(HW_SETTING_TARGET_DIGEST_ENC2))
 	cat $(HW_SETTING_TARGET_SLIM) $(HW_SETTING_TARGET_DIGEST_ENC2) > $(HW_SETTING_TARGET_SIG)
+endif
 
 b2a: rsa_key hw_setting copy_bootcode_target $(SHA_EXE) $(NF_PROFILER_EXE) nocs_data_block secure_os bl31 target_encrypt
+ifeq ($(strip $(RELEASE_FLAG)),)
 	$(BINDALLBIN_MAKER_DIR)/$(BINDALLBIN_UTIL) fw_table
 	#eMMC bootarray fw table encrypt&sign
 	$(SHA_EXE) $(EMMC_BOOTARRAY_FW_TABLE) $(EMMC_BOOTARRAY_FW_TABLE_PADDING) $(EMMC_BOOTARRAY_FW_TABLE_DIGEST)
@@ -819,7 +824,7 @@ b2a: rsa_key hw_setting copy_bootcode_target $(SHA_EXE) $(NF_PROFILER_EXE) nocs_
 	$(call hwrsa-sign-npinv64, $(IMAGE_DIR)/$(BOOTARRAY_FW_TABLE_RSA_KEY), $(NAND_BOOTARRAY_FW_TABLE_DIGEST_256KB), $(NAND_BOOTARRAY_FW_TABLE_DIGEST_ENC_256KB))
 	$(OBFUSE) $(RTSSL_EXE) 12 $(AES_SCK1_PATH) $(AES_VENDOR_ID_PATH) $(AES_MODULE_ID_PATH) $(NAND_BOOTARRAY_FW_TABLE_ALL_256KB) $(NAND_BOOTARRAY_FW_TABLE_ENC_256KB)
 	cat $(NAND_BOOTARRAY_FW_TABLE_ENC_256KB) $(NAND_BOOTARRAY_FW_TABLE_DIGEST_ENC_256KB) > $(NAND_BOOTARRAY_FW_TABLE_FINAL_256KB)
-
+endif
 	$(BINDALLBIN_MAKER_DIR)/$(BINDALLBIN_UTIL)
 	$(BIN2HEX) $(BIND_FOLDER)/bind.bin $(BIND_FOLDER)/bind.bin.hex
 	$(BIN2HEX_EMMC) 0 $(BIND_FOLDER)/uda_emmc.bind.bin $(BIND_FOLDER)/uda_emmc.bind.bin.hex
@@ -837,13 +842,12 @@ ifeq ($(Config_Uboot_Sim_Mode), TRUE)
 endif
 	cp $(DTE_BOOTCODE_RTK_TARGET) .
 
-
 target_encrypt: $(SHA_EXE)
 	#generate DTE_Bootcode_RTK_Area
 	$(SHA_EXE) $(DTE_BOOTCODE_RTK_AREA) tmp_padding.bin $(DTE_BOOTCODE_RTK_AREA_DIGEST);rm tmp_padding.bin
 	$(call hwrsa-sign-npinv64, $(IMAGE_DIR)/$(DTE_FW_EXTERNAL_PUBLIC_RSA_KEY), $(DTE_BOOTCODE_RTK_AREA_DIGEST), $(DTE_BOOTCODE_RTK_AREA_DIGEST_ENC))
 ifeq ($(Config_Secure_Improve), TRUE)
-	openssl enc -e -aes-128-ecb -K `hexdump -e '16/1 "%02x"' $(IMAGE_DIR)/$(DTEProtectionKey)` -nopad -in $(DTE_BOOTCODE_RTK_TARGET) -out $(DTE_BOOTCODE_RTK_TARGET_AES)
+	openssl enc -e -aes-128-ecb -K `hexdump -e '16/1 "%02x"' $(IMAGE_DIR)/$(DTEProtectionKey)` -nopad -in $(DTE_BOOTCODE_RTK_TARGET2) -out $(DTE_BOOTCODE_RTK_TARGET_AES)
 	cat $(DTE_BOOTCODE_RTK_TARGET_AES) $(DTE_BOOTCODE_RTK_AREA).tmp $(DTE_BOOTCODE_RTK_AREA_DIGEST_ENC) > $(DTE_BOOTCODE_RTK_AREA_FINAL)
 else
 	cat $(DTE_BOOTCODE_RTK_AREA) $(DTE_BOOTCODE_RTK_AREA_DIGEST_ENC) > $(DTE_BOOTCODE_RTK_AREA_FINAL)
@@ -851,18 +855,18 @@ endif
 
 secure_os:
 ifeq ($(Config_SECURE_OS), TRUE)
-	$(SHA_EXE) $(SECURE_OS_AREA) tmp_padding.bin $(SECURE_OS_AREA_DIGEST);rm tmp_padding.bin
-	$(call hwrsa-sign-npinv64, $(IMAGE_DIR)/$(ATF_EXTERNAL_PUBLIC_RSA_KEY), $(SECURE_OS_AREA_DIGEST), $(SECURE_OS_AREA_DIGEST_ENC))
-	openssl enc -e -aes-128-ecb -K `hexdump -e '16/1 "%02x"' $(IMAGE_DIR)/$(ATFProtectionKey)` -nopad -in $(SECURE_OS_TARGET) -out $(SECURE_OS_TARGET_AES)
-	cat $(SECURE_OS_TARGET_AES) $(SECURE_OS_AREA).tmp $(SECURE_OS_AREA_DIGEST_ENC) > $(SECURE_OS_AREA_FINAL)
+ifeq ($(strip $(RELEASE_FLAG)),)
+	#copy tee os area 
+	cp -f $(SECURE_OS_AREA_FINAL_SRC) $(SECURE_OS_AREA_FINAL)
+endif
 endif
 
 bl31:
 ifeq ($(Config_BL31), TRUE)
-	$(SHA_EXE) $(BL31_AREA) tmp_padding.bin $(BL31_AREA_DIGEST);rm tmp_padding.bin
-	$(call hwrsa-sign-npinv64, $(IMAGE_DIR)/$(ATF_EXTERNAL_PUBLIC_RSA_KEY), $(BL31_AREA_DIGEST), $(BL31_AREA_DIGEST_ENC))
-	openssl enc -e -aes-128-ecb -K `hexdump -e '16/1 "%02x"' $(IMAGE_DIR)/$(ATFProtectionKey)` -nopad -in $(BL31_TARGET) -out $(BL31_TARGET_AES)
-	cat $(BL31_TARGET_AES) $(BL31_AREA).tmp $(BL31_AREA_DIGEST_ENC) > $(BL31_AREA_FINAL)
+ifeq ($(strip $(RELEASE_FLAG)),)
+	#copy bl31 area 
+	cp -f $(BL31_AREA_FINAL_SRC) $(BL31_AREA_FINAL)
+endif
 endif
 
 

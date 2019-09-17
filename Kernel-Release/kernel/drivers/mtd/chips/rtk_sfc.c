@@ -326,7 +326,39 @@ static int exit_4bytes_addr_mode(void) {
 
 }
 #endif
-
+/*--------------------------------------------------------------------------------
+  FM serial flash information list
+  [FM 25Q64B] 64Mbit
+  erase size: 32KB / 64KB 
+  --------------------------------------------------------------------------------*/
+static int fm_init(rtk_sfc_info_t *sfc_info) {
+    switch(sfc_info->device_id1) {
+        case 0x40:
+            switch(sfc_info->device_id2) {
+                case 0x17:
+                    printk(KERN_NOTICE "RtkSFC MTD: FM 25Q64B detected.\n");
+                    SFC_4KB_ERASE;
+                    sfc_info->sec_64k_en = sfc_info->sec_32k_en = sfc_info->sec_4k_en = SUPPORTED;
+                    sfc_info->sec_256k_en = NOT_SUPPORTED;
+                    sfc_info->mtd_info->size = 0x800000;
+                    break;
+                default:
+                    printk(KERN_NOTICE "RtkSFC MTD: FM unknown id2=0x%x detected.\n",
+                            sfc_info->device_id2);
+                    break;
+            }
+            break;
+        default:
+            printk(KERN_NOTICE "RtkSFC MTD: FM unknown id1=0x%x detected.\n",
+                    sfc_info->device_id1);
+            break;
+    }
+    if(sfc_info->erase_opcode==0xFFFFFFFF)//Set to default.
+    {
+        SFC_4KB_ERASE;
+    }
+    return 0;
+}
 /*--------------------------------------------------------------------------------
   GD serial flash information list
   [GD 25Q16B] 16Mbit
@@ -3727,9 +3759,14 @@ static int rtk_sfc_probe(struct platform_device *pdev)
         case MANUFACTURER_ID_GD:
             ret = gd_init(sfc_info);
             break;
+        case MANUFACTURER_ID_FM:
+            ret = fm_init(sfc_info);
+            break;
+
         default:
             printk(KERN_ERR "RtkSFC MTD: Unknown flash type.\n");
-            printk(KERN_ERR "Manufacturer's ID = %02X, Memory Type = %02X, Memory Capacity = %02X\n", id & 0xff, (id >> 8) & 0xff, (id >> 16) & 0xff);
+            printk(KERN_ERR "Manufacturer's ID = %02X, Memory Type = %02X, Memory Capacity = %02X\n", sfc_info->manufacturer_id,\
+		 sfc_info->device_id1, sfc_info->device_id2);
 
             return -ENODEV;
             break;

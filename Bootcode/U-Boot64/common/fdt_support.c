@@ -282,6 +282,247 @@ int fdt_initrd(void *fdt, ulong initrd_start, ulong initrd_end)
 	return 0;
 }
 
+#if defined(CONFIG_RTD161x) && defined(NAS_ENABLE)
+int fdt_rsv_mem_for_ion_exist(void *fdt) {
+	uint64_t memrsv_addr, memrsv_size;
+	int err = 0;
+	int total, i;
+
+	err = fdt_check_header(fdt);
+	if (err < 0) {
+		printf("fdt_check_header failed: %s\n", fdt_strerror(err));
+		return err;
+	}
+
+	total = fdt_num_mem_rsv(fdt);
+	for (i = 0 ; i < total ; i++ ) {
+		err = fdt_get_mem_rsv(fdt, i, &memrsv_addr, &memrsv_size);
+		debug("pre-reserved mem %llx %llx\n", memrsv_addr, memrsv_size);
+		if ((memrsv_addr == ION_MEDIA_HEAP_0_PHYS) || (memrsv_addr == ION_MEDIA_HEAP_1_PHYS)) {
+			debug("[%d] %llx %llx pre-reserved mem for ion heap found \n", i, memrsv_addr, memrsv_size);
+			return 0;
+		}
+	}
+
+	if (i == total)	{
+		return -1;	
+	}
+
+	return -1;
+}
+
+int fdt_modify_mem_rsv(void *fdt, uint32_t addr, uint32_t size) {
+	/* unit of "size": byte */
+	uint64_t memrsv_addr, memrsv_size;
+	int err = 0;
+	int total, i;
+
+	err = fdt_check_header(fdt);
+	if (err < 0) {
+		printf("fdt_check_header failed: %s\n", fdt_strerror(err));
+		return err;
+	}
+
+	total = fdt_num_mem_rsv(fdt);
+	for (i = 0 ; i < total ; i++ ) {
+		err = fdt_get_mem_rsv(fdt, i, &memrsv_addr, &memrsv_size);
+		debug("pre-reserved mem %llx %llx\n", memrsv_addr, memrsv_size);
+		if ( memrsv_addr == addr ) {
+			if (memrsv_size == size)
+				break;
+			fdt_del_mem_rsv(fdt, i);
+			/* if "size" is set to 0, delete the entry and return. */
+			if (size == 0)
+				break;
+			debug("[%d] %x %x write into pre-reserved mem \n", i, addr, size);
+			err = fdt_add_mem_rsv(fdt, addr, size);
+			if (err < 0) {
+				printf("fdt_add_mem_rsv: %s\n", fdt_strerror(err));
+				return err;
+			}			
+			break;
+		}
+	}
+
+	if (i == total)	{
+		printf("no pre-reserved mem for %x\n", addr);
+		return -1;	
+	}
+
+	return 0;
+}
+
+int fdt_update_ion_node(void *fdt, uint32_t addr, uint32_t size) {
+	int err, total, i;
+	uint32_t *write_buf;
+	int nodeoffset, subnodeoffset_ion, prop_len;
+	const uint32_t *prop_reg;
+
+	err = fdt_check_header(fdt);
+	if (err < 0) {
+		printf("fdt_check_header failed: %s\n", fdt_strerror(err));
+		return err;
+	}
+	
+	nodeoffset = fdt_path_offset(fdt, "/rtk,ion");
+	if (nodeoffset < 0) {
+		printf("%s %d failed to find rtk,ion node \n", __func__, __LINE__);
+		return -1;
+	}
+
+	subnodeoffset_ion = fdt_subnode_offset_namelen(
+			fdt, nodeoffset, "rtk,ion-heap@7", strlen("rtk,ion-heap@7"));
+	if (subnodeoffset_ion < 0) {
+		printf("%s %d failed to find rtk,ion-heap@7 node \n", __func__, __LINE__);
+		return -1;
+	}
+
+	if (size == 0) {
+
+		return 0;
+	}
+	
+	prop_reg = fdt_getprop(fdt, subnodeoffset_ion, "rtk,memory-reserve", &prop_len);
+	if (prop_reg == NULL) {
+		printf("%s %d failed to find rtk,memory-reserve in rtk,ion-heap@7 node\n", __func__, __LINE__);
+		return -1;
+	}
+	total = prop_len / sizeof(uint32_t);
+	write_buf = malloc(prop_len);
+	memcpy(write_buf, prop_reg, prop_len);
+
+	for (i = 0 ; i < total ; i += 3) {
+		/*
+		 * [0] : ION_MEDIA_HEAP_PHYS_*
+		 * [1] : ION_MEDIA_HEAP_SIZE_*
+		 * [2] : ION_MEDIA_HEAP_FLAG_*
+		 */
+		if (fdt32_to_cpu(write_buf[i]) == addr) {
+			debug("[%d] %x %x write %x %x into rtk,ion-heap@7 \n"
+					, i
+					, fdt32_to_cpu(write_buf[i])
+					, fdt32_to_cpu(write_buf[i+1])
+					, addr
+					, size);
+			write_buf[i+1] = cpu_to_fdt32(size);
+			fdt_setprop(fdt, subnodeoffset_ion, "rtk,memory-reserve"
+					, write_buf, prop_len);
+			free(write_buf);
+			return 0;
+		}
+	}
+	free(write_buf);
+
+	if (i == total) {
+		printf("no pre-reserved mem in rtk,ion for %x [%d %d]\n", addr, i, total);
+		return -1;	
+	}
+
+	return 0;
+}
+
+int fdt_ion_heap(void *fdt, uint32_t heap_addr, uint32_t size_MB)
+{
+	uint32_t heap_addr_aligned;
+	uint32_t heap_size = size_MB << 20; // convert MiB to B
+	int err;
+	
+	err = fdt_check_header(fdt);
+	if (err < 0) {
+		printf("fdt_check_header failed: %s\n", fdt_strerror(err));
+		return err;
+	}
+
+	/*Set address to 4k alignment*/
+	heap_addr_aligned = heap_addr & (~(4*1024-1));
+	if (heap_addr & (4*1024-1))
+		printf("%s overwrite heap address to 4k alignment %x(%x)\n",__func__, heap_addr, heap_addr_aligned);
+
+	/*
+	 * Look for an existing entry and update it.  
+	 */
+	err = fdt_modify_mem_rsv(fdt, heap_addr_aligned, heap_size);
+	if (err != 0) {
+		return err;
+	}
+
+	/*
+	 * Find the "rtk,ion" node and update it.
+	 */
+	fdt_update_ion_node(fdt, heap_addr_aligned, heap_size);
+
+	return 0;
+}
+
+
+int fdt_set_status_disable(void *fdt, const char *path)
+{
+    	int err;
+	int nodeoffset;
+
+	nodeoffset = fdt_path_offset(fdt, path);
+	if (nodeoffset < 0) {
+		printf("%s %d failed to find %s node \n", __func__, __LINE__, path);
+		return -1;
+	}
+
+	err = fdt_setprop(fdt, nodeoffset, "status", "disabled", strlen("disabled")+1);
+	if (err < 0) {
+		printf("failed to set prop status: %s\n", fdt_strerror(err));
+		return -1;
+	}
+
+	return 0;
+}
+
+#define NODE_PATH_NUM 8
+#define RSV_MEM_ENTRY_NUM 8
+
+int fdt_disable_rtk_ion(void *fdt)
+{
+	int err = 0;
+	int i;
+	char *node_path[NODE_PATH_NUM] = {
+		"/rtk,ion",
+		"/rtk-fb",
+		"/pu_pll",
+		"/hdmitx",
+		"/dptx",
+		"/rpc",
+		"/cec0",
+		"/reserved-memory/ringbuf",
+	};
+	uint32_t rsv_mem_entry_phys_addr[RSV_MEM_ENTRY_NUM] = {
+		DRM_PROTECT_REGION_0_PHYS,
+		DRM_PROTECT_REGION_1_PHYS,
+		RPC_RINGBUF_PHYS,
+		RPC_COMM_PHYS,
+		ION_MEDIA_HEAP_0_PHYS,
+		ION_MEDIA_HEAP_1_PHYS,
+		ION_AUDIO_HEAP_0_PHYS,
+		ACPU_IDMEM_PHYS
+	};
+	
+
+	err = fdt_check_header(fdt);
+	if (err < 0) {
+		printf("fdt_check_header failed: %s\n", fdt_strerror(err));
+		return err;
+	}
+	
+	for (i = 0; i < RSV_MEM_ENTRY_NUM; i++) {
+		err = fdt_modify_mem_rsv(fdt, rsv_mem_entry_phys_addr[i] , 0);
+	}
+
+	for (i = 0; i < NODE_PATH_NUM ; i++) {
+		err = fdt_set_status_disable(fdt, node_path[i]);
+	}
+	
+	return err;
+}
+
+#endif
+
 int fdt_chosen(void *fdt, int force)
 {
 	int   nodeoffset;
@@ -646,8 +887,8 @@ int fdt_fixup_memory(void *blob, u64 start, u64 size)
 
 void fdt_fixup_ethernet(void *fdt)
 {
-	int node, i, j;
-	char enet[16], *tmp, *end;
+	int node, j;
+	char *tmp, *end;
 	char mac[16];
 	const char *path;
 	unsigned char mac_addr[6];
@@ -667,9 +908,6 @@ void fdt_fixup_ethernet(void *fdt)
 		strcpy(mac, "ethaddr");
 	}
 
-#if defined(CONFIG_RTD1295) || defined(CONFIG_RTD1395)
-	(void)enet;
-	(void)i;
 	/* add MAC address */
 	if ((tmp = getenv(mac)) != NULL) {
 		printf("[FDT] mac = %s\n", tmp);
@@ -702,33 +940,7 @@ void fdt_fixup_ethernet(void *fdt)
 			fdt_setprop_u32(fdt, node, "force-Gb-off", 1);
 		}
 	}
-#endif /* CONFIG_RTD1395 */
-
-#else /* others */
-
-	i = 0;
-	while ((tmp = getenv(mac)) != NULL) {
-		sprintf(enet, "ethernet%d", i);
-		path = fdt_getprop(fdt, node, enet, NULL);
-		if (!path) {
-			debug("No alias for %s\n", enet);
-			sprintf(mac, "eth%daddr", ++i);
-			continue;
-		}
-
-		for (j = 0; j < 6; j++) {
-			mac_addr[j] = tmp ? simple_strtoul(tmp, &end, 16) : 0;
-			if (tmp)
-				tmp = (*end) ? end+1 : end;
-		}
-
-		do_fixup_by_path(fdt, path, "mac-address", &mac_addr, 6, 0);
-		do_fixup_by_path(fdt, path, "local-mac-address",
-				&mac_addr, 6, 1);
-
-		sprintf(mac, "eth%daddr", ++i);
-	}
-#endif /* CONFIG_RTD1295 | CONFIG_RTD1395 */
+#endif /* CONFIG_RTD1295 | CONFIG_RTD1395 | CONFIG_RTD161x */
 }
 
 /* Resize the fdt to its actual size + a bit of padding */

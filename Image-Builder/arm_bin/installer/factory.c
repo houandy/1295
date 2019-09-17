@@ -13,13 +13,14 @@ static int factory_current_pp = -1;
 static int factory_seq_num = 0;
 char factory_dir[32];
 
-extern long int debug_level;
-extern long int factory_start_addr;
-extern long int factory_zone;
-extern long int align_size;
-extern long int use_spi;
-extern long int use_emmc;
-extern long int use_nand;
+extern long debug_level;
+extern long factory_start_addr;
+extern long factory_zone;
+extern long align_size;
+extern unsigned long mtd_erasesize;
+extern long use_spi;
+extern long use_emmc;
+extern long use_nand;
 extern char in_factorytar_file[IN_FACTORYTAR_NAMESIZE];
 extern char storage_dev[64];
 
@@ -33,7 +34,7 @@ extern char storage_dev[64];
 		if (!(debug_level&INSTALL_FAKE_RUN)) \
 			if (system(cmd)!=0) \
 				install_fail("fail to execute \n%s\n",cmd); \
-	} while(0) 
+	} while(0)
 
 int factory_find_latest_update(void)
 {
@@ -48,25 +49,25 @@ int factory_find_latest_update(void)
 
 	if ( strncmp(p0_start.name, "tmp/factory/", strlen("tmp/factory/")) == 0 )  {
 		read_fileoffset_to_ptr(storage_dev,
-							   factory_start_addr + p0_start.rtk_tarsize,
-							   &p0_end,
-							   sizeof(p0_end));
+		                       factory_start_addr + p0_start.rtk_tarsize,
+		                       &p0_end,
+		                       sizeof(p0_end));
 		if ( memcmp(&p0_start, &p0_end, sizeof(p0_start)) == 0 ) {
 			pp_ok = pp_ok | 1;
 		}
 	}
 	if ( strncmp(p1_start.name, "tmp/factory/", strlen("tmp/factory/")) == 0 )  {
 		read_fileoffset_to_ptr(storage_dev,
-							   factory_start_addr + (factory_zone/2) + p1_start.rtk_tarsize,
-							   &p1_end,
-							   sizeof(p1_end));
+		                       factory_start_addr + (factory_zone/2) + p1_start.rtk_tarsize,
+		                       &p1_end,
+		                       sizeof(p1_end));
 		if ( memcmp(&p1_start, &p1_end, sizeof(p1_start)) == 0 ) {
 			pp_ok = pp_ok | 2;
 		}
 	}
 
 	/* factory_current_pp:
-	 *					 emmc addr	*
+	 *                   emmc addr	*
 	 * 0 : factory1.tar (0x621000)	*
 	 * 1 : factory2.tar (0x821000)	*/
 	switch (pp_ok) {
@@ -103,17 +104,17 @@ int factory_find_latest_update(void)
 		factory_seq_num = p0_start.rtk_seqnum;
 		factory_tarsize = p0_start.rtk_tarsize;
 	}
-	else if (factory_current_pp == 1)  {
+	else if (factory_current_pp == 1) {
 		factory_seq_num = p1_start.rtk_seqnum;
 		factory_tarsize = p1_start.rtk_tarsize;
 	}
 
 	install_info("pp_ok = %x factory_current_pp = %d "
-				 "factory_seq_num = %d factory_tarsize=%u\n", 
-				 pp_ok,
-				 factory_current_pp,
-				 factory_seq_num,
-				 factory_tarsize );
+	             "factory_seq_num = %d factory_tarsize=%u\n", 
+	             pp_ok,
+	             factory_current_pp,
+	             factory_seq_num,
+	             factory_tarsize );
 	return 0;
 }
 
@@ -179,6 +180,7 @@ int factory_flush(unsigned int factory_start, unsigned int factory_part_size)
 {
 	unsigned int size;
 	struct stat st = {0};
+	long erase_size;
 	// char tmp_recovery[32];
 
 	if(factory_start == 0 || factory_part_size == 0) {
@@ -208,8 +210,8 @@ int factory_flush(unsigned int factory_start, unsigned int factory_part_size)
 	get_sizeof_file(FACTORY_FILE_PATH, &size);
 	if (size > factory_part_size) {
 		install_fail("factory.tar(%d) larger then default factory_part_size(%d)\n",
-					 size,
-					 factory_part_size);
+		             size,
+		             factory_part_size);
 		return -1;
 	}
 
@@ -222,31 +224,45 @@ int factory_flush(unsigned int factory_start, unsigned int factory_part_size)
 		factory_current_pp = factory_current_pp & 0x01;
 	}
 	install_info("save to current_pp = %d seq_num = %d\n",
-				 factory_current_pp,
-				 factory_seq_num);
+	             factory_current_pp,
+	             factory_seq_num);
 
-	if (use_spi && !use_nand && !use_emmc)	{
-		run("/tmp/flash_erase %s 0x%lx %ld", 
-			storage_dev,
-			(long unsigned int)(factory_start + factory_current_pp * factory_part_size),
-			factory_part_size / align_size);
+	if (!use_spi && use_nand && !use_emmc)
+		erase_size = (long) mtd_erasesize;
+	else
+		erase_size = align_size;
+
+	if (!use_spi && !use_nand && use_emmc) {
+		run("dd if=/dev/zero of=%s "
+		    "bs=%ld count=%lu seek=%lu conv=notrunc,fsync",
+		    storage_dev,
+		    erase_size,
+		    factory_part_size / erase_size,
+		    (factory_start + factory_current_pp * factory_part_size) / erase_size);
 	}
 	else {
-		run("dd if=/dev/zero of=%s "
-			"bs=%ld count=%lu seek=%lu conv=notrunc,fsync",
-			storage_dev,
-			align_size,
-			factory_part_size / align_size, 
-			(factory_start + factory_current_pp * factory_part_size) /align_size);
+		run("/tmp/flash_erase %s 0x%x %ld",
+		    storage_dev,
+		    factory_start + factory_current_pp * factory_part_size,
+		    factory_part_size / erase_size);
 	}
-	
-	run("dd if=%s of=%s "
-		"bs=%ld count=%lu seek=%lu",
-		FACTORY_FILE_PATH,
-		storage_dev,
-		align_size,
-		factory_part_size / align_size,
-		(factory_start + factory_current_pp * factory_part_size) / align_size );
+
+	if (!use_spi && use_nand && !use_emmc) {
+		/* nandwrite */
+		run("/tmp/nandwrite -m -p -s 0x%x %s %s",
+		    factory_start + factory_current_pp * factory_part_size,
+		    storage_dev,
+		    FACTORY_FILE_PATH);
+	}
+	else {
+		run("dd if=%s of=%s "
+		    "bs=%ld count=%lu seek=%lu",
+		    FACTORY_FILE_PATH,
+		    storage_dev,
+		    align_size,
+		    factory_part_size / align_size,
+		    (factory_start + factory_current_pp * factory_part_size) / align_size );
+	}
 
 	return 0;
 }
@@ -294,17 +310,17 @@ int factory_load(void)
 
 	/* untar the factory file in storage will extract directories "tmp/factory/..." */
 	run("cd /;dd if=%s bs=%ld count=%ld skip=%ld | tar x", 
-		storage_dev,
-		align_size,
-		(factory_zone/2) / align_size,
-		(factory_start_addr + factory_current_pp * (factory_zone/2)) / align_size);
+	    storage_dev,
+	    align_size,
+	    (factory_zone/2) / align_size,
+	    (factory_start_addr + factory_current_pp * (factory_zone/2)) / align_size);
 
 	return 0;
 }
 
 int factory_pingpong_flush(unsigned int factory_start, unsigned int factory_part_size) {
 	int ret_val=0;
-	
+
 	if(factory_start == 0 || factory_part_size == 0) {
 		factory_start = factory_start_addr;
 		factory_part_size = factory_zone / 2;
@@ -335,11 +351,10 @@ int install_factory(void) {
 	int ret_val = 0;
 
 	run("rm -rf %s; mkdir -p %s; tar -x -f /tmp/%s -C %s/",
-		FACTORY_INSTALL_TEMP,
-		FACTORY_INSTALL_TEMP,
-		in_factorytar_file,
-		FACTORY_INSTALL_TEMP);
-	
+	    FACTORY_INSTALL_TEMP,
+	    FACTORY_INSTALL_TEMP,
+	    in_factorytar_file,
+	    FACTORY_INSTALL_TEMP);
 
 	if ((ret_val=factory_load()) < 0) {
 		install_fail("factory load fail\n");

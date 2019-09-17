@@ -28,7 +28,7 @@
 #include <linux/regmap.h>
 #include <linux/suspend.h>
 #include <linux/mfd/g2227.h>
-#include <soc/realtek/rtk_cpu.h>
+#include <soc/realtek/rtk_chip.h>
 #include "g22xx-regulator.h"
 
 /* regulator id */
@@ -163,7 +163,7 @@ static int g2227_regulator_probe(struct platform_device *pdev)
 	grdev->regmap = gdev->regmap;
 	grdev->dev = dev;
 	INIT_LIST_HEAD(&grdev->list);
-	chip_rev = get_rtd129x_cpu_revision();
+	chip_rev = get_rtd_chip_revision();
 
 	for (i = 0; i < ARRAY_SIZE(desc); i++) {
 		struct regulator_dev *rdev;
@@ -175,17 +175,18 @@ static int g2227_regulator_probe(struct platform_device *pdev)
 				desc[i].desc.name, ret);
 			return ret;
 		}
-
+#ifdef CONFIG_ARCH_RTD129x
 		/* workaround */
 		if (desc[i].desc.id == G2227_ID_DC6 &&
-			(chip_rev == RTD129x_CHIP_REVISION_A00 ||
-			chip_rev == RTD129x_CHIP_REVISION_B00)) {
-			struct g22xx_regulator_data *data = rdev_get_drvdata(rdev);
+		   (chip_rev == RTD_CHIP_A00 || chip_rev == RTD_CHIP_B00)) {
+			struct g22xx_regulator_data *data
+				= rdev_get_drvdata(rdev);
 
 			BUG_ON(!data);
 			data->state_mem.enabled = true;
 			data->state_mem.disabled = false;
 		}
+#endif
 	}
 
 	platform_set_drvdata(pdev, grdev);
@@ -213,7 +214,7 @@ static const struct of_device_id g2227_regulator_ids[] = {
 };
 MODULE_DEVICE_TABLE(i2c, g2227_regulator_ids);
 
-struct platform_driver g2227_regulator_driver = {
+static struct platform_driver g2227_regulator_driver = {
 	.driver = {
 		.name = "g2227-regulator",
 		.owner = THIS_MODULE,

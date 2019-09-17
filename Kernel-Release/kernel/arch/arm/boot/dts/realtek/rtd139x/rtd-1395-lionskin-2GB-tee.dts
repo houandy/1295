@@ -9,7 +9,7 @@
 /memreserve/ TEE_OS_PHYS TEE_OS_SIZE;
 
 #include "rtd-139x-ion-2GB-tee.dtsi"
-#include "rtd-139x.dtsi"
+#include "rtd-1395-lionskin.dtsi"
 
 / {
 	model= "Realtek_Lion_Skin_2GB";

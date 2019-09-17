@@ -130,16 +130,6 @@ void rtw_hal_def_value_init(_adapter *padapter)
 		adapter_to_dvobj(padapter)->p0_tsf.offset = 0;
 		#endif
 
-		{
-			struct dvobj_priv *dvobj = adapter_to_dvobj(padapter);
-			struct hal_spec_t *hal_spec = GET_HAL_SPEC(padapter);
-
-			/* hal_spec is ready here */
-			dvobj->macid_ctl.num = rtw_min(hal_spec->macid_num, MACID_NUM_SW_LIMIT);
-
-			dvobj->cam_ctl.sec_cap = hal_spec->sec_cap;
-			dvobj->cam_ctl.num = rtw_min(hal_spec->sec_cam_ent_num, SEC_CAM_ENT_NUM_SW_LIMIT);
-		}
 		GET_HAL_DATA(padapter)->rx_tsf_addr_filter_config = 0;
 	}
 }
@@ -252,6 +242,11 @@ void rtw_hal_power_off(_adapter *padapter)
 	struct macid_ctl_t *macid_ctl = &padapter->dvobj->macid_ctl;
 
 	_rtw_memset(macid_ctl->h2c_msr, 0, MACID_NUM_SW_LIMIT);
+	_rtw_memset(macid_ctl->op_num, 0, H2C_MSR_ROLE_MAX);
+
+#ifdef CONFIG_LPS_1T1R
+	GET_HAL_DATA(padapter)->lps_1t1r = 0;
+#endif
 
 #ifdef CONFIG_BT_COEXIST
 	rtw_btcoex_PowerOffSetting(padapter);
@@ -305,6 +300,8 @@ uint rtw_hal_init(_adapter *padapter)
 {
 	uint status = _SUCCESS;
 
+	halrf_set_rfsupportability(adapter_to_phydm(padapter));
+
 	status = padapter->hal_func.hal_init(padapter);
 
 	if (status == _SUCCESS) {
@@ -346,6 +343,8 @@ uint	 rtw_hal_init(_adapter *padapter)
 	uint	status = _SUCCESS;
 	struct dvobj_priv *dvobj = adapter_to_dvobj(padapter);
 	int i;
+
+	halrf_set_rfsupportability(adapter_to_phydm(padapter));
 
 	status = padapter->hal_func.hal_init(padapter);
 
@@ -474,7 +473,15 @@ u8 rtw_hal_check_ips_status(_adapter *padapter)
 
 s32 rtw_hal_fw_dl(_adapter *padapter, u8 wowlan)
 {
-	return padapter->hal_func.fw_dl(padapter, wowlan);
+	s32 ret;
+
+	ret = padapter->hal_func.fw_dl(padapter, wowlan);
+
+#ifdef CONFIG_LPS_1T1R
+	GET_HAL_DATA(padapter)->lps_1t1r = 0;
+#endif
+
+	return ret;
 }
 
 #ifdef RTW_HALMAC
@@ -824,6 +831,7 @@ void	rtw_hal_set_chnl_bw(_adapter *padapter, u8 channel, enum channel_width Band
 			, pHalData->cch_80, pHalData->cch_40, pHalData->cch_20);
 
 	padapter->hal_func.set_chnl_bw_handler(padapter, channel, Bandwidth, Offset40, Offset80);
+	pHalData->current_band_type = channel > 14 ? BAND_ON_5G:BAND_ON_2_4G;
 }
 
 void	rtw_hal_dm_watchdog(_adapter *padapter)
@@ -1067,6 +1075,10 @@ s32 c2h_handler(_adapter *adapter, u8 id, u8 seq, u8 plen, u8 *payload)
 		c2h_per_rate_rpt_hdl(adapter, payload, plen);
 		break;
 #endif
+
+	case C2H_LPS_STATUS_RPT:
+		break;
+
 	case C2H_EXTEND:
 		sub_id = payload[0];
 		/* no handle, goto default */

@@ -162,6 +162,13 @@ static long hdmitx_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case HDMI_GET_CONFIG_TV_SYSTEM:
 		return ops_get_config_tv_system((void __user *)arg);
 
+#if 1//def __LINUX_MEDIA_NAS__
+	case HDMI_HOTPLUG_DETECTION:
+		return ops_set_hotplug_detection((void __user *)arg, dev);
+
+	case HDMI_WAIT_HOTPLUG:
+		return ops_wait_hotplug((void __user *)arg, dev);
+#endif
 	default:
 		HDMI_DEBUG(" Unknown ioctl cmd %08x", cmd);
 		return -EFAULT;
@@ -313,7 +320,9 @@ static int rtk_hdmi_probe(struct platform_device *pdev)
 		HDMI_ERROR("Could not register_hdmitx_switchdev");
 		goto err_register;
 	}
-
+#if 1//__LINUX_MEDIA_NAS__
+	init_waitqueue_head(&tx_dev.hpd_wait);
+#endif
 	setup_mute_gpio(pdev->dev.of_node);
 
 	/* Initial SCDC read request */

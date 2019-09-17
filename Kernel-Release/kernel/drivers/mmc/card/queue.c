@@ -87,6 +87,9 @@ static int mmc_cmdq_thread(void *d)
 			schedule();
 		}
 		spin_lock_irqsave(q->queue_lock, flags);
+
+		set_current_state(TASK_INTERRUPTIBLE);
+
 		req = blk_peek_request(q);
 		if (req) {
 			ret = blk_queue_start_tag(q, req);
@@ -95,7 +98,9 @@ static int mmc_cmdq_thread(void *d)
 				test_and_set_bit(0, &ctx->req_starved);
 				schedule();
 			} else {
+				set_current_state(TASK_RUNNING);
 				ret = mq->cmdq_issue_fn(mq, req);
+				cond_resched();
 				if (ret) {
 					pr_err("%s: failed (%d) to issue req, requeue\n",
 					       mmc_hostname(host), ret);
@@ -296,7 +301,11 @@ static int mmc_cmdq_init(struct mmc_queue *mq, struct mmc_card *card)
 {
 	int i, ret = 0;
 	/* one slot is reserved for dcmd requests */
+#ifdef CONFIG_MMC_RTK_EMMC_PON
+	int q_depth = card->ext_csd.cmdq_depth - 2;	//realtek use slot 0 for pon's usage, so the available slot minus 1
+#else
 	int q_depth = card->ext_csd.cmdq_depth - 1;
+#endif
 	card->cmdq_init = false;
 	if (!(card->host->caps2 & MMC_CAP2_CMD_QUEUE)) {
 		ret = -ENOTSUPP;
@@ -635,7 +644,14 @@ void mmc_queue_suspend(struct mmc_queue *mq)
 		blk_stop_queue(q);
 		spin_unlock_irqrestore(q->queue_lock, flags);
 
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+		if (mq->card->cmdq_init && blk_queue_tagged(q))
+			kthread_stop(mq->thread);
+		else
+			down(&mq->thread_sem);
+#else
 		down(&mq->thread_sem);
+#endif
 	}
 }
 
@@ -650,8 +666,12 @@ void mmc_queue_resume(struct mmc_queue *mq)
 
 	if (mq->flags & MMC_QUEUE_SUSPENDED) {
 		mq->flags &= ~MMC_QUEUE_SUSPENDED;
-
+#if defined(CONFIG_ARCH_RTD13xx) && defined(CONFIG_MMC_RTK_EMMC) && defined(CONFIG_MMC_RTK_EMMC_CMDQ)
+		if (!(mq->card->cmdq_init && blk_queue_tagged(q)))
+			up(&mq->thread_sem);
+#else
 		up(&mq->thread_sem);
+#endif
 
 		spin_lock_irqsave(q->queue_lock, flags);
 		blk_start_queue(q);

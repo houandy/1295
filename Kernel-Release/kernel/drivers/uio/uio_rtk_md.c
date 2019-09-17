@@ -256,8 +256,15 @@ static int rtk_md_probe(struct platform_device *pdev)
 
 	/* init md */
 	pm_runtime_get_sync(dev);
+
 	rtk_md_init_drv(dev);
+
+	if (!of_property_read_bool(dev->of_node, "realtek,device-is-exclusive")) {
+		dev_info(dev, "shared mode\n");
+		pm_runtime_forbid(dev);
+	}
 	pm_runtime_put_sync(dev);
+
 	dev_info(dev, "initialized\n");
 	return 0;
 

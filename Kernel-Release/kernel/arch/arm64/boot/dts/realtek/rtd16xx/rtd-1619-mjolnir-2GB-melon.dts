@@ -48,12 +48,12 @@
 /memreserve/ ION_SECURE_AUDIO_REQ_PHYS_0 ION_SECURE_AUDIO_REQ_SIZE_0;
 /memreserve/ ION_SECURE_TP_PHYS_0 ION_SECURE_TP_SIZE_0;
 
-#include "rtd-16xx.dtsi"
+#include "rtd-1619-mjolnir-tcc.dtsi"
 #include "rtd-1619-usb.dtsi"
 #include "rtd-1619-sata.dtsi"
 
 / {
-	model= "Realtek_Mjolnir_2GB";
+	model= "Realtek_Mjolnir_2GB_MELON";
 	model_hex= <0x00000653>;
 
 	/*

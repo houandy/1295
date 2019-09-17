@@ -58,6 +58,10 @@
 #include <logo_disp/logo_disp_api.h>
 #include <watchdog.h>
 
+#if defined(CONFIG_RTK_LSADC)
+#include <asm/arch/lsadc.h>
+#endif
+
 #ifdef CONFIG_BITBANGMII
 #include <miiphy.h>
 #endif
@@ -601,7 +605,6 @@ void board_init_r(gd_t *id, ulong dest_addr)
 	puts("Watchdog: Disabled\n");
 #endif
 
-	
 	gd = id;
 
 	gd->flags |= GD_FLG_RELOC;	/* tell others: relocation done */
@@ -647,7 +650,7 @@ void board_init_r(gd_t *id, ulong dest_addr)
 	//mem_malloc_noncache_init(UBOOT_NONCACHE_MEMORY_ADDR, (1 << 20));
 
 
-//**************************************************************************		
+//**************************************************************************
 /*
  *********************************************************
  * Realtek Patch:
@@ -657,9 +660,9 @@ void board_init_r(gd_t *id, ulong dest_addr)
  */
 #ifdef CONFIG_BSP_REALTEK
 {
+#ifndef CONFIG_POWER_DOWN_MD
 	unsigned char *a,*b;
 
-#ifndef CONFIG_POWER_DOWN_MD
 	// copy .exc_redirect (MIPS exception redirect)
 	a = (unsigned char *)_e_exc_redirect_img;
 	b = (unsigned char *)_f_exc_redirect_img;
@@ -684,23 +687,18 @@ void board_init_r(gd_t *id, ulong dest_addr)
 	a = (unsigned char *)_e_a_entry_img;
 	b = (unsigned char *)_f_a_entry_img;
 	md_memcpy((unsigned char *)MIPS_A_ENTRY_CODE_ADDR, b, a-b);
-#endif
+
 	// fill the ACPU jump address.
 	// After ACPU got HW semaphore in rom code, it will check this register.
 	rtd_outl(ACPU_JUMP_ADDR_reg,SWAPEND32( MIPS_A_ENTRY_CODE_ADDR | MIPS_KSEG1BASE));
 	rtd_outl(ISO_RESERVED_USE_3,MIPS_A_ENTRY_CODE_ADDR | MIPS_KSEG1BASE);
+#endif
 
 	set_shared_memory_for_communication_with_ACPU();
-	
-
 }
 #endif	/* CONFIG_BSP_REALTEK */
-//**************************************************************************	
-	
+//**************************************************************************
 
-#ifdef CONFIG_ARCH_EARLY_INIT_R
-	arch_early_init_r();
-#endif
 	power_init_board();
 
 #if !defined(CONFIG_SYS_NO_FLASH)
@@ -747,7 +745,6 @@ void board_init_r(gd_t *id, ulong dest_addr)
 #ifdef CONFIG_RTK_MMC
 	puts("MMC:   ");
 #ifdef RTK_eMMC_FAST_MODE
-	EXECUTE_CUSTOMIZE_FUNC(0); // insert execute customer callback at here
 	printf("Initialize eMMC in fast flow\n");
 	if(rtk_eMMC_init() < 0) {
 		printf("[ERR] bringup mmc failed.\n");
@@ -755,7 +752,6 @@ void board_init_r(gd_t *id, ulong dest_addr)
 #else /* RTK_eMMC_TRADITIONAL_MODE */
 	printf("Initialize eMMC in traditional mmc flow.\n");
 	mmc_initialize(gd->bd);
-	EXECUTE_CUSTOMIZE_FUNC(0); // insert execute customer callback at here
 	if(bringup_mmc_driver() < 0) {
 		printf("[ERR] bringup mmc failed\n");
 	}
@@ -764,11 +760,7 @@ void board_init_r(gd_t *id, ulong dest_addr)
 
 #ifdef CONFIG_RTK_SD
 	puts("SD:\n");
-
-	EXECUTE_CUSTOMIZE_FUNC(0); // insert execute customer callback at here
-
 	sd_initialize(gd->bd);
-
 #ifdef CONFIG_SYS_RTK_SD_FLASH
 	extern int sd_card_init(void);
 	if( sd_card_init() != 0 ) {
@@ -776,18 +768,17 @@ void board_init_r(gd_t *id, ulong dest_addr)
 	}
 #endif /* CONFIG_SYS_RTK_SD_FLASH */
 #endif /* CONFIG_RTK_SD */
-	EXECUTE_CUSTOMIZE_FUNC(0); // insert execute customer callback at here
 
 //****************************************************************
 #ifdef CONFIG_BSP_REALTEK
-	pcb_get_boot_flash_type(); 
+	pcb_get_boot_flash_type();
 #ifdef CONFIG_SYS_FACTORY
 	puts("Factory: ");
 	factory_init();
 	get_bootparam();
 #ifdef CONFIG_SYS_FACTORY_READ_ONLY
 	puts("Factory RO: ");
-	factory_ro_init();	
+	factory_ro_init();
 #endif
 #endif
 #endif /* CONFIG_BSP_REALTEK */
@@ -870,24 +861,27 @@ void board_init_r(gd_t *id, ulong dest_addr)
 	load_addr = getenv_ulong("loadaddr", 16, load_addr);
 
 #if defined(CONFIG_BOARD_WD_MONARCH)||defined(CONFIG_BOARD_WD_PELICAN)
-#if defined(CONFIG_RTD129X_PWM)
+#if defined(CONFIG_RTK_PWM)
     /**
        @WD_Changes_begin
        Enable the LED at 50% at the beginning of uboot
      **/
-    rtd129x_pwm_init();
+    rtk_pwm_init();
     // enable the LED at the earlier boot
-    pwm_set_duty_rate(SYS_LED_PWM_PORT_NUM,50);
-    pwm_enable(SYS_LED_PWM_PORT_NUM,1);
+    pwm_set_duty_rate(SYS_LED_PWM_PORT_NUM, 50);
+    pwm_enable(SYS_LED_PWM_PORT_NUM, 1);
 #ifdef CONFIG_BOARD_WD_PELICAN
     // for pelican, turn on the FAN
     //pwm_set_duty_rate(FAN_PWM_PORT_NUM, 100);  // set the FAN speed to 100%
     pwm_set_duty_rate(FAN_PWM_PORT_NUM, 20);  // set the FAN speed to 100%
     pwm_enable(FAN_PWM_PORT_NUM, 1);
 #endif /* CONFIG_BOARD_WD_PELICAN */
-#endif /* CONFIG_RTD129X_PWM */
+#endif /* CONFIG_RTK_PWM */
 #endif /* CONFIG_BOARD_WD_MONARCH */ /* CONFIG_BOARD_WD_PELICAN */
 
+#if defined(CONFIG_RTK_LSADC)
+    rtk_lsadc_init();
+#endif /* CONFIG_RTK_LSADC */
 
 #ifdef CONFIG_BOARD_LATE_INIT
 	board_late_init();

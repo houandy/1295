@@ -1,18 +1,30 @@
 /*
  * cc-rtd16xx.c - RTD16xx clock controller
  *
- * Copyright (C) 2018 Realtek Semiconductor Corporation
- * Copyright (C) 2018 Cheng-Yu Lee <cylee12@realtek.com>
+ * Copyright (C) 2018-2019 Realtek Semiconductor Corporation
+ *
+ * Author:
+ *      Cheng-Yu Lee <cylee12@realtek.com>
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/clk.h>
 #include <linux/clkdev.h>
 #include <linux/clk-provider.h>
 #include <linux/bitops.h>
+#include <linux/platform_device.h>
 #include "common.h"
 #include "clk-pll.h"
 #include "clk-mmio-gate.h"
@@ -21,7 +33,7 @@
 #include <dt-bindings/clock/rtk,clock-rtd16xx.h>
 
 #define DEFAULT_PARENT_OSC27M    (const char *[]){ "osc27M" }
-static DEFINE_SPINLOCK(clk_div_lock);
+static __maybe_unused DEFINE_SPINLOCK(clk_div_lock);
 
 #define _D(_rate, _div, _val) \
 { \
@@ -44,14 +56,21 @@ static DEFINE_SPINLOCK(clk_div_lock);
 	.val = ((_m) << 4) | ((_n) << 12) | ((_o) << 17), \
 }
 
-#define CLK_PLL_TYPE_SSC                (CLK_PLL_CONF_FREQ_LOC_SSC1)
-#define CLK_PLL_TYPE_SSC_POW0           (CLK_PLL_CONF_FREQ_LOC_SSC1 | CLK_PLL_CONF_POW_LOC_CTL2)
-#define CLK_PLL_TYPE_SSC_POW1           (CLK_PLL_CONF_FREQ_LOC_SSC1 | CLK_PLL_CONF_POW_LOC_CTL3)
-#define CLK_PLL_TYPE_POW                (CLK_PLL_CONF_FREQ_LOC_CTL1 | CLK_PLL_CONF_POW_LOC_CTL2)
+#define CLK_PLL_TYPE_SSC                \
+	(CLK_PLL_CONF_FREQ_LOC_SSC1)
+#define CLK_PLL_TYPE_SSC_POW0           \
+	(CLK_PLL_CONF_FREQ_LOC_SSC1 | CLK_PLL_CONF_POW_LOC_CTL2)
+#define CLK_PLL_TYPE_SSC_POW1           \
+	(CLK_PLL_CONF_FREQ_LOC_SSC1 | CLK_PLL_CONF_POW_LOC_CTL3)
+#define CLK_PLL_TYPE_POW                \
+	(CLK_PLL_CONF_FREQ_LOC_CTL1 | CLK_PLL_CONF_POW_LOC_CTL2)
+
+#ifndef CONFIG_COMMON_CLK_REALTEK_TEE
 
 static const struct div_table scpu_div_tbl[] = {
 	_D(1000000000,  1, SCPU_FREQ_DIV1),
 	_D(500000000,   2, SCPU_FREQ_DIV2),
+	_D(350000000,   3, SCPU_FREQ_DIV3),
 	_D(250000000,   4, SCPU_FREQ_DIV4),
 	_D(200000000,   8, SCPU_FREQ_DIV8),
 	_D(100000000,  10, SCPU_FREQ_DIV10),
@@ -86,7 +105,6 @@ static struct clk_pll_div pll_scpu = {
 	.lock       = &clk_div_lock,
 	.clkp       = {
 		.conf         = CLK_PLL_TYPE_SSC,
-		.flags        = CLK_PLL_LSM_STEP_HIGH,
 		.ssc_offset   = PLL_SSC_DIG_SCPU0,
 		.pll_offset   = CLK_OFFSET_INVALID,
 		.freq_tbl     = scpu_tbl,
@@ -100,6 +118,7 @@ static struct clk_pll_div pll_scpu = {
 		},
 	},
 };
+
 
 static const struct div_table bus_div_tbl[] = {
 	_D(257000000,  1, BUS_FREQ_DIV1),
@@ -136,6 +155,18 @@ static struct clk_pll_div pll_bus = {
 		},
 	},
 };
+
+#else /* CONFIG_COMMON_CLK_REALTEK_TEE */
+
+static struct clk_fixed_rate pll_bus = {
+	.fixed_rate = 256500000,
+	.hw.init = &(struct clk_init_data) {
+		.name = "pll_bus",
+		.ops  = &clk_fixed_rate_ops,
+	},
+};
+
+#endif /* CONFIG_COMMON_CLK_REALTEK_TEE */
 
 static struct clk_fixed_factor clk_sys = {
 	.div     = 1,
@@ -194,6 +225,8 @@ static const struct div_table dcsb_div_tbl[] = {
 	DIV_TABLE_END
 };
 
+#ifndef CONFIG_COMMON_CLK_REALTEK_TEE
+
 /* NOTE: PDIV = 1 */
 static const struct freq_table dcsb_tbl[] = {
 	_NF(550000000, 38, 0),
@@ -222,6 +255,18 @@ static struct clk_pll_div pll_dcsb = {
 		},
 	},
 };
+
+#else /* CONFIG_COMMON_CLK_REALTEK_TEE */
+
+static struct clk_fixed_rate pll_dcsb = {
+	.fixed_rate = 550000000,
+	.hw.init = &(struct clk_init_data) {
+		.name = "pll_dcsb",
+		.ops  = &clk_fixed_rate_ops,
+	},
+};
+
+#endif /* CONFIG_COMMON_CLK_REALTEK_TEE */
 
 static struct clk_fixed_factor clk_sysh = {
 	.div     = 1,
@@ -409,10 +454,9 @@ static struct clk_composite_init_data clk_ve2_bpu_init = {
 	.flags        = CLK_SET_RATE_PARENT | CLK_SET_RATE_NO_REPARENT,
 };
 
-static struct clk_pll pll_dif = {
+static struct clk_pll_dif pll_dif = {
 	.ssc_offset   = PLL_SSC_DIG_PLLDIF0,
 	.pll_offset   = PLL_DIF1,
-	.freq_tbl     = NULL,
 	.base.hw.init = &(struct clk_init_data) {
 		.name         = "pll_dif",
 		.ops          = &clk_pll_dif_ops,
@@ -422,18 +466,50 @@ static struct clk_pll pll_dif = {
 	},
 };
 
+static struct clk_pll_psaud pll_psaud1a = {
+	.reg = PLL_PSAUDA1,
+	.id  = CLK_PLL_PSAUD1A,
+	.base.hw.init = &(struct clk_init_data) {
+		.name         = "pll_psaud1a",
+		.ops          = &clk_pll_psaud_ops,
+		.parent_names = DEFAULT_PARENT_OSC27M,
+		.num_parents  = 1,
+		.flags        = CLK_IGNORE_UNUSED | CLK_SET_RATE_UNGATE,
+	},
+};
+
+static struct clk_pll_psaud pll_psaud2a = {
+	.reg = PLL_PSAUDA1,
+	.id  = CLK_PLL_PSAUD2A,
+	.base.hw.init = &(struct clk_init_data) {
+		.name         = "pll_psaud2a",
+		.ops          = &clk_pll_psaud_ops,
+		.parent_names = DEFAULT_PARENT_OSC27M,
+		.num_parents  = 1,
+		.flags        = CLK_IGNORE_UNUSED | CLK_SET_RATE_UNGATE,
+	},
+};
+
 static struct clk_hw *clk_reg_list[] = {
+#ifndef CONFIG_COMMON_CLK_REALTEK_TEE
 	[CC_PLL_SCPU]    = &__clk_pll_div_hw(&pll_scpu),
 	[CC_PLL_BUS]     = &__clk_pll_div_hw(&pll_bus),
 	[CC_PLL_DCSB]    = &__clk_pll_div_hw(&pll_dcsb),
+#else
+	[CC_PLL_SCPU]    = (struct clk_hw *)-ENODEV,
+	[CC_PLL_BUS]     = &pll_bus.hw,
+	[CC_PLL_DCSB]    = &pll_dcsb.hw,
+#endif /* CONFIG_COMMON_CLK_REALTEK_TEE */
 	[CC_PLL_DDSA]    = &__clk_pll_hw(&pll_ddsa),
 	[CC_PLL_GPU]     = &__clk_pll_hw(&pll_gpu),
 	[CC_PLL_VE1]     = &__clk_pll_hw(&pll_ve1),
 	[CC_PLL_VE2]     = &__clk_pll_hw(&pll_ve2),
-	[CC_PLL_DIF]     = &__clk_pll_hw(&pll_dif),
+	[CC_PLL_DIF]     = &__clk_pll_dif_hw(&pll_dif),
 	[CC_CLK_SYS_SB2] = &__clk_mmio_mux_hw(&clk_sys_sb2),
 	[CC_CLK_SYS]     = &clk_sys.hw,
 	[CC_CLK_SYSH]    = &clk_sysh.hw,
+	[CC_PLL_PSAUD1A] = &__clk_pll_psaud_hw(&pll_psaud1a),
+	[CC_PLL_PSAUD2A] = &__clk_pll_psaud_hw(&pll_psaud2a),
 };
 
 static  struct clk_composite_init_data *composite_clks[] = {
@@ -444,9 +520,9 @@ static  struct clk_composite_init_data *composite_clks[] = {
 	[CC_CLK_VE2_BPU] = &clk_ve2_bpu_init,
 };
 
-int cc_init_clocks(struct device *dev)
+static int rtd16xx_cc_init_clocks(struct device *dev)
 {
-	struct cc_desc *ccd = dev_get_drvdata(dev);
+	struct cc_platform_data *ccd = dev_get_drvdata(dev);
 	int i;
 	int ret;
 
@@ -454,13 +530,15 @@ int cc_init_clocks(struct device *dev)
 		struct clk_hw *hw = clk_reg_list[i];
 		const char *name;
 
-		if (!hw)
+		if (IS_ERR(hw))
+			ccd->data.clks[i] = ERR_CAST(hw);
+		if (IS_ERR_OR_NULL(hw))
 			continue;
 
 		name = hw->init->name;
 		ret = cc_init_hw(dev, ccd, i, hw);
 		if (ret) {
-			dev_err(dev, "%s: cc_init_hw() returns %d\n",
+			dev_err(dev, "%s: failed in cc_init_hw: %d\n",
 				name, ret);
 			continue;
 		}
@@ -476,7 +554,7 @@ int cc_init_clocks(struct device *dev)
 		name = data->name;
 		ret = cc_init_composite_clk(dev, ccd, i, data);
 		if (ret) {
-			dev_err(dev, "%s: cc_init_composite_clk() returns %d\n",
+			dev_err(dev, "%s: failed in cc_init_composite_clk: %d\n",
 				name, ret);
 			continue;
 		}
@@ -488,7 +566,34 @@ int cc_init_clocks(struct device *dev)
 	return 0;
 }
 
-int cc_clock_num(void)
+static int rtd16xx_cc_probe(struct platform_device *pdev)
 {
-	return CC_CLK_MAX;
+	struct cc_platform_data *ccd;
+
+	ccd = devm_cc_alloc_platform_data(&pdev->dev, CC_CLK_MAX);
+	if (!ccd)
+		return -ENOMEM;
+
+	platform_set_drvdata(pdev, ccd);
+	return cc_probe_platform(pdev, ccd, rtd16xx_cc_init_clocks);
 }
+
+static const struct of_device_id rtd16xx_cc_match[] = {
+	{ .compatible = "realtek,clock-controller", },
+	{}
+};
+
+static struct platform_driver rtd16xx_cc_driver = {
+	.probe = rtd16xx_cc_probe,
+	.driver = {
+		.name = "rtk-rtd16xx-cc",
+		.of_match_table = rtd16xx_cc_match,
+		.pm = &cc_pm_ops,
+	},
+};
+
+static int __init rtd16xx_cc_init(void)
+{
+	return platform_driver_register(&rtd16xx_cc_driver);
+}
+core_initcall(rtd16xx_cc_init);

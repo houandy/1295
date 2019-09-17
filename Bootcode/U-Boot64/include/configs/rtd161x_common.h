@@ -264,6 +264,8 @@
 	#define CONFIG_NETMASK				255.255.255.0
 #endif
 
+/* #define CONFIG_CMD_RTKETHSPEED */
+
 /* USB Setting */
 #define CONFIG_CMD_FAT
 #define CONFIG_FAT_WRITE
@@ -335,11 +337,25 @@
 /* DTBO Index */
 #define DTBO_INDEX 0
 
+/* Clear memory as initrd's size in device tree */
+#define CONFIG_ROOTFS_RESCUE_SIZE	0x100000 // 1 MB
+
 /********* RTK CONFIGS ************/
 #define CONFIG_BSP_REALTEK
 #define CONFIG_NO_RELOCATION
 #define CONFIG_HEAP_ADDR	0x07880000
 
 #define CONFIG_MISC_INIT_R
+
+#ifdef NAS_ENABLE
+/* Enable Firmware-Syslog from bootcode(UBOOT) */
+/* #define CONFIG_ACPU_LOGBUF_ENABLE */
+#define CONFIG_ACPU_LOGBUF_ENABLE
+#ifdef CONFIG_ACPU_LOGBUF_ENABLE
+#define CONFIG_ACPU_LOGBUF_ADDR		0x0FE00000
+#define CONFIG_ACPU_LOGBUF_SIZE		0x00002000
+#endif
+#endif
+
 #endif /* __CONFIG_RTK_RTD1619_COMMON_H */
 

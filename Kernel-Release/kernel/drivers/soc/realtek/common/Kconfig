@@ -7,7 +7,7 @@ config RTK_SB2_SECURITY_DEBG
 
 config RTK_RBUS_BARRIER
 	bool "Realtek rbus barrier"
-	depends on RTK_MEM_REMAP
+	depends on RTK_MEM_REMAP && (ARCH_RTD119X || ARCH_RTD129x || ARCH_RTD139x)
 	default y
 	help
 	  Enable helper functions for R-bus barrier. If unsure, say N.
@@ -48,11 +48,10 @@ config RTK_MMIO
 	bool
 	select REGMAP_MMIO
 
-config RTK_SECURE_DVFS
+config RTK_MMIO_SECURE
 	bool
-	default y if ARCH_RTD16xx
+	select RTK_MMIO
 	select RTK_REGMAP_SECURE_MMIO
-	select I2C_RTK_SECURE_ACCESS
 
 config RTK_MCP
 	bool "Realtek MCP driver"
@@ -64,8 +63,15 @@ config RTK_VMX_ULTRA
 	bool "VMX ultra boot enable"
 	default n
 	select RTK_VMX_DRM
+        select DM_VERITY_FEC
 	help
 	  Set VMX ultra boot enable.
+
+config RTK_VMX_ULTRA_RAMFS_VENDOR
+	bool "VMX ultra boot enable ramfs vendor"
+	default n
+	help
+	  Set VMX ultra ramfs vendor enable.
 
 config RTK_VMX_DRM
 	bool "VMX DRM"
@@ -114,24 +120,19 @@ config RTK_AVCPU_LOG
 	  Enable AVCPU share memory logging read from userspace
 	  via device node.
 
-config RTK_CPU_CACHE_SUPPLY_COORDINATOR
-	bool "Realtek CPU cache supply coordinator"
-	depends on REGULATOR_G2227
-	depends on ARCH_RTD129x
-	default y
-
-config RTK_CPU_SUPPLY_ENHANCER
-	bool "Realtek CPU supply enhancer"
-	depends on ARCH_RTD139x || ARCH_RTD16xx
-	default y
-
-config RTK_CPU_HIGH_LOAD_BOOSTER
-	bool "Realtek CPU high-load booster"
-	default n
+config RTK_USB_CTRL_MANAGER
+	tristate "RTK Multiple USB Host/Device Controller Manager"
+	default y if USB_OHCI_RTK || USB_EHCI_RTK || USB_DWC3_RTK
+	---help---
+	  The Realtek chips are Multiple host/peripheral USB controllers.
+	  Enable the driver to control clock, reset and usb power gpio.
 
 source "drivers/soc/realtek/common/Kconfig.workaround"
 source "drivers/soc/realtek/common/rpc/Kconfig"
 source "drivers/soc/realtek/common/pwrctrl/Kconfig"
 source "drivers/soc/realtek/common/hse/Kconfig"
 source "drivers/soc/realtek/common/debug/Kconfig"
+source "drivers/soc/realtek/common/dvfs/Kconfig"
 source "drivers/soc/realtek/common/perfcnt/Kconfig"
+source "drivers/soc/realtek/common/info/Kconfig"
+source "drivers/soc/realtek/common/buflock/Kconfig"

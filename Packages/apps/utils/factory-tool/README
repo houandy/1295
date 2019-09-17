@@ -1,5 +1,5 @@
-1.   How to set appropriate mtd partition and address for reading/writing 
-     factory data when using SPI board?
+1.   How to configure MTD partition and address for factory-tool
+     when using SPI board?
 
 Ans. The kernel will recognize a command line argument "mtdparts" and create
      MTD partitions according to it.
@@ -7,27 +7,27 @@ Ans. The kernel will recognize a command line argument "mtdparts" and create
      The argument "mtdparts" is currently defined in the command line argument
      "kernelargs" by default. The default value of "kernelargs" for SPI board
      is shown as follows:
-     "kernelargs=mtdparts=RtkSFC:1024k(U-Boot)ro,64k(FWtbl)ro,128k(Factory),10944k(FW)ro,4096k(Free),128k(oops) init=/etc/init root=/dev/sda1 rootfstype=ext4 rootwait loglevel=8"
+     "kernelargs=mtdparts=RtkSFC:1024k(U-Boot)ro,64k(FWtbl)ro,128k(Factory),10944k(FW)ro,4096k(Free),128k(oops) rdinit=/etc/init init=/etc/init root=/dev/sda1 rootfstype=ext4 rootwait loglevel=8"
 
-     The passed argument shows that the partition for storing factory data
-     is defined at "/dev/mtd2" (The third mtd partition).
+     The passed argument shows that the partition where the factory data are
+     stored is "/dev/mtd2" (The third MTD partition).
 
-     To set the position where the factory tool read/write, two variables
+     To set the device & offset where the factory-tool read/write, two variables
      should be modified:
        Variable Name                Source
      * MTD_CHAR_DEV_PATH            rtk_mtd.c
      * FACTORY_START_ADDR           rtk_layout.h
-     
+
      MTD_CHAR_DEV_PATH stores all posible device paths that may contain factory
-     data. Set the appropriate mtd char device paths in this array. Notes that
-     the program will use the first path that can be opened for R/W (order matters).
+     data. Set the appropriate MTD char device paths in this array. Notes that
+     the tool will use the first path that can be opened for R/W (order matters).
 
-     FACTORY_START_ADDR indicates the address where the factory data stored.
+     FACTORY_START_ADDR indicates the offset where the factory data are stored.
 
-2.   How to use the Makefile?
+2.   How to use stand-alone factory-tool?
 
-Ans. If this factory tool is installedd independently (i.e. not installed as
-     OpenWRT package), following variables in the Makefile should be set.
+Ans. If factory-tool is installed independently (i.e. not installed as
+     an OpenWRT package), following variables in the Makefile should be set.
        Variable Name
      * STAGING_DIR
      * TOOLCHAIN_PATH
@@ -35,13 +35,19 @@ Ans. If this factory tool is installedd independently (i.e. not installed as
      * STORAGE_TYPE
      * CHIP_TYPE_NAME
     
-    TOOLCHAIN_PATH should be set to the path of cross compiler.
+    TOOLCHAIN_PATH is the cross compiler path.
     
-    STORAGE_TYPE and CHIP_TYPE_NAME should be adjusted according to board type.
-    The available options for these two variables are listed below.
+    Please configure STORAGE_TYPE and CHIP_TYPE_NAME to the target board.
+    Available options for these two variables are listed below.
       Variable Name                 Options
     * STORAGE_TYPE                  STOR_TYPE_SPI
                                     STOR_TYPE_EMMC
+                                    STOR_TYPE_NAND
 
     * CHIP_TYPE_NAME                CHIP_TYPE_THOR
                                     CHIP_TYPE_KYLIN
+
+    If the storage type of the target board is NAND flash, please add nandwrite
+    & flash_erase to system path. Further information can be found in
+    Package_nand-utils (OpenWRT package) or website of mtd-utils.
+

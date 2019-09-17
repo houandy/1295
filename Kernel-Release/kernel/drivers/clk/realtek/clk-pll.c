@@ -2,11 +2,22 @@
  * clk-pll.c - Realtek clk-pll & clk-pll-div implementation
  *
  * Copyright (C) 2017-2018 Realtek Semiconductor Corporation
- * Copyright (C) 2017-2018 Cheng-Yu Lee <cylee12@realtek.com>
+ *
+ * Author:
+ *      Cheng-Yu Lee <cylee12@realtek.com>
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/io.h>
@@ -18,6 +29,9 @@
 #include <linux/debugfs.h>
 #include "common.h"
 #include "clk-pll.h"
+
+#define ck_dbg(clk, fmt, ...) \
+	pr_debug("%pC: %s:" fmt, clk, __func__, ##__VA_ARGS__)
 
 #define DEFUALT_OSC_RATE                (27000000)
 #define DEFAULT_MAX_OC_DONE_RETRY       (20000)
@@ -74,10 +88,6 @@ static int clk_pll_conf_show(struct seq_file *s, void *data)
 			seq_printf(s, "  %10lu : %2d(0x%02x)\n", dtbl->rate, dtbl->div, dtbl->val);
 	}
 
-#ifdef CONFIG_COMMON_CLK_RTD16XX
-        if (pll->ops == &clk_pll_dif_ops)
-		seq_printf(s, "dif\n");
-#endif
 	return 0;
 }
 
@@ -93,10 +103,10 @@ static const struct file_operations clk_pll_conf_fops = {
 	.release        = single_release,
 };
 
-static int clk_pll_debug_init(struct clk_hw *hw, struct dentry *dentry)
+static int clk_pll_debug_init(struct clk_hw *hw, struct dentry *d)
 {
-	debugfs_create_file("rtk_clk_rate", 0644, dentry, hw, &clk_pll_rate_op);
-	debugfs_create_file("clk_pll_conf", S_IRUGO, dentry, hw, &clk_pll_conf_fops);
+	debugfs_create_file("rtk_clk_rate", 0644, d, hw, &clk_pll_rate_op);
+	debugfs_create_file("clk_pll_conf", S_IRUGO, d, hw, &clk_pll_conf_fops);
 	return 0;
 }
 
@@ -165,6 +175,17 @@ static void __clk_pll_set_pow_reg(struct clk_pll *pll, int on)
 
 	if (on) {
 		clk_reg_update(&pll->base, pll->pll_offset + pow, 0x7, 0x3);
+		if (pll->conf & CLK_PLL_CONF_FREQ_LOC_SSC1) {
+			u32 val = clk_reg_read(&pll->base, pll->ssc_offset + 0x0);
+
+			/*
+			 * For those PLL with SCC used only the default
+			 * freq, the oc_en would nerver to be set.
+			 * Help to set it here.
+			 */
+			if ((val & 0x7) != 0x5)
+				clk_reg_update(&pll->base, pll->ssc_offset + 0x0, 0x7, 0x5);
+		}
 		udelay(200);
 	} else {
 		clk_reg_update(&pll->base, pll->pll_offset + pow, 0x7, 0x4);
@@ -177,7 +198,7 @@ static int clk_pll_enable(struct clk_hw *hw)
 
 	if (clk_pll_has_pow(pll))
 		__clk_pll_set_pow_reg(pll, 1);
-	pll->status |= CLK_PLL_ENABLED;
+	pll->status &= ~CLK_PLL_DISABLED;
 	return 0;
 }
 
@@ -187,7 +208,7 @@ static void clk_pll_disable(struct clk_hw *hw)
 
 	if (clk_pll_has_pow(pll))
 		__clk_pll_set_pow_reg(pll, 0);
-	pll->status &= ~CLK_PLL_ENABLED;
+	pll->status |= CLK_PLL_DISABLED;
 }
 
 static void clk_pll_disable_unused(struct clk_hw *hw)
@@ -205,7 +226,7 @@ static int clk_pll_is_enabled(struct clk_hw *hw)
 	if (clk_pll_has_pow(pll))
 		val = clk_reg_read(&pll->base, pll->pll_offset + pow);
 	else
-		val = !!(pll->status & CLK_PLL_ENABLED);
+		val = !(pll->status & CLK_PLL_DISABLED);
 	return !!(val & 0x1);
 }
 
@@ -262,7 +283,7 @@ static unsigned long clk_pll_recalc_rate(struct clk_hw *hw,
 
 static inline int __clk_pll_set_rate_reg(struct clk_pll *pll, u32 mask, u32 val)
 {
-	struct clk_hw *hw= &pll->base.hw;
+	struct clk_hw *hw = &pll->base.hw;
 	int ret = 0;
 
 	if (pll->conf & CLK_PLL_CONF_FREQ_LOC_CTL2) {
@@ -387,6 +408,7 @@ static int clk_pll_div_set_rate(struct clk_hw *hw,
 				unsigned long rate,
 				unsigned long parent_rate)
 {
+	struct clk *clk = hw->clk;
 	struct clk_pll_div *plld = to_clk_pll_div(hw);
 	unsigned long flags;
 	const struct div_table *ndv, *cdv;
@@ -409,9 +431,9 @@ static int clk_pll_div_set_rate(struct clk_hw *hw,
 	if (WARN(!ndv, "%pC: invalid d-tbl entry for %u", hw->clk, cur_d))
 		return -EINVAL;
 
-	pr_debug("%pC: %s: target rate=%lu\n", hw->clk, __func__, rate);
-	pr_debug("%pC: %s: current div=%d, reg_val=0x%x\n", hw->clk, __func__, cdv->div, cdv->val);
-	pr_debug("%pC: %s: target div=%d, reg_val=0x%x\n", hw->clk, __func__, ndv->div, ndv->val);
+	ck_dbg(clk, "target rate=%lu\n", rate);
+	ck_dbg(clk, "c div=(%d, 0x%x)\n", cdv->div, cdv->val);
+	ck_dbg(clk, "n div=(%d, 0x%x)\n", ndv->div, ndv->val);
 
 	flags = clk_pll_div_lock(plld);
 
@@ -423,10 +445,10 @@ static int clk_pll_div_set_rate(struct clk_hw *hw,
 			ndv->val != cdv->val &&
 			(ndv->val == 1 || cdv->val == 1)) {
 
-			pr_debug("%pC: %s: apply rate=%u\n", hw->clk, __func__, 1000000000);
+			ck_dbg(clk, "apply rate=%u\n", 1000000000);
 			clk_pll_set_rate(hw, 1000000000, parent_rate);
 
-			pr_debug("%pC: %s: apply div=%d, reg_val=0x%x\n", hw->clk, __func__, ndv->div, ndv->val);
+			ck_dbg(clk, "apply div=%d, reg_val=0x%x\n", ndv->div, ndv->val);
 			__clk_pll_div_set_div_reg(plld, ndv->val);
 			cdv = ndv;
 		}
@@ -465,80 +487,6 @@ const struct clk_ops clk_pll_div_ops = {
 	.is_enabled       = clk_pll_is_enabled,
 };
 
-#ifdef CONFIG_COMMON_CLK_RTD16XX
-
-static int clk_pll_dif_enable(struct clk_hw *hw)
-{
-	struct clk_pll *pll = to_clk_pll(hw);
-
-	pr_debug("%pC: %s\n", hw->clk, __func__);
-
-	clk_reg_write(&pll->base, pll->pll_offset + 0x0C, 0x00000048);
-	clk_reg_write(&pll->base, pll->pll_offset + 0x08, 0x00020c00);
-	clk_reg_write(&pll->base, pll->pll_offset + 0x04, 0x204004ca);
-	clk_reg_write(&pll->base, pll->pll_offset + 0x00, 0x8000a000);
-	udelay(100);
-
-	clk_reg_write(&pll->base, pll->pll_offset + 0x08, 0x00420c00);
-	udelay(50);
-
-	clk_reg_write(&pll->base, pll->pll_offset + 0x08, 0x00420c03);
-	udelay(200);
-
-	clk_reg_write(&pll->base, pll->pll_offset + 0x0C, 0x00000078);
-	udelay(100);
-
-	clk_reg_write(&pll->base, pll->pll_offset + 0x04, 0x204084ca);
-
-	/* ssc control */
-	clk_reg_write(&pll->base, pll->ssc_offset + 0x00, 0x00000004);
-	clk_reg_write(&pll->base, pll->ssc_offset + 0x04, 0x00006800);
-	clk_reg_write(&pll->base, pll->ssc_offset + 0x0C, 0x00000000);
-	clk_reg_write(&pll->base, pll->ssc_offset + 0x10, 0x00000000);
-	clk_reg_write(&pll->base, pll->ssc_offset + 0x08, 0x001e1f98);
-	clk_reg_write(&pll->base, pll->ssc_offset + 0x00, 0x00000005);
-	pll->status |= CLK_PLL_ENABLED;
-
-	return 0;
-}
-
-static void clk_pll_dif_disable(struct clk_hw *hw)
-{
-	struct clk_pll *pll = to_clk_pll(hw);
-
-	pr_debug("%pC: %s\n", hw->clk, __func__);
-	clk_reg_update(&pll->base, pll->pll_offset + 0x04, 0x00080000, 0x0);
-	clk_reg_update(&pll->base, pll->pll_offset + 0x08, 0x00400C03, 0x0);
-	clk_reg_update(&pll->base, pll->pll_offset + 0x0C, 0x00000038, 0x0);
-
-	clk_reg_write(&pll->base, pll->ssc_offset + 0x00, 0x00000004);
-	pll->status &= ~CLK_PLL_ENABLED;
-}
-
-static int clk_pll_dif_is_enabled(struct clk_hw *hw)
-{
-	struct clk_pll *pll = to_clk_pll(hw);
-
-	pr_debug("%pC: %s\n", hw->clk, __func__);
-	return !!(pll->status & CLK_PLL_ENABLED);
-}
-
-
-static void clk_pll_dif_disable_unused(struct clk_hw *hw)
-{
-	pr_info("%pC: %s\n", hw->clk, __func__);
-	clk_pll_dif_disable(hw);
-}
-
-const struct clk_ops clk_pll_dif_ops = {
-	.enable           = clk_pll_dif_enable,
-        .disable          = clk_pll_dif_disable,
-	.disable_unused   = clk_pll_dif_disable_unused,
-	.is_enabled       = clk_pll_dif_is_enabled,
-};
-
-#endif
-
 bool clk_hw_is_pll(struct clk_hw *hw)
 {
 	const struct clk_init_data *init = hw->init;
@@ -546,11 +494,6 @@ bool clk_hw_is_pll(struct clk_hw *hw)
 	if (init->ops == &clk_pll_ops ||
 	    init->ops == &clk_pll_div_ops)
 		return true;
-
-#ifdef CONFIG_COMMON_CLK_RTD16XX
-	if (init->ops == &clk_pll_dif_ops)
-		return true;
-#endif
 
 	return false;
 }
@@ -563,21 +506,6 @@ int clk_pll_init(struct clk_hw *hw)
 		return -EINVAL;
 	pll->ops = hw->init->ops;
 
-#ifdef CONFIG_COMMON_CLK_RTD16XX
-	if (hw->init->ops == &clk_pll_dif_ops)
-		pll->status |= CLK_PLL_ENABLED;
-#endif
-
-#ifndef CONFIG_COMMON_CLK_RTD119X
-	if (pll->flags & CLK_PLL_LSM_STEP_HIGH && SSC_VALID(pll)) {
-		unsigned int mask = 0x1ff << 17;
-		unsigned int val = 0x1ff << 17;
-
-		clk_reg_update(&pll->base, pll->ssc_offset + 0x08, mask, val);
-	}
-
-	// TODO: 119x ver
-#endif
 	return 0;
 }
 

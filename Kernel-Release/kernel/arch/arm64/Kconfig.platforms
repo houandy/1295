@@ -237,7 +237,7 @@ config ARCH_RTD129x
 	select PINCTRL
 	select RTK_PLATFORM
 	select PM_OPP
-	select IRDA
+	#select IRDA
 	help
 	  This enables support for Realtek RTD129x SoC Family
 
@@ -248,7 +248,7 @@ config ARCH_RTD139x
 	select PINCTRL
 	select RTK_PLATFORM
 	select PM_OPP
-	select IRDA
+	#select IRDA
 	help
 	  This enables support for Realtek RTD139x SoC Family
 
@@ -260,7 +260,7 @@ config ARCH_RTD16xx
 	select RTK_PLATFORM
 	select RTK_PLATFORM_PSCI
 	select PM_OPP
-	select IRDA
+	#select IRDA
 	select ARM_GIC_V3_DEBUGFS
 	help
 	  This enables support for Realtek RTD16xx SoC Family
@@ -273,7 +273,7 @@ config ARCH_RTD13xx
 	select RTK_PLATFORM
 	select RTK_PLATFORM_PSCI
 	select PM_OPP
-	select IRDA
+	#select IRDA
 	help
 	  This enables support for Realtek RTD13xx SoC Family
 

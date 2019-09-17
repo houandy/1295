@@ -2744,12 +2744,14 @@ int test_clear_page_writeback(struct page *page)
 		local_irq_save(flags);
 		__dec_node_state(lruvec_pgdat(lruvec), NR_WRITEBACK);
 		local_irq_restore(flags);
+#ifdef CONFIG_MEMCG
 		if (!mem_cgroup_disabled()) {
 			struct mem_cgroup_per_node *pn;
 
 			pn = container_of(lruvec, struct mem_cgroup_per_node, lruvec);
 			mem_cgroup_dec_stat(pn->memcg, MEM_CGROUP_STAT_WRITEBACK);
 		}
+#endif /* CONFIG_MEMCG */
 #else
 		mem_cgroup_dec_page_stat(page, MEM_CGROUP_STAT_WRITEBACK);
 		dec_node_page_state(page, NR_WRITEBACK);

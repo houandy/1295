@@ -2,7 +2,7 @@ PWD=$(shell pwd)
 ifndef TOP
 	TOP = ../..
 endif
-include $(TOP)/make.include
+-include $(TOP)/make.include
 
 all: install
 

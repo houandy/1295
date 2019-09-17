@@ -4,9 +4,9 @@
 /* DRM protect region */
 /* /memreserve/ 0x10200000 0x03A00000; */
 /memreserve/ 0x0F900000 0x00307000;
-/memreserve/ 0x0FC07000 0x001F9000;
-/memreserve/ 0x00000000 0x00001000;
-/memreserve/ 0x00002000 0x00001000;
+/* /memreserve/ 0x0FC07000 0x001F9000; */
+/* /memreserve/ 0x00000000 0x00001000; */
+/* /memreserve/ 0x00002000 0x00001000; */
 /* /memreserve/ 0x32b00000 0x12C00000; */
 
 /memreserve/ SYS_BOOTCODE_MEMBASE SYS_BOOTCODE_MEMSIZE;
@@ -144,6 +144,12 @@
 
 		rpc@0 {
 			reg = <RPC_COMM_PHYS RPC_COMM_SIZE>;
+		};
+
+		avlog {
+			sync_lock = <&sb2_lock_avlog>;
+			sync_lock_timeout = <500>; /* ms */
+			log_check_period = <500>; /* ms */
 		};
 	};
 

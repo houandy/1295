@@ -40,7 +40,8 @@ static void g22xx_pm_power_off(void)
 {
 	dev_emerg(poweroff_data->dev, "set softoff\n");
 	regmap_field_write(poweroff_data->off, 1);
-	while(1);
+	for (;;)
+		;
 }
 
 static int g22xx_poweroff_probe(struct platform_device *pdev)
@@ -49,8 +50,12 @@ static int g22xx_poweroff_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct g22xx_device *gdev = dev_get_drvdata(dev->parent);
 	int ret;
-	struct reg_field map = REG_FIELD(G2227_REG_SYS_CONTROL, G2227_SOFTOFF_SHIFT,
-			G2227_SOFTOFF_SHIFT + G2227_SOFTOFF_WIDTH - 1);
+	struct reg_field map = REG_FIELD(G2227_REG_SYS_CONTROL,
+				 G2227_SOFTOFF_SHIFT,
+				 G2227_SOFTOFF_SHIFT + G2227_SOFTOFF_WIDTH - 1);
+
+	if (!dev->of_node || !of_device_is_available(dev->of_node))
+		return -ENODEV;
 
 	if (!gdev) {
 		dev_err(dev, "no parent device\n");
@@ -63,7 +68,8 @@ static int g22xx_poweroff_probe(struct platform_device *pdev)
 	}
 
 	if (pm_power_off) {
-		dev_err(dev, "pm_power_off is already assigned with %pf\n", pm_power_off);
+		dev_err(dev, "pm_power_off is already assigned with %pf\n",
+			pm_power_off);
 		return -EINVAL;
 	}
 
@@ -97,9 +103,8 @@ static int g22xx_poweroff_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static struct of_device_id g22xx_poweroff_ids[] = {
+static const struct of_device_id g22xx_poweroff_ids[] = {
 	{ .compatible = "gmt,g22xx-poweroff", },
-	{ .compatible = "anpec,apw8889-poweroff", }, /* compatible with g2271 */
 	{}
 };
 static struct platform_driver g22xx_poweroff_driver = {

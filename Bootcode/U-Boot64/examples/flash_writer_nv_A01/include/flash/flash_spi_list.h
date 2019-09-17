@@ -57,10 +57,23 @@
 #define GD25Q16B_16Mbit             0xc84015
 #define GD25Q64B_64Mbit             0xc84017
 #define GD25Q128B_128Mbit           0xc84018
+#define GD25Q256D_256Mbit           0xc84019
 
 #define A25L040_32Mbit              0x373013
 
+#define IS25LQ080B_8Mbit            0x9d4014
+#define IS25LQ016B_16Mbit           0x9d4015
+#define IS25LQ032B_32Mbit           0x9d4016
 #define IS25LP128_128Mbit           0x9d6018
+
+#define BY25D20_2Mbit               0x684012
+#define BY25D40_4Mbit               0x684013
+#define BY25D16_16Mbit              0x684015
+#define BY25Q32BS_32Mbit            0x684016
+#define BY25Q64AS_64Mbit            0x684017
+#define BY25Q128AS_128Mbit          0x684018
+
+#define FM25Q64_64Mbit				0xa14017
 
 typedef struct 
 {
@@ -77,64 +90,77 @@ typedef struct
 
 static const s_device_type s_device[] = 
 {
-    {SST_4Mbit,                    0, 1, 1, 1, 0, 0x00080000, "SST 4Mbit"}, 
-    {SST_8Mbit,                    0, 0, 1, 1, 0, 0x00100000, "SST 8Mbit"},   
-    {SST_16Mbit,                   0, 1, 1, 1, 0, 0x00200000, "SST 16Mbit"}, 
+    {SST_4Mbit,                    0, 1, 1, 1, 0, 0x00080000, (unsigned char *)"SST 4Mbit"}, 
+    {SST_8Mbit,                    0, 0, 1, 1, 0, 0x00100000, (unsigned char *)"SST 8Mbit"},   
+    {SST_16Mbit,                   0, 1, 1, 1, 0, 0x00200000, (unsigned char *)"SST 16Mbit"}, 
 
-    {PMC_4Mbit,                    0, 1, 0, 1, 0, 0x00080000, "PMC 4Mbit"},  
+    {PMC_4Mbit,                    0, 1, 0, 1, 0, 0x00080000, (unsigned char *)"PMC 4Mbit"},  
 
-    {MX_4Mbit,                     0, 1, 0, 0, 0, 0x00080000, "MX 4Mbit"},
-    {MX_25L8006E_8Mbit,            0, 1, 0, 1, 1, 0x00100000, "MX 8Mbit"},
-    {MX_25L1605_16Mbit,            0, 1, 0, 0, 0, 0x00200000, "MX 16Mbit"},
-    {MX_25L3206E_32Mbit,           0, 1, 0, 1, 1, 0x00400000, "MX 32Mbit"},
-    {MX_25L6405D_64Mbit,           0, 1, 0, 0, 1, 0x00800000, "MX 64Mbit"},
-    {MX_25L12805D_128Mbit,         0, 1, 0, 0, 1, 0x01000000, "MX 128Mbit"},
-    {MX_25L25635E_256Mbit,         0, 1, 0, 0, 1, 0x01000000, "MX 256Mbit"},
+    {MX_4Mbit,                     0, 1, 0, 0, 0, 0x00080000, (unsigned char *)"MX 4Mbit"},
+    {MX_25L8006E_8Mbit,            0, 1, 0, 1, 1, 0x00100000, (unsigned char *)"MX 8Mbit"},
+    {MX_25L1605_16Mbit,            0, 1, 0, 0, 0, 0x00200000, (unsigned char *)"MX 16Mbit"},
+    {MX_25L3206E_32Mbit,           0, 1, 0, 1, 1, 0x00400000, (unsigned char *)"MX 32Mbit"},
+    {MX_25L6405D_64Mbit,           0, 1, 0, 0, 1, 0x00800000, (unsigned char *)"MX 64Mbit"},
+    {MX_25L12805D_128Mbit,         0, 1, 0, 0, 1, 0x01000000, (unsigned char *)"MX 128Mbit"},
+    {MX_25L25635E_256Mbit,         0, 1, 1, 1, 1, 0x02000000, (unsigned char *)"MX 256Mbit"},
     {MX_25V1635F_16Mbit,           0, 1, 1, 1, 1, 0x00200000, "MX 16Mbit"},
-    {MX_25L6455E_64Mbit,           0, 1, 1, 1, 1, 0x00800000, "MX 64Mbit"},
-    {MX_25L12855E_128Mbit,         0, 1, 1, 1, 1, 0x01000000, "MX 128Mbit"},
-    {MX_25L25655F_256Mbit,         0, 1, 1, 1, 1, 0x02000000, "MX 256Mbit"},
+    {MX_25L6455E_64Mbit,           0, 1, 1, 1, 1, 0x00800000, (unsigned char *)"MX 64Mbit"},
+    {MX_25L12855E_128Mbit,         0, 1, 1, 1, 1, 0x01000000, (unsigned char *)"MX 128Mbit"},
+    {MX_25L25655F_256Mbit,         0, 1, 1, 1, 1, 0x02000000, (unsigned char *)"MX 256Mbit"},
     {MX_25L3255D_32Mbit,           0, 1, 0, 1, 1, 0x00400000, "MX 32Mbit"},
 
-    {SPANSION_16Mbit,              0, 1, 0, 0, 1, 0x00200000, "SPANSION 16Mbit"},
-    {SPANSION_32Mbit,              0, 1, 0, 0, 0, 0x00400000, "SPANSION 32Mbit"},
-    {SPANSION_64Mbit,              0, 1, 0, 0, 1, 0x00800000, "SPANSION_64Mbit"},
-    {SPANSION_128Mbit,             0, 1, 0, 0, 0, 0x01000000, "SPANSION_128Mbit"},
-    {SPANSION_128Mbit_64s,         0, 1, 0, 0, 1, 0x01000000, "SPANSION_128Mbit_s64"},
-    {SPANSION_128Mbit_256s,        1, 0, 0, 0, 1, 0x01000000, "SPANSION_128Mbit_s256"},
-    {S25FL129P_64s,                0, 1, 0, 0, 1, 0x01000000, "SPANSION_128Mbit_s64"},
-    {S25FL129P_256s,               1, 0, 0, 0, 1, 0x01000000, "SPANSION_128Mbit_s256"},
-    {S25FL064K_4s,                 0, 1, 1, 1, 1, 0x00800000, "S25FL064K_4s"},
-    {S25FL016K_4s,                 0, 1, 1, 1, 1, 0x00200000, "S25FL016K_4s"},
-    {SPANSION_S25FL164K,           0, 1, 0, 1, 1 ,0x00800000, "SPANSION_S25FL164K_64Mbit"} , 
-	{SPANSION_S25FL216K,           0, 1, 0, 1, 1 ,0x01000000, "SPANSION_S25FL216K"}, 
+    {SPANSION_16Mbit,              0, 1, 0, 0, 1, 0x00200000, (unsigned char *)"SPANSION 16Mbit"},
+    {SPANSION_32Mbit,              0, 1, 0, 0, 0, 0x00400000, (unsigned char *)"SPANSION 32Mbit"},
+    {SPANSION_64Mbit,              0, 1, 0, 0, 1, 0x00800000, (unsigned char *)"SPANSION_64Mbit"},
+    {SPANSION_128Mbit,             0, 1, 0, 0, 0, 0x01000000, (unsigned char *)"SPANSION_128Mbit"},
+    {SPANSION_128Mbit_64s,         0, 1, 0, 0, 1, 0x01000000, (unsigned char *)"SPANSION_128Mbit_s64"},
+    {SPANSION_128Mbit_256s,        1, 0, 0, 0, 1, 0x01000000, (unsigned char *)"SPANSION_128Mbit_s256"},
+    {S25FL129P_64s,                0, 1, 0, 0, 1, 0x01000000, (unsigned char *)"SPANSION_128Mbit_s64"},
+    {S25FL129P_256s,               1, 0, 0, 0, 1, 0x01000000, (unsigned char *)"SPANSION_128Mbit_s256"},
+    {S25FL064K_4s,                 0, 1, 1, 1, 1, 0x00800000, (unsigned char *)"S25FL064K_4s"},
+    {S25FL016K_4s,                 0, 1, 1, 1, 1, 0x00200000, (unsigned char *)"S25FL016K_4s"},
+    {SPANSION_S25FL164K,           0, 1, 0, 1, 1 ,0x00800000, (unsigned char *)"SPANSION_S25FL164K_64Mbit"} , 
+	{SPANSION_S25FL216K,           0, 1, 0, 1, 1 ,0x01000000, (unsigned char *)"SPANSION_S25FL216K"}, 
 	
-    {STM_64Mbit,                   0, 1, 0, 0, 1, 0x00800000, "STMicron_64Mbit"} ,
-    {STM_128Mbit,                  1, 1, 0, 0, 1, 0x01000000, "STMicron_128Mbit"},
-    {STM_N25Q_128Mbit,             0, 1, 0, 0, 1, 0x01000000, "STMicron_N25Q_128Mbit"},
-    {STM_N25Q064_64Mbit,           0, 1, 0, 1, 1, 0x00800000, "STMicron_N25Q064_64Mbit"},
+    {STM_64Mbit,                   0, 1, 0, 0, 1, 0x00800000, (unsigned char *)"STMicron_64Mbit"} ,
+    {STM_128Mbit,                  1, 1, 0, 0, 1, 0x01000000, (unsigned char *)"STMicron_128Mbit"},
+    {STM_N25Q_128Mbit,             0, 1, 0, 0, 1, 0x01000000, (unsigned char *)"STMicron_N25Q_128Mbit"},
+    {STM_N25Q064_64Mbit,           0, 1, 0, 1, 1, 0x00800000, (unsigned char *)"STMicron_N25Q064_64Mbit"},
 
-    {EON_EN25QH16_16Mbit,          0, 1, 0, 1, 1, 0x00200000, "EON_EN25QH16_16Mbit"} ,
-    {EON_EN25QH16128A_16Mbit,      0, 1, 1, 1, 1 ,0x01000000, "EON_EN25QH16_16Mbit"} ,
-    {EON_EN25Q32B_32Mbit,          0, 1, 0, 1, 1, 0x00400000, "EON_EN25Q32B_32Mbit"} ,
-    {EON_EN25Q64_64Mbit,           0, 1, 0, 0, 1, 0x00800000, "EON_EN25Q64_64Mbit"} ,
-    {EON_EN25F16_16Mbit,           0, 1, 0, 0, 1, 0x00200000, "EON_EN25F16_16Mbit"},
-    {EON_EN25Q128_128Mbit,         0, 1, 0, 0, 1, 0x01000000, "EON_EN25Q128_128Mbit"},
-    {EON_EN25B64_64Mbit,           0, 1, 0, 0, 1, 0x00800000, "EON_EN25B64_64Mbit"},
+    {EON_EN25QH16_16Mbit,          0, 1, 0, 1, 1, 0x00200000, (unsigned char *)"EON_EN25QH16_16Mbit"} ,
+    {EON_EN25QH16128A_16Mbit,      0, 1, 1, 1, 1 ,0x01000000, (unsigned char *)"EON_EN25QH16_16Mbit"} ,
+    {EON_EN25Q32B_32Mbit,          0, 1, 0, 1, 1, 0x00400000, (unsigned char *)"EON_EN25Q32B_32Mbit"} ,
+    {EON_EN25Q64_64Mbit,           0, 1, 0, 0, 1, 0x00800000, (unsigned char *)"EON_EN25Q64_64Mbit"} ,
+    {EON_EN25F16_16Mbit,           0, 1, 0, 0, 1, 0x00200000, (unsigned char *)"EON_EN25F16_16Mbit"},
+    {EON_EN25Q128_128Mbit,         0, 1, 0, 0, 1, 0x01000000, (unsigned char *)"EON_EN25Q128_128Mbit"},
+    {EON_EN25B64_64Mbit,           0, 1, 0, 0, 1, 0x00800000, (unsigned char *)"EON_EN25B64_64Mbit"},
 
-    {WINBOND_W25Q80BV_8Mbit,	   0, 1, 1, 1, 1, 0x00100000, "WINBOND_W25Q80BV_8Mbit"},
+    {WINBOND_W25Q80BV_8Mbit,	   0, 1, 1, 1, 1, 0x00100000, (unsigned char *)"WINBOND_W25Q80BV_8Mbit"},
     {WINBOND_W25Q32FV_32Mbit,	   0, 1, 1, 1, 1, 0x00400000, "WINBOND_W25Q32FV_32Mbit"},
-    {WINBOND_W325Q128BV_128Mbit,   0, 1, 1, 1, 1, 0x01000000, "WINBOND_W325Q128BV_128Mbit"},
+    {WINBOND_W325Q128BV_128Mbit,   0, 1, 1, 1, 1, 0x01000000, (unsigned char *)"WINBOND_W325Q128BV_128Mbit"},
 
-    {ESMT_F25L32PA_32Mbit,         0, 1, 0, 1, 1, 0x00400000, "ESMT_F25L32PA_32Mbit"} ,
+    {ESMT_F25L32PA_32Mbit,         0, 1, 0, 1, 1, 0x00400000, (unsigned char *)"ESMT_F25L32PA_32Mbit"} ,
 
-    {GD25Q16B_16Mbit,              0, 1, 1, 1, 1, 0x00200000, "GD25Q16B_16Mbit"} ,
-    {GD25Q64B_64Mbit,              0, 1, 1, 1, 1, 0x00800000, "GD25Q64B_64Mbit"} ,
-    {GD25Q128B_128Mbit,            0, 1, 1, 1, 1, 0x01000000, "GD25Q128B_128Mbit"} ,
+    {GD25Q16B_16Mbit,              0, 1, 1, 1, 1, 0x00200000, (unsigned char *)"GD25Q16B_16Mbit"} ,
+    {GD25Q64B_64Mbit,              0, 1, 1, 1, 1, 0x00800000, (unsigned char *)"GD25Q64B_64Mbit"} ,
+    {GD25Q128B_128Mbit,            0, 1, 1, 1, 1, 0x01000000, (unsigned char *)"GD25Q128B_128Mbit"} ,
+    {GD25Q256D_256Mbit,            0, 1, 1, 1, 1, 0x02000000, (unsigned char *)"GD25Q256D_256Mbit"} ,
 
-    {A25L040_32Mbit,               0, 1, 0, 1, 1, 0x00400000, "AMIC 32Mbit"} ,
+    {A25L040_32Mbit,               0, 1, 0, 1, 1, 0x00400000, (unsigned char *)"AMIC 32Mbit"} ,
 
-    {IS25LP128_128Mbit,            0, 1, 1, 1, 1, 0x01000000, "IS25LP128_128Mbit"} ,
+    {IS25LQ080B_8Mbit,             0, 1, 1, 1, 1, 0x00100000, (unsigned char *)"IS25LQ080B_8Mbit"} ,
+    {IS25LQ016B_16Mbit,            0, 1, 1, 1, 1, 0x00200000, (unsigned char *)"IS25LQ016B_16Mbit"} ,
+    {IS25LQ032B_32Mbit,            0, 1, 1, 1, 1, 0x00400000, (unsigned char *)"IS25LQ032B_32Mbit"} ,
+    {IS25LP128_128Mbit,            0, 1, 1, 1, 1, 0x01000000, (unsigned char *)"IS25LP128_128Mbit"} ,
+
+    {BY25D20_2Mbit,                0, 1, 1, 1, 1, 0x00040000, (unsigned char *)"BY25D20_2Mbit"} ,
+    {BY25D40_4Mbit,                0, 1, 1, 1, 1, 0x00080000, (unsigned char *)"BY25D40_4Mbit"} ,
+    {BY25D16_16Mbit,               0, 1, 1, 1, 1, 0x00200000, (unsigned char *)"BY25D20_16Mbit"} ,
+    {BY25Q32BS_32Mbit,             0, 1, 1, 1, 1, 0x00400000, (unsigned char *)"BY25Q32BS_32Mbit"} ,
+    {BY25Q64AS_64Mbit,             0, 1, 1, 1, 1, 0x00800000, (unsigned char *)"BY25Q64AS_64Mbit"} ,
+    {BY25Q128AS_128Mbit,           0, 1, 1, 1, 1, 0x01000000, (unsigned char *)"BY25Q128AS_128Mbit"} ,
+	
+	{FM25Q64_64Mbit,               0, 1, 1, 1, 1, 0x00800000, (unsigned char *)"FM25Q64_64Mbit"} ,
 } ; 
 
 #define DEV_SIZE_S  (sizeof(s_device)/sizeof(s_device_type))

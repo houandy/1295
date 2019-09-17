@@ -836,8 +836,6 @@
 	};
 
 	dvfs: cpu-dvfs {
-		compatible = "realtek,cpu-dvfs";
-		status = "disabled";
 	};
 
 	cpu_tm: thermal-sensor@18000310 {

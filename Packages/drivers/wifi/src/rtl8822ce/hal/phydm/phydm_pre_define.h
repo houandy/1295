@@ -481,6 +481,10 @@ enum phydm_ic {
 			    ODM_RTL8198F | ODM_RTL8812F | ODM_RTL8814B |\
 			    ODM_RTL8197G | ODM_RTL8721D)
 
+/* fw offload ability*/
+#define PHYDM_IC_SUPPORT_FW_PARAM_OFFLOAD (ODM_RTL8814A | ODM_RTL8822B |\
+					   ODM_RTL8821C | ODM_RTL8822C)
+
 /*@========[Compile time IC flag] ========================*/
 /*@========[AC-3/AC/N Support] ===========================*/
 

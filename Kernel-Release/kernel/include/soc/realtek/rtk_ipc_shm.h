@@ -46,14 +46,10 @@ struct rtk_ipc_shm {
 	volatile uint32_t gpio_wakeup_activity2;
 	volatile uint32_t gpio_output_change_enable2;
 	volatile uint32_t gpio_output_change_activity2;
-#ifdef CONFIG_ARCH_RTD139x
 	volatile uint32_t gpio_wakeup_enable3;
 	volatile uint32_t gpio_wakeup_activity3;
-#endif
-#ifdef CONFIG_ARCH_RTD13xx
 	volatile uint32_t video_rpc_flag;
 	volatile uint32_t video_int_sync;
-#endif
 };
 
 struct avcpu_syslog_struct{

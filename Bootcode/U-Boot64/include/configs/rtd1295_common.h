@@ -47,6 +47,10 @@
 #define CONFIG_PARTITION_UUIDS
 #endif
 
+#ifdef NAS_ENABLE
+#define CONFIG_KERNELARGS	"init=/etc/init root=/dev/mmcblk0p9 rootfstype=squashfs rootwait"
+#endif
+
 /*
  * Size of malloc() pool
  * Total Size Environment - 128k
@@ -348,11 +352,25 @@
 /* DTBO Index */
 #define DTBO_INDEX 0
 
+/* Clear memory as initrd's size in device tree */
+#define CONFIG_ROOTFS_RESCUE_SIZE	0x100000 // 1 MB
+
 /********* RTK CONFIGS ************/
 #define CONFIG_BSP_REALTEK
 #define CONFIG_NO_RELOCATION
 #define CONFIG_HEAP_ADDR	0x07880000
 
 #define CONFIG_MISC_INIT_R
+
+#ifdef NAS_ENABLE
+/* Enable Firmware-Syslog from bootcode(UBOOT) */
+/* #define CONFIG_ACPU_LOGBUF_ENABLE */
+#define CONFIG_ACPU_LOGBUF_ENABLE
+#ifdef CONFIG_ACPU_LOGBUF_ENABLE
+#define CONFIG_ACPU_LOGBUF_ADDR		0x01F00000
+#define CONFIG_ACPU_LOGBUF_SIZE		0x00002000
+#endif
+#endif
+
 #endif /* __CONFIG_RTK_RTD1295_COMMON_H */
 

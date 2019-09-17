@@ -733,20 +733,21 @@ typedef struct {
 } e_device_type;
 
 struct backupRegs {
-    u32			cr_ISO_muxpad4;
-    u32			cr_pfunc_emmc0;
-    u32			cr_pfunc_emmc1;
-    u32			cr_pfunc_emmc2;
-    u32			cr_pfunc_emmc3;
-    u32			cr_pfunc_emmc4;
-    u32			cr_pfunc_emmc5;
-    u32                 emmc_ctype;
-    u32                 emmc_uhsreg;
-    u32                 emmc_ddr_reg;
-    u32                 emmc_card_thr_ctl;
-    u32                 emmc_clk_div;
-    u32                 emmc_ckgen_ctl;
-    u32                 emmc_dqs_ctrl1;
+	u32					cr_ISO_muxpad4;
+	u32					cr_pfunc_emmc0;
+	u32					cr_pfunc_emmc1;
+	u32					cr_pfunc_emmc2;
+	u32					cr_pfunc_emmc3;
+	u32					cr_pfunc_emmc4;
+	u32					cr_pfunc_emmc5;
+	u32					emmc_ctype;
+	u32					emmc_uhsreg;
+	u32					emmc_ddr_reg;
+	u32					emmc_card_thr_ctl;
+	u32					emmc_clk_div;
+	u32					emmc_ckgen_ctl;
+	u32					emmc_dqs_ctrl1;
+	u32					emmc_drto_mask_ori;
 };
 
 #ifdef __RTKEMMC_C__

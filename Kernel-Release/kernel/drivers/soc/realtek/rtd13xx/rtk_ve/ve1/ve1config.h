@@ -27,15 +27,16 @@
 #define WAVE410_CODE 0x4100 /* Wave410 version 1: Single vcore */
 #define WAVE4102_CODE 0x4102 /* Wave410 version 2: Multi vcore */
 #define WAVE420_CODE 0x4200 /* Wave420 */
+#define WAVE420L_CODE 0x4201 /* Wave420 */
 #define WAVE412_CODE 0x4120
 #define WAVE510_CODE                    0x5100
 #define WAVE512_CODE                    0x5120
 #define WAVE520_CODE                    0x5200
 
-#define PRODUCT_CODE_W_SERIES(x) (x == WAVE510_CODE || x == WAVE512_CODE || x == WAVE520_CODE)
+#define PRODUCT_CODE_W_SERIES(x) (x == WAVE420L_CODE || x == WAVE510_CODE || x == WAVE512_CODE || x == WAVE520_CODE)
 #define MAX_INST_HANDLE_SIZE (32*1024)
-#define MAX_NUM_INSTANCE 8
-#define MAX_NUM_VPU_CORE 3
+#define MAX_NUM_INSTANCE 4
+#define MAX_NUM_VPU_CORE 2
 #define MAX_NUM_VCORE 1
 
 #define MAX_ENC_AVC_PIC_WIDTH 4096

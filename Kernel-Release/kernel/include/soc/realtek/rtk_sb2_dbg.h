@@ -56,8 +56,16 @@ int sb2_dbg_unregister_dbg_notifier(struct notifier_block *nb);
 int sb2_dbg_register_inv_notifier(struct notifier_block *nb);
 int sb2_dbg_unregister_inv_notifier(struct notifier_block *nb);
 
-void sb2_dbg_add_default_handlers(void);
-void sb2_dbg_remove_default_handlers(void);
+void sb2_dbg_disable_default_handlers(void);
+void sb2_dbg_enable_default_handlers(void);
+static inline void sb2_dbg_add_default_handlers(void)
+{
+	sb2_dbg_enable_default_handlers();
+}
+static inline void sb2_dbg_remove_default_handlers(void)
+{
+	sb2_dbg_disable_default_handlers();
+}
 
 int sb2_dbg_ready(void);
 int sb2_dbg_disable_mem_monitor(int i);

@@ -34,7 +34,11 @@
 /memreserve/ ION_AUDIO_HEAP_PHYS_0  ION_AUDIO_HEAP_SIZE_0;
 /memreserve/ ION_MEDIA_HEAP_PHYS_1  ION_MEDIA_HEAP_SIZE_1;
 
-#include "rtd-13xx.dtsi"
+#define SHARED_DMA_POOL_ALIGNMENT (0x1000000)
+#define SHARED_DMA_POOL_SIZE(s) ((s) - ((s) & (SHARED_DMA_POOL_ALIGNMENT - 1)))
+#define SHARED_DMA_POOL_SIZE_0 SHARED_DMA_POOL_SIZE(0x0a000000)
+
+#include "rtd-1319-pymparticle.dtsi"
 #include "rtd-1319-usb.dtsi"
 #include "rtd-1319-sata.dtsi"
 
@@ -65,7 +69,7 @@
 	chosen {
 		linux,initrd-start = <ROOTFS_NORMAL_START>;
 		linux,initrd-end = <ROOTFS_NORMAL_END>;
-		bootargs = "earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200 init=/init vmalloc=360M loop.max_part=7 androidboot.storage=emmc androidboot.hardware=hank loglevel=4";
+		bootargs = "earlycon=uart8250,mmio32,0x98007800 console=ttyS0,460800 init=/init vmalloc=360M loop.max_part=7 androidboot.storage=emmc androidboot.hardware=hank loglevel=4";
 		swiotlb-memory-reservation-size = <512>; /*  512: 1MB,  2048: 4MB*/
 		swiotlb-force = <0>; /* 0: SWIOTLB_NORMAL, 1: SWIOTLB_FORCE, 2: SWIOTLB_NO_FORCE */
 		cma-region-enable = <1>;
@@ -138,9 +142,8 @@
 			compatible = "shared-dma-pool";
 			linux,cma-default;
 			reusable;
-			size = <0 0x02000000>; /* size 32MB */
-			alignment = <0 0x00100000>;
-			alloc-ranges = <0 0x20000000 0 0x02000000>; /* offset 512MB, size 32MB */
+			size = <0x0 SHARED_DMA_POOL_SIZE_0>;
+			alignment = <0x0 SHARED_DMA_POOL_ALIGNMENT>;
 			linux,contiguous-region;
 		};
 	};
@@ -192,6 +195,8 @@
 		};
 
 		rtk,ion-heap@7 { /* TYPE_MEDIA */
+            rtk,use-cma-pools;
+            rtk,cma-pool-flags=<(RTK_FLAG_SCPUACC | RTK_FLAG_HWIPACC| RTK_FLAG_CMA)>;
 			compatible = "Realtek,rtk-ion-reserve";
 			reg = <7>;
 			rtk,memory-reserve = <
@@ -211,19 +216,12 @@
 		fps = <60>;
 	};
 
-	dptx@9803D000 {
-		status = "disabled";
-	};
-
-	sata_phy: sata_phy@9803FF60 {
-		sata-phy@0 {
-			status = "disabled";
-		};
-	};
-
 	ahci_sata: sata@9803F000 {
 		sata-port@0 {
-			/delete-property/ phys;
+			gpios = <&rtk_iso_gpio 80 1 1>;
+		};
+		sata-port@1 {
+			gpios = <&rtk_iso_gpio 81 1 1>;
 		};
 	};
 };

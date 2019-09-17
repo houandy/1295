@@ -141,6 +141,10 @@
 		status = "disabled";
 	};
 
+	emmc@98012000 {
+		kernel_hs400_tuning = <1>;
+	};
+
 	mcp@0 {
 		status = "okay";
 	};

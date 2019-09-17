@@ -312,7 +312,7 @@ int factory_init(void)
     get_mtd_block_name(&ptr);
     strcpy(gdev, ptr);
 
-    if(gboot_type == BOOT_SPI)
+    if(gboot_type == BOOT_SPI || gboot_type == BOOT_NAND)
     {
         strcpy(gchardev, get_mtd_char_name());
         strcpy(gdev, gchardev);
@@ -716,11 +716,26 @@ int factory_flush(unsigned int factory_start, unsigned int factory_size)
     }
     else if(gboot_type == BOOT_NAND)
     {
-        sprintf(cmd, "%s dd if=%s of=%s bs=%u count=%u seek=%u conv=notrunc,sync; %s rm %s", BUSYBOX_CMD, FACTORY_FILE_PATH, gdev, gerasesize, gfactory_size / gerasesize, (factory_start + current_pp * factory_block_size) / gerasesize, BUSYBOX_CMD, FACTORY_FILE_PATH);
+        sprintf(cmd, "%s flash_erase %s 0x%x %u", BUSYBOX_CMD, gdev, (factory_start + current_pp * factory_block_size), gfactory_size / gerasesize);
         ret = rtk_command(cmd, __LINE__, __FILE__);
         if(ret < 0)
         {
             install_fail("rtk_command fail\r\n");
+            return -1;
+        }
+        sprintf(cmd, "%s nandwrite -m -p -s 0x%x %s %s", BUSYBOX_CMD, (factory_start + current_pp * factory_block_size), gdev, FACTORY_FILE_PATH);
+        ret = rtk_command(cmd, __LINE__, __FILE__);
+        if(ret < 0)
+        {
+            install_fail("rtk_command fail\r\n");
+            return -1;
+        }
+        sprintf(cmd, "%s rm %s", BUSYBOX_CMD, FACTORY_FILE_PATH);
+        ret = rtk_command(cmd, __LINE__, __FILE__);
+        if(ret < 0)
+        {
+            install_fail("rtk_command fail\r\n");
+            return -1;
         }
     }
     else if(gboot_type == BOOT_EMMC)

@@ -1,0 +1,11 @@
+menuconfig RTK_ACPU_FW_FILE
+	string
+	prompt "Realtek ACPU FW filename"
+	depends on PACKAGE_rtk-bluecore
+	default "bluecore.audio.CVBS_On" if RTK_NAS_VIDEO && TARGET_realtek_rtd129x
+	default "bluecore.audio" if RTK_NAS_VIDEO
+	default "bluecore.audio.slim" if RTK_NAS_TRANSCODE
+	default "bluecore.audio.slim_disable_vo" if TARGET_realtek_rtd129x
+	default "bluecore.audio.slim"
+	help
+	  Specifies Realtek Audio CPU firmware filename

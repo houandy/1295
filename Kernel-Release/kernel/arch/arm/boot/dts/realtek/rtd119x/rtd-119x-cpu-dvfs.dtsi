@@ -28,8 +28,6 @@
 	operating-points-v2 = <&cpu_opps>;
 	cpu-supply = <&cpu_supp>;
 	#cooling-cells = <2>;
-	cooling-min-level = <0>;
-	cooling-max-level = <7>;
 };
 
 &cpu1 {
@@ -37,14 +35,10 @@
 	operating-points-v2 = <&cpu_opps>;
 	cpu-supply = <&cpu_supp>;
 	#cooling-cells = <2>;
-	cooling-min-level = <0>;
-	cooling-max-level = <7>;
 };
 
 /* cpu opp table */
 &dvfs {
-	status = "okay";
-
 	cpu_opps: cpu-opp-table-0 {
 		compatible = "operating-points-v2";
 		opp-shared;

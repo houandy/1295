@@ -23,8 +23,8 @@
  *
  *****************************************************************************/
 
-/*Image2HeaderVersion: R3 1.5.3*/
-#if 0 /*(RTL8822C_SUPPORT == 1)*/
+/*Image2HeaderVersion: R3 1.5.8*/
+#if (RTL8822C_SUPPORT == 1)
 #ifndef __INC_MP_MAC_HW_IMG_8822C_H
 #define __INC_MP_MAC_HW_IMG_8822C_H
 
@@ -33,10 +33,8 @@
  ******************************************************************************/
 
 /* tc: Test Chip, mp: mp Chip*/
-#if 0
 void
 odm_read_and_config_mp_8822c_mac_reg(struct dm_struct *dm);
-#endif
 u32 odm_get_version_mp_8822c_mac_reg(void);
 
 #endif

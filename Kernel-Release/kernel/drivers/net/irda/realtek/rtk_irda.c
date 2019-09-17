@@ -46,7 +46,7 @@
 #define FIFO_DEPTH			16
 #define RTK_MK5_CUSTOMER_CODE		0x7F80
 
-#if defined(CONFIG_ARCH_RTD16xx)
+#if defined(CONFIG_ARCH_RTD16xx) || defined(CONFIG_ARCH_RTD13xx)
 extern struct ipc_shm_irda pcpu_data_irda;
 #endif
 
@@ -62,6 +62,7 @@ enum {
 
 enum {
 	NORMAL = 0,
+	RC6,
 	COMCAST,
 	DIRECTTV,
 	SWDEC,
@@ -82,16 +83,19 @@ struct irda_protocol_info {
 	unsigned int silence_len;
 
 	unsigned int hw_decoder;
-	int (*sw_decoder)(struct swdec_priv *, unsigned int *, int);
+	const struct swdec_ops *swdec;
 };
 
 static const struct irda_protocol_info protocol[] = {
 	{ "NEC", 9000, 560, 560, 1690, 2250, 4500, 0x5df, NULL },
 	{ "SONY", 2400, 600, 600, 1200, 0, 2500, 0xdd3, NULL },
 	{ "RC5", 0, 889, 889, 889, 0, 0, 0x70c, NULL },
+	{ "RC6_16", 2666, 444, 444, 444, 0, 889, 0x715, NULL },
+	{ "RC6_32", 2666, 444, 444, 444, 0, 889, 0xa50720, &rc6_swdec_ops },
 	{ "SHARP", 0, 320, 680, 1680, 0, 0, 0x58e, NULL },
 	{ "DIRECTTV", 0, 0, 0, 0, 0, 0, 0x040007cf, NULL },
-	{ "COMCAST", 0, 0, 0, 0, 0, 0, 0x0800071f, &raw_comcast_decoder },
+	{ "COMCAST", 0, 0, 0, 0, 0, 0, 0x0800071f, &xmp_swdec_ops },
+	{ "XMP", 0, 0, 0, 0, 0, 0, 0x0800071f, &xmp_swdec_ops },
 	{ "RAW", 0, 0, 0, 0, 0, 0, 0, NULL },
 };
 
@@ -148,10 +152,11 @@ static struct irda_key_table rtk_mk5_tv_key_table = {
 };
 
 struct irda_protocol_desc {
-	struct swdec_priv *swdec;
+	const struct swdec_ops *swdec;
 	struct irda_key_table *keytable;
 
 	unsigned int mode;
+	unsigned int protocol;
 	unsigned int index;
 	unsigned int sample_rate;
 	unsigned int accuracy;
@@ -159,6 +164,7 @@ struct irda_protocol_desc {
 	unsigned int repeat_time;
 
 	unsigned int lastRecvMs;
+	unsigned int lastdata;
 	unsigned int debounce;
 
 	unsigned int multi_remote;
@@ -344,11 +350,21 @@ static void rtk_irda_rx_init(struct rtk_irda_dev *irda_dev,
 			mode = DIRECTTV;
 		else if (!strcmp(protocol[desc->index].name, "COMCAST"))
 			mode = COMCAST;
+		else if (!strcmp(protocol[desc->index].name, "RC6_16") ||
+				!strcmp(protocol[desc->index].name, "RC6_32"))
+			mode = RC6;
 		else
 			mode = NORMAL;
+		desc->protocol = mode;
 	} else {
 		mode = SWDEC;
+		if (!strcmp(protocol[desc->index].name, "RC6_16") ||
+			!strcmp(protocol[desc->index].name, "RC6_32"))
+			desc->protocol = RC6;
+		else
+			desc->protocol = mode;
 	}
+
 	idx = desc->index;
 	sr = desc->sample_rate;
 	accur = desc->accuracy;
@@ -356,6 +372,7 @@ static void rtk_irda_rx_init(struct rtk_irda_dev *irda_dev,
 
 	switch (mode) {
 	case NORMAL:
+	case RC6:
 		writel((sr * 27 - 1), reg + IR_SF_OFF);
 
 		burst = protocol[idx].burst_len	* accur / 400 / sr;
@@ -370,6 +387,9 @@ static void rtk_irda_rx_init(struct rtk_irda_dev *irda_dev,
 		writel(val, reg + IR_PSR_OFF);
 		val = 1 << 16 | (repeat & 0xff) << 8 | (sil & 0xff);
 		writel(val, reg + IR_PER_OFF);
+
+		if (mode == RC6)
+			writel(0x123, reg + IR_CTRL_RC6_OFF);
 
 		if (irda_dev->chip_id == CHIP_ID_RTD1619)
 			writel(protocol[idx].hw_decoder
@@ -394,12 +414,10 @@ static void rtk_irda_rx_init(struct rtk_irda_dev *irda_dev,
 		writel(protocol[idx].hw_decoder, reg + IR_CR_OFF);
 		break;
 	case SWDEC:
-		writel(0x437, reg + IR_SF_OFF);
-//		writel((sr/2*27 - 1), reg + IR_RAW_DEB_OFF);
-		writel(0x21b, reg + IR_RAW_DEB_OFF);
+		writel(sr * 27, reg + IR_SF_OFF);
 		writel(0x03138850, reg + IR_RAW_CTRL_OFF);
-		desc->swdec->decoder = protocol[idx].sw_decoder;
 		writel(0x7300, reg + IR_CR_OFF);
+		desc->swdec->init();
 		break;
 	default:
 		break;
@@ -567,6 +585,14 @@ static void irda_key_handle(struct rtk_irda_dev *irda_dev,
 	if (desc->debounce > 0 && time < desc->debounce)
 		return;
 
+	if (desc->protocol == RC6) {
+		code = ~(code) & 0x1fffff;
+		if ((desc->lastdata & 0xffff) == (code & 0xffff))
+			repeat = 1;
+		desc->lastdata = code;
+	}
+	dev_info(irda_dev->dev, "scancode = 0x%x\n", code);
+
 	kfifo_in(&chrdev->rxfifo, &code, sizeof(unsigned int));
 	if (irda_dev->driver_mode == DOUBLE_WORD_IF)
 		kfifo_in(&chrdev->rxfifo, (unsigned char *)&repeat,
@@ -635,7 +661,7 @@ static irqreturn_t rtk_irda_isr(int irq, void *dev_id)
 			if (desc[i].mode == hardware)
 				continue;
 			if (desc[i].swdec->decoder) {
-				keycode = desc[i].swdec->decoder(desc[i].swdec,
+				keycode = desc[i].swdec->decoder(
 							fifoval, fifolv);
 				if (keycode < 0)
 					continue;
@@ -681,7 +707,7 @@ static int get_irda_protocol_index(const char *name, int mode, int irmode)
 	switch (irmode) {
 	case irda_rx:
 		if (mode == software) {
-			if (!protocol[index].sw_decoder)
+			if (!protocol[index].swdec)
 				return -1;
 		} else {
 			if (!protocol[index].hw_decoder)
@@ -1151,8 +1177,7 @@ static int get_desc_from_dtb(struct device *dev,
 			continue;
 
 		if (desc->mode == software)
-			desc->swdec = devm_kzalloc(dev, sizeof(*desc->swdec),
-							GFP_KERNEL);
+			desc->swdec = protocol[desc->index].swdec;
 
 		// start get key table
 		if (of_property_read_u32(np, "multi-remote", &desc->multi_remote))
@@ -1338,7 +1363,7 @@ int rtk_irda_probe(struct platform_device *pdev)
 	ir_ipc = (void __iomem *)(IPC_SHM_VIRT + sizeof(*ipc));
 	phy_ir_ipc = RPC_COMM_PHYS + 0xC4 + sizeof(*ipc);
 
-#ifdef CONFIG_ARCH_RTD16xx
+#if defined(CONFIG_ARCH_RTD16xx) || defined(CONFIG_ARCH_RTD13xx)
 	irda_set_wakeup_keys(irda_dev, &pcpu_data_irda);
 #else
 	irda_set_wakeup_keys(irda_dev, ir_ipc);

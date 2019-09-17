@@ -939,37 +939,33 @@ do {                                                                \
 #define MDIO_LOCK                                                   \
 do {                                                                \
     u32 wait_cnt = 0;                                               \
+    u32 log_de4e = 0;                                               \
                                                                     \
+    /* disable EEE IMR */                                           \
+    mac_ocp_write(tp, 0xE044,                                       \
+        (mac_ocp_read(tp, 0xE044) &                                 \
+        ~(BIT_3 | BIT_2 | BIT_1 | BIT_0)));                         \
     /* disable timer 2 */                                           \
     mac_ocp_write(tp, 0xE404,                                       \
-        (mac_ocp_read(tp, 0xE404) & ~(BIT_12 | BIT_11 | BIT_8)) | BIT_12); \
+        (mac_ocp_read(tp, 0xE404) &                                 \
+        ~(BIT_12 | BIT_11 | BIT_8)) | (BIT_12));                    \
     /* wait MDIO channel is free */                                 \
-    while (0 != (BIT_0 & mac_ocp_read(tp, 0xDE4E))) {               \
+    log_de4e = BIT_0 & mac_ocp_read(tp, 0xDE4E);                    \
+    log_de4e = (log_de4e << 1) |                                    \
+        (BIT_0 & mac_ocp_read(tp, 0xDE4E));                         \
+    /* check if 0 for continuous 2 times */                         \
+    while (0 != (((0x1 << 2) - 1) & log_de4e)) {                    \
         wait_cnt++;                                                 \
         udelay(1);                                                  \
+        log_de4e = (log_de4e << 1) | (BIT_0 &                       \
+            mac_ocp_read(tp, 0xDE4E));                              \
         if (wait_cnt > MDIO_WAIT_TIMEOUT)                           \
             break;                                                  \
     }                                                               \
-    while (wait_cnt <= MDIO_WAIT_TIMEOUT) {                         \
-        /* enter driver mode */                                     \
-        mac_ocp_write(tp, 0xDE42, mac_ocp_read(tp, 0xDE42) | BIT_0); \
-        /* check if MDIO channel is still free */                   \
-        if (0 == (BIT_0 & mac_ocp_read(tp, 0xDE4E))) {              \
-            /* lock successfully */                                 \
-            break;                                                  \
-        } else {                                                    \
-            /* exit driver mode */                                  \
-            mac_ocp_write(tp, 0xDE42, mac_ocp_read(tp, 0xDE42) & ~BIT_0); \
-            wait_cnt++;                                             \
-            udelay(1);                                              \
-        }                                                           \
-    }                                                               \
-    if (wait_cnt > MDIO_WAIT_TIMEOUT) {                             \
-        /* enable timer 2 */                                        \
-        mac_ocp_write(tp, 0xE404,                                   \
-            (mac_ocp_read(tp, 0xE404) | BIT_12 | BIT_11 | BIT_8));  \
+    /* enter driver mode */                                         \
+    mac_ocp_write(tp, 0xDE42, mac_ocp_read(tp, 0xDE42) | BIT_0);    \
+    if (wait_cnt > MDIO_WAIT_TIMEOUT)                               \
         printf("%s:%d: MDIO lock failed\n", __func__,__LINE__);     \
-    }                                                               \
 } while (0)
 
 #define MDIO_UNLOCK                                                 \
@@ -978,8 +974,16 @@ do {                                                                \
     mac_ocp_write(tp, 0xDE42, mac_ocp_read(tp, 0xDE42) & ~BIT_0);   \
     /* enable timer 2 */                                            \
     mac_ocp_write(tp, 0xE404,                                       \
-        (mac_ocp_read(tp, 0xE404) | BIT_12 | BIT_11 | BIT_8));      \
+        (mac_ocp_read(tp, 0xE404) |                                 \
+        BIT_12 | BIT_11 | BIT_8));                                  \
+    /* enable EEE IMR */                                            \
+    mac_ocp_write(tp, 0xE044,                                       \
+        (mac_ocp_read(tp, 0xE044) |                                 \
+        BIT_3 | BIT_2 | BIT_1 | BIT_0));                            \
 } while (0)
+#else
+#define MDIO_LOCK
+#define MDIO_UNLOCK
 #endif /* CONFIG_ARCH_RTD129x | CONFIG_ARCH_RTD139x | CONFIG_ARCH_RTD16xx */
 
 static void rtl8168_ephy_write(phys_addr_t ioaddr, int RegAddr, int value);
@@ -5579,10 +5583,14 @@ static void rtl8168_get_env_para(struct rtl8168_private *tp)
     const char *delim = ",";
     char *ptr;
 
+    #if defined(CONFIG_RTD1295) || defined(CONFIG_RTD1395)
+    tp->acp_enable = 0;
     tp->phy_type = PHY_TYPE_PHY;
     tp->bypass_enable = 0;
+    #elif defined(CONFIG_RTD161x)
     tp->acp_enable = 0;
-    #if defined(CONFIG_RTD161x)
+    tp->phy_type = PHY_TYPE_PHY;
+    tp->bypass_enable = 1;
     tp->sgmii_swing = 0;
     #endif /* CONFIG_RTD161x */
 
@@ -5677,7 +5685,7 @@ static void r8168_reset_phy_gmac(struct rtl8168_private *tp)
         rtd_outl(CRT_SOFT_RESET4, tmp);
     }
 
-    mdelay(100);
+    mdelay(1);
 }
 
 static void r8168_pll_clock_init(struct rtl8168_private *tp)
@@ -5694,7 +5702,7 @@ static void r8168_pll_clock_init(struct rtl8168_private *tp)
     tmp |= BIT_10;
     rtd_outl(ETN_RESET_CTRL,tmp);
 
-    mdelay(10); /* wait 10ms for FEPHY PLL stable */
+    mdelay(1); /* wait 1ms for FEPHY PLL stable */
 
     /* In Hercules, FEPHY need choose the bypass mode or Non-bypass mode */
     /* Bypass mode : ETN MAC bypass efuse update flow. SW need to take this sequence. */
@@ -5728,7 +5736,7 @@ static void r8168_pll_clock_init(struct rtl8168_private *tp)
     tmp |= (BIT_11 | BIT_12);
     rtd_outl(ETN_CLK_CTRL,tmp);
 
-    mdelay(10); /* wait 10ms for GMAC uC to be stable */
+    mdelay(1); /* wait 1ms for GMAC uC to be stable */
 }
 
 /* Hercules only uses 13 bits in OTP 0x9801_72C8[12:8] and 0x9801_72D8[7:0]
@@ -6068,8 +6076,8 @@ static void r8168_mdio_init(struct rtl8168_private *tp)
         tmp = 0;
         while (0xa43 != mdio_read(tp, 31)){
             printf(".");
-            tmp += 100;
-            mdelay(100);
+            tmp += 10;
+            mdelay(10);
             if (tmp >= 2000) {
                 printf("\n External SGMII PHY not found, current = 0x%02x\n", mdio_read(tp, 31));
                 break;
@@ -6152,7 +6160,7 @@ static void r8168_reset_phy_gmac(void)
     tmp |= (BIT_25 | BIT_23 | BIT_19 | BIT_13);
     rtd_outl(CRT_SOFT_RESET2, tmp);
 
-    mdelay(100);
+    mdelay(1);
 }
 
 static void r8168_pll_clock_init(void)
@@ -6193,7 +6201,7 @@ static void r8168_pll_clock_init(void)
     tmp |= (BIT_11 | BIT_12);
     rtd_outl(ETN_CLK_CTRL,tmp);
 
-    mdelay(10); /* wait 10ms for GMAC uC to be stable */
+    mdelay(1); /* wait 1ms for GMAC uC to be stable */
 }
 
 static void r8168_load_otp_content(struct rtl8168_private *tp)
@@ -6763,6 +6771,9 @@ static void r8168_mdio_init(struct rtl8168_private *tp)
     /* GPHY patch code */
     r8168_patch_gphy_uc_code(tp);
 
+    /* adjust PHY electrical characteristics */
+    r8168_gphy_iol_tuning(tp);
+
     /* load OTP contents (RC-K, R-K, Amp-K, and Bias-K)
        RC-K:    0x980174F8[27:24]
        R-K:     0x98017500[18:15]
@@ -6770,9 +6781,6 @@ static void r8168_mdio_init(struct rtl8168_private *tp)
        Bias-K:  0x980174FC[31:16]
      */
     r8168_load_otp_content(tp);
-
-    /* adjust PHY electrical characteristics */
-    r8168_gphy_iol_tuning(tp);
 
     MDIO_UNLOCK;
 
@@ -6821,8 +6829,8 @@ static void r8168_mdio_init(struct rtl8168_private *tp)
         tmp = 0;
         while (0xa43 != mdio_read(tp, 31)){
             printf(".");
-            tmp += 100;
-            mdelay(100);
+            tmp += 10;
+            mdelay(10);
             if (tmp >= 2000) {
                 printf("\n External SGMII PHY not found, current = 0x%02x\n", mdio_read(tp, 31));
                 return;
@@ -6987,7 +6995,8 @@ int rtl8168_initialize(bd_t *bis)
         tmp |= (BIT_11|BIT_12);
         rtd_outl(ETN_CLK_CTRL,tmp);
 
-        mdelay(100);
+	/* the min. delay is 15ms */
+        mdelay(20);
 
 #elif defined(CONFIG_RTD1395)
         /* disable PHY and GMAC */
@@ -7020,9 +7029,9 @@ int rtl8168_initialize(bd_t *bis)
         /* PLL clock init */
         r8168_pll_clock_init();
 
-        r8168_mdio_init(tp);
-
         r8168_pinmux_init(tp);
+
+        r8168_mdio_init(tp);
 
         (void) tmp;
 #endif /* CONFIG_RTD1295 | CONFIG_RTD1395 | CONFIG_RTD161x */
@@ -7092,7 +7101,11 @@ int rtl8168_initialize(bd_t *bis)
             rtd_outl(0x9800711c, tmp);
         }
 #else
-        rtd_outl((REG_BASE+CustomLED),0x000670ca);
+       #if defined(CONFIG_RTD161x)
+       rtd_outl((REG_BASE + CustomLED), 0x00067ca9);
+       #else
+       rtd_outl((REG_BASE+CustomLED),0x000670ca);
+       #endif
 #endif
 
 #if defined(CONFIG_RTD1295)

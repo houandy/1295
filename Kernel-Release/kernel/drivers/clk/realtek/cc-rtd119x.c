@@ -1,18 +1,30 @@
 /*
  * cc-rtd119x.c - RTD119x clock controller
  *
- * Copyright (C) 2018 Realtek Semiconductor Corporation
- * Copyright (C) 2018 Cheng-Yu Lee <cylee12@realtek.com>
+ * Copyright (C) 2018-2019 Realtek Semiconductor Corporation
+ *
+ * Author:
+ *      Cheng-Yu Lee <cylee12@realtek.com>
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/clk.h>
 #include <linux/clkdev.h>
 #include <linux/clk-provider.h>
 #include <linux/bitops.h>
+#include <linux/platform_device.h>
 #include "common.h"
 #include "clk-pll.h"
 #include "clk-mmio-gate.h"
@@ -27,9 +39,12 @@ static DEFINE_SPINLOCK(clk_div_lock);
 #define MNO_MASK   0x030FF800
 #define MN_MASK    0x07FC0000
 
-#define CLK_PLL_TYPE_NF       (CLK_PLL_CONF_FREQ_LOC_CTL2)
-#define CLK_PLL_TYPE_MNO      (CLK_PLL_CONF_FREQ_LOC_CTL1 | CLK_PLL_CONF_POW_LOC_CTL2)
-#define CLK_PLL_TYPE_MN       (CLK_PLL_CONF_FREQ_LOC_CTL1 | CLK_PLL_CONF_POW_LOC_CTL3)
+#define CLK_PLL_TYPE_NF       \
+	(CLK_PLL_CONF_FREQ_LOC_CTL2)
+#define CLK_PLL_TYPE_MNO      \
+	(CLK_PLL_CONF_FREQ_LOC_CTL1 | CLK_PLL_CONF_POW_LOC_CTL2)
+#define CLK_PLL_TYPE_MN       \
+	(CLK_PLL_CONF_FREQ_LOC_CTL1 | CLK_PLL_CONF_POW_LOC_CTL3)
 
 #define _D(_rate, _div, _val) \
 { \
@@ -300,7 +315,7 @@ static struct clk_hw *clk_reg_list[] = {
 	[CC_CLK_SYSH]   = &clk_sysh.hw,
 };
 
-static  struct clk_composite_init_data *composite_clks[] = {
+static struct clk_composite_init_data *composite_clks[] = {
 	[CC_CLK_GPU]     = &clk_gpu_init,
 	[CC_CLK_VE]      = &clk_ve_init,
 	[CC_CLK_VE1]     = &clk_ve1_init,
@@ -308,9 +323,9 @@ static  struct clk_composite_init_data *composite_clks[] = {
 	[CC_CLK_VE2_BPU] = &clk_ve2_bpu_init,
 };
 
-int cc_init_clocks(struct device *dev)
+static int rtd119x_cc_init_clocks(struct device *dev)
 {
-	struct cc_desc *ccd = dev_get_drvdata(dev);
+	struct cc_platform_data *ccd = dev_get_drvdata(dev);
 	int i;
 	int ret;
 
@@ -326,7 +341,7 @@ int cc_init_clocks(struct device *dev)
 		name = hw->init->name;
 		ret = cc_init_hw(dev, ccd, i, hw);
 		if (ret) {
-			dev_err(dev, "%s: cc_init_hw() returns %d\n",
+			dev_err(dev, "%s: failed in cc_init_hw: %d\n",
 				name, ret);
 			continue;
 		}
@@ -342,7 +357,7 @@ int cc_init_clocks(struct device *dev)
 		name = data->name;
 		ret = cc_init_composite_clk(dev, ccd, i, data);
 		if (ret) {
-			dev_err(dev, "%s: cc_init_composite_clk() returns %d\n",
+			dev_err(dev, "%s: failed in cc_init_composite_clk: %d\n",
 				name, ret);
 			continue;
 		}
@@ -351,7 +366,34 @@ int cc_init_clocks(struct device *dev)
 	return 0;
 }
 
-int cc_clock_num(void)
+static int rtd119x_cc_probe(struct platform_device *pdev)
 {
-	return CC_CLK_MAX;
+	struct cc_platform_data *ccd;
+
+	ccd = devm_cc_alloc_platform_data(&pdev->dev, CC_CLK_MAX);
+	if (!ccd)
+		return -ENOMEM;
+
+	platform_set_drvdata(pdev, ccd);
+	return cc_probe_platform(pdev, ccd, rtd119x_cc_init_clocks);
 }
+
+static const struct of_device_id rtd119x_cc_match[] = {
+	{ .compatible = "realtek,clock-controller", },
+	{}
+};
+
+static struct platform_driver rtd119x_cc_driver = {
+	.probe = rtd119x_cc_probe,
+	.driver = {
+		.name = "rtk-rtd119x-cc",
+		.of_match_table = rtd119x_cc_match,
+		.pm = &cc_pm_ops,
+	},
+};
+
+static int __init rtd119x_cc_init(void)
+{
+	return platform_driver_register(&rtd119x_cc_driver);
+}
+core_initcall(rtd119x_cc_init);

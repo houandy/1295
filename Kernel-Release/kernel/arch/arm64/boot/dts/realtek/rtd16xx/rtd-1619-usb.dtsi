@@ -11,9 +11,6 @@
 	/include/ "rtd-16xx-usb.dtsi"
 	rtk_usb_power_manager@0 {
 		compatible = "Realtek,usb-manager";
-		realtek,port0-power-gpio = <&rtk_iso_gpio 57 1 3>;
-		realtek,port1-power-gpio = <&rtk_iso_gpio 48 1 1>;
-		realtek,port2-power-gpio = <&rtk_iso_gpio 49 1 3>;
 
 		status = "okay";
 	};

@@ -71,6 +71,9 @@ static int hdmi_error;
 unsigned int tmds_en = 0;
 unsigned int hdmi_clk_always_on = 0;
 unsigned int displayport_exist = 0;
+#if 1//__LINUX_MEDIA_NAS__
+static int hpdDetect = 0;
+#endif
 
 void hdmitx_print_sink_info(asoc_hdmi_t *p_this);
 
@@ -1379,3 +1382,42 @@ exit:
 	return ret;
 }
 
+#if 1//def __LINUX_MEDIA_NAS__
+int ops_wait_hotplug(void __user *arg, hdmitx_device_t * dev)
+{
+	int ret= 0;
+	int status = 0;
+	HDMI_DEBUG("%s", __func__);
+
+	status = show_hpd_status(false);
+
+	wait_event_interruptible(dev->hpd_wait, ((status!=show_hpd_status(false)) || (!hpdDetect)));
+
+	status = show_hpd_status(false);
+
+	if (copy_to_user(arg,&status,sizeof(int))) {
+		HDMI_ERROR("%s:failed to copy to user ! ", __func__);
+		return -EFAULT;
+	}
+
+	return ret;
+}
+
+int ops_set_hotplug_detection(void __user *arg, hdmitx_device_t * dev)
+{
+	int ret= 0;
+	int fEn = 0;
+	HDMI_DEBUG("%s", __func__);
+
+	if (copy_from_user(&fEn, arg, sizeof(fEn))) {
+		HDMI_ERROR("%s:failed to copy from user !", __func__);
+		return -EFAULT;
+	}
+
+	hpdDetect = fEn;
+	if(fEn == 0)
+		wake_up_interruptible(&dev->hpd_wait);
+
+	return ret;
+}
+#endif

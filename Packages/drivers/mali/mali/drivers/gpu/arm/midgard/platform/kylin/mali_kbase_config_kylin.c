@@ -395,7 +395,7 @@ int kbase_platform_init(struct kbase_device *kbdev)
     //printk(KERN_ALERT, "PLL setting\n");
     writel(0x8212, rbus_base + GPU_PLL_FREQ); // 520MHz
     //writel(0x9A12, rbus_base + GPU_PLL_FREQ); // 601MHz
-    writel(0x7, rbus_base + GPU_PLL_POWER_ON);    // power on GPU PLL & release RSTB
+    writel(0x4, rbus_base + GPU_PLL_POWER_ON);    // power on GPU PLL & release RSTB
     writel(0xD, rbus_base + GPU_PLL_ON_OC_EN);    // turn on OC_EN_GPU & release RSTB
     usleep_range(WAIT_USLEEP_TIME, WAIT_USLEEP_TIME);
     writel(0x3, rbus_base + GPU_PLL_POWER_ON);    // enable GPU PLL OEB

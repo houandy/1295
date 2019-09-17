@@ -43,6 +43,7 @@
 #define GPIO_INT_REG_OFST(id)   (id/31)
 #define GPIO_INT_REG_BIT(id)    ((id%31)+1)
 
+static int gpios_unused[3];
 /* intc mux tempary define the first irq number in this mux is 160 */
 static const struct rtk_gpio_groups rtk_gpio_grps_array[] = {
 	{
@@ -503,11 +504,13 @@ static int rtk_gpio_get(struct gpio_chip *chip, unsigned int offset)
 	u32 temp, value;
 	u32 mask = 1 << (offset % 32);
 	struct rtk_gpio_controller *p_rtk_gpio_ctl = chip2controller(chip);
+	unsigned long flags;
 
 	RTK_GPIO_DBG("[%s] offset(%u)", __func__, offset);
 
 	dir_offset = gpio_get_reg_offset(p_rtk_gpio_ctl->group_index, GP_REG_DIR, offset);
 	temp = __raw_readl((p_rtk_gpio_ctl->gpio_regs_base) + dir_offset);
+	spin_lock_irqsave(&p_rtk_gpio_ctl->lock, flags);
 	if (temp & mask) {  /*direction out*/
 		dato_offset = gpio_get_reg_offset(p_rtk_gpio_ctl->group_index, GP_REG_DATO, offset);
 		value = ioread_reg_bit(((void *)p_rtk_gpio_ctl->gpio_regs_base + dato_offset), GPIO_REG_BIT(offset));
@@ -515,6 +518,7 @@ static int rtk_gpio_get(struct gpio_chip *chip, unsigned int offset)
 		dati_offset = gpio_get_reg_offset(p_rtk_gpio_ctl->group_index, GP_REG_DATI, offset);
 		value = ioread_reg_bit(((void *)p_rtk_gpio_ctl->gpio_regs_base + dati_offset), GPIO_REG_BIT(offset));
 	}
+	spin_unlock_irqrestore(&p_rtk_gpio_ctl->lock, flags);
 
 	return value;
 }
@@ -523,18 +527,20 @@ static void rtk_gpio_set(struct gpio_chip *chip, unsigned int offset, int value)
 {
 	u32 dato_offset;
 	struct rtk_gpio_controller *p_rtk_gpio_ctl = chip2controller(chip);
+	unsigned long flags;
 
 	RTK_GPIO_DBG("[%s] offset(%u) value(%d)", __func__, offset, value);
 
 	dato_offset = gpio_get_reg_offset(p_rtk_gpio_ctl->group_index,
 					GP_REG_DATO, offset);
-
+	spin_lock_irqsave(&p_rtk_gpio_ctl->lock, flags);
 	if (value)
 		iowrite_reg_bit(((void *)p_rtk_gpio_ctl->gpio_regs_base
 				+ dato_offset), GPIO_REG_BIT(offset), 1);
 	else
 		iowrite_reg_bit(((void *)p_rtk_gpio_ctl->gpio_regs_base
 				+ dato_offset), GPIO_REG_BIT(offset), 0);
+	spin_unlock_irqrestore(&p_rtk_gpio_ctl->lock, flags);
 }
 
 static int rtk_gpio_direction_in(struct gpio_chip *chip, unsigned int offset)
@@ -608,9 +614,34 @@ static int rtk_gpio_setdeb(struct gpio_chip *chip,
 	return -EINVAL;
 }
 
+static void rtk_add_gpio_unused(unsigned int gpio)
+{
+	int div, offset;
+
+	div = gpio/31;
+	offset = gpio%31;
+	gpios_unused[div] |= (1 << offset);
+
+}
+
+
+static int is_rtk_gpio_unused(unsigned int gpio)
+{
+	int div, offset;
+
+	div = gpio/31;
+	offset = gpio%31;
+
+	return ((1 << offset) & gpios_unused[div]);
+}
+
 static int rtk_gpio_request(struct gpio_chip *chip, unsigned int offset)
 {
 	RTK_GPIO_DBG("[%s] offset(%u)", __func__, offset);
+	if (is_rtk_gpio_unused(chip->base + offset)) {
+		pr_err("[%s] invalid gpio :%d\n", __func__, chip->base + offset);
+		return -EINVAL;
+	}
 
 	return pinctrl_request_gpio(chip->base + offset);
 }
@@ -657,6 +688,11 @@ static int rtk_gpio_xlate(struct gpio_chip *gc,
 		return -EINVAL;
 
 	pin = gpiospec->args[0];
+
+	if (is_rtk_gpio_unused(gpiospec->args[0])) {
+		pr_err("[%s] invalid gpio :%d\n", __func__, gpiospec->args[0]);
+		return -EINVAL;
+	}
 
 	gpio_pinctrl_control(gc, gpiospec->args[0],
 			gpiospec->args[1], gpiospec->args[2]);
@@ -730,6 +766,8 @@ static int rtk_gpio_probe(struct platform_device *pdev)
 	u32 gpio_numbers;
 	u32 gpio_base;
 	struct device_node *node = NULL;
+	u32 size;
+	u32 *gpio_unused;
 
 	RTK_GPIO_DBG("[%s]", __func__);
 	node = pdev->dev.of_node;
@@ -760,6 +798,15 @@ static int rtk_gpio_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+	memset(gpios_unused, 0, sizeof(gpios_unused));
+	size = of_property_count_u32_elems(node, "gpio-unused");
+	if (size < 0) {
+		gpio_unused = kmalloc(size * sizeof(u32), GFP_KERNEL);
+		of_property_read_u32_array(node, "gpio-unused", gpio_unused, size);
+		for (i = 0; i < size; i++) {
+			rtk_add_gpio_unused(gpio_unused[i]);
+		}
+	}
 	for (i = 0; i < rtk_gpio_ngroups; i++) {
 		if (strcmp(rtk_gpio_grps_array[i].group_name, node->name) == 0)
 			p_rtk_gpio_grp = &rtk_gpio_grps_array[i];
@@ -769,7 +816,6 @@ static int rtk_gpio_probe(struct platform_device *pdev)
 		pr_err("Don't know gpio group name.\n");
 		return -EINVAL;
 	}
-
 	p_rtk_gpio_ctl->chip.label = node->name;
 	p_rtk_gpio_ctl->chip.request = rtk_gpio_request;
 	p_rtk_gpio_ctl->chip.free = rtk_gpio_free;

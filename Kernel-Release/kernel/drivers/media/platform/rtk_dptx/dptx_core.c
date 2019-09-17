@@ -22,9 +22,11 @@
 #include <linux/delay.h>
 
 #include "dptx_core.h"
+#include "dptx_aux_channel.h"
 
 #define DPTX_RES_MAX 0xFF
-
+#define EDID_SIZE 256
+static int dptxHpdDetect = 0;
 extern struct ion_device *rtk_phoenix_ion_device;
 
 const char dptx_kylin_support_vic[] = {
@@ -38,6 +40,11 @@ const char dptx_thor_support_vic[] = {
 	VIC_1280X720P60,
 	VIC_1920X1080P60,
 	VIC_3840X2160P30,
+	VIC_1024X768P60,
+	VIC_1440X768P60,
+	VIC_1440X900P60,
+	VIC_1280X800P60,
+	VIC_960X544P60,
 };
 
 static void rtk_hdmi_power_on(void)
@@ -159,6 +166,26 @@ static unsigned int vic_to_vo_standard(struct rtk_dptx_hwinfo *hwinfo,
 		hwinfo->out_type = DP_FORMAT_2160P_60;
 		standard = VO_STANDARD_DP_FORMAT_3840_2160P_60;
 		break;
+	case VIC_1024X768P60:
+		hwinfo->out_type = DP_FORMAT_1024_768;
+		standard = VO_STANDARD_DP_FORMAT_1024_768P_60;
+		break;
+	case VIC_1440X768P60:
+		hwinfo->out_type = DP_FORMAT_1440_768;
+		standard = VO_STANDARD_DP_FORMAT_1440_768P_60;
+		break;
+	case VIC_1440X900P60:
+		hwinfo->out_type = DP_FORMAT_1440_900;
+		standard = VO_STANDARD_DP_FORMAT_1440_900P_60;
+		break;
+	case VIC_1280X800P60:
+		hwinfo->out_type = DP_FORMAT_1280_800;
+		standard = VO_STANDARD_DP_FORMAT_1280_800P_60;
+		break;
+	case VIC_960X544P60:
+		hwinfo->out_type = DP_FORMAT_960_544;
+		standard = VO_STANDARD_DP_FORMAT_960_544P_60;
+		break;
 	default:
 		hwinfo->out_type = DP_FORMAT_1024_768;
 		standard = VO_STANDARD_DP_FORMAT_1024_768P_60;
@@ -178,6 +205,16 @@ static unsigned char vo_standard_to_vic(unsigned int vo)
 		return VIC_3840X2160P30;
 	case VO_STANDARD_DP_FORMAT_3840_2160P_60:
 		return VIC_3840X2160P60;
+	case VO_STANDARD_DP_FORMAT_1024_768P_60:
+		return VIC_1024X768P60;
+	case VO_STANDARD_DP_FORMAT_1440_768P_60:
+		return VIC_1440X768P60;
+	case VO_STANDARD_DP_FORMAT_1440_900P_60:
+		return VIC_1440X900P60;
+	case VO_STANDARD_DP_FORMAT_1280_800P_60:
+		return VIC_1280X800P60;
+	case VO_STANDARD_DP_FORMAT_960_544P_60:
+		return VIC_960X544P60;
 	default:
 		return VIC_1280X720P60;
 	}
@@ -266,6 +303,7 @@ static long rtk_dptx_ioctl(struct file* filp,
 	struct edid *edid;
 	asoc_dptx_t* cap = &dptx_dev->cap;
 	int mode;
+	int value;
 	int ret;
 
 	switch(cmd) {
@@ -298,13 +336,14 @@ static long rtk_dptx_ioctl(struct file* filp,
 		break;
 
 	case DPTX_GET_SINK_CAPABILITY:
+	case DPTX_GET_RAW_EDID:
 	case DPTX_GET_EDID_SUPPORT_LIST:
 		if (!dptx_dev->dptx_en)
 			rtk_dptx_enable(dptx_dev);
 		if (dptx_dev->ignore_edid)
 			return -EFAULT;
 		if (!dptx_dev->ignore_edid && !(cap->sink_cap_available)) {
-			ret = dptx_read_edid(&dptx_dev->hwinfo, cap->edid_ptr, 256);
+			ret = dptx_read_edid(&dptx_dev->hwinfo, cap->edid_ptr, EDID_SIZE);
 			if (ret < 0) {
 				dev_err(dev, "Read EDID fail\n");
 				return -EFAULT;
@@ -317,6 +356,11 @@ static long rtk_dptx_ioctl(struct file* filp,
 
 		if(cmd == DPTX_GET_SINK_CAPABILITY) {
 			if(copy_to_user((void __user *)arg, &cap->sink_cap, sizeof(cap->sink_cap))) {
+				dev_err(dev, "[%s] failed to copy to user !\n", __func__);
+				return -EFAULT;
+			}
+		} else if (cmd == DPTX_GET_RAW_EDID) {
+			if(copy_to_user((void __user *)arg, &cap->edid_ptr, EDID_SIZE)) {
 				dev_err(dev, "[%s] failed to copy to user !\n", __func__);
 				return -EFAULT;
 			}
@@ -360,6 +404,30 @@ static long rtk_dptx_ioctl(struct file* filp,
 		if(dptx_config_tv_system(&dptx_dev->hwinfo) == true)
 			RPC_TOAGENT_DPTX_Config_TV_System(dptx_dev->rpc_ion_client, &rpc);
 		break;
+	case DPTX_HOTPLUG_DETECTION:
+		if (copy_from_user(&value, (void __user *)arg, sizeof(value))) {
+			DPTX_ERR("%s:failed to copy from user !", __func__);
+			return -EFAULT;
+		}
+
+		dptxHpdDetect = value;
+		if(value == 0)
+		{
+			dptx_dev->isr_signal = true;
+			wake_up_interruptible(&dptx_dev->hpd_wait);
+		}
+		return ret;
+	case DPTX_WAIT_HOTPLUG:
+		value = dptx_switch_get_state(&dptx_dev->swdev);
+		wait_event_interruptible(dptx_dev->hpd_wait, (((dptx_dev->isr_signal == true)&&(value!=switch_get_state(&dptx_dev->swdev.sw))) || (!dptxHpdDetect)));
+		dptx_dev->isr_signal = false;
+		value = dptx_switch_get_state(&dptx_dev->swdev);
+		if (copy_to_user((void __user *)arg,&value,sizeof(value))) {
+			DPTX_ERR("%s:failed to copy to user ! ", __func__);
+			return -EFAULT;
+		}
+
+		return ret;
 	default:
 		dev_err(dev, "[%s] unknown ioctl cmd %08x\n", __func__, cmd);
 		return -EFAULT;
@@ -380,6 +448,7 @@ static long rtk_dptx_compat_ioctl(struct file* filp,
 
 	switch(cmd) {
 	case DPTX_GET_SINK_CAPABILITY:
+	case DPTX_GET_RAW_EDID:
 	case DPTX_CONFIG_TV_SYSTEM:
 	case DPTX_GET_EDID_SUPPORT_LIST:
 	case DPTX_GET_OUTPUT_FORMAT:
@@ -396,18 +465,46 @@ static ssize_t rtk_dptx_write(struct file *filp, const char __user *buf,
         size_t count, loff_t *pos)
 {
 	struct rtk_dptx_device *dptx_dev = filp->private_data;
-	struct VIDEO_RPC_VOUT_CONFIG_TV_SYSTEM rpc;
+	struct device *dev = dptx_dev->dev;
+	char resolution;
 
-	RPC_TOAGENT_DPTX_QUERY_TV_System(dptx_dev->rpc_ion_client, &rpc);
+	if (!dptx_dev->selftest)
+		return count;
+	if (copy_from_user(&resolution, (void __user *)buf, sizeof(char))) {
+		dev_err(dev, "[%s] failed to copy from user !\n", __func__);
+		return -EFAULT;
+	}
 
-	dptx_dev->hwinfo.out_type = DP_FORMAT_1080P_60;
+	if (resolution == '0') {
+		dptx_dev->hwinfo.out_type = DP_FORMAT_720P_60;
+	} else if (resolution == '1') {
+		dptx_dev->hwinfo.out_type = DP_FORMAT_1080P_60;
+	} else if (resolution == '2') {
+		dptx_dev->hwinfo.out_type = DP_FORMAT_1024_768;
+	} else if (resolution == '3') {
+		dptx_dev->hwinfo.out_type = DP_FORMAT_1280_800;
+	} else if (resolution == '4') {
+		dptx_dev->hwinfo.out_type = DP_FORMAT_1440_768;
+	} else if (resolution == '5') {
+		dptx_dev->hwinfo.out_type = DP_FORMAT_1440_900;
+	} else if (resolution == '6') {
+		dptx_dev->hwinfo.out_type = DP_FORMAT_960_544;
+	} else if (resolution == '7') {
+		dptx_dev->hwinfo.out_type = DP_FORMAT_2160P_30;
+	} else {
+		dev_err(dev, "'0' = DP_FORMAT_720P_60\n");
+		dev_err(dev, "'1' = DP_FORMAT_1080P_60\n");
+		dev_err(dev, "'2' = DP_FORMAT_1024_768\n");
+		dev_err(dev, "'3' = DP_FORMAT_1280_800\n");
+		dev_err(dev, "'4' = DP_FORMAT_1440_768\n");
+		dev_err(dev, "'5' = DP_FORMAT_1440_900\n");
+		dev_err(dev, "'6' = DP_FORMAT_960_544\n");
+		dev_err(dev, "'7' = DP_FORMAT_2160P_30\n");
+		return count;
+	}
+
 	rtk_dptx_enable(dptx_dev);
 	dptx_config_tv_system(&dptx_dev->hwinfo);
-
-	rpc.videoInfo.pedType = VO_STANDARD_DP_FORMAT_1920_1080P_60;
-	rpc.interfaceType = 4;//VO_HDMI_AND_DISPLAY_PORT_SAME_SOURCE;
-	rpc.videoInfo.standard = VO_STANDARD_NTSC_J;
-	RPC_TOAGENT_DPTX_Config_TV_System(dptx_dev->rpc_ion_client, &rpc);
 
 	return count;
 }
@@ -440,7 +537,7 @@ static irqreturn_t rtk_dptx_isr(int irq, void *dev_id)
 {
 	struct rtk_dptx_device *dptx_dev = (struct rtk_dptx_device *)dev_id;
 
-	dptx_irq_handle(&dptx_dev->hwinfo);
+	dptx_aux_irq_handle(&dptx_dev->hwinfo);
 
 	return IRQ_HANDLED;
 }
@@ -462,7 +559,7 @@ static int rtk_dptx_probe(struct platform_device *pdev)
 	if (IS_ERR(dptx_dev))
 		return PTR_ERR(dptx_dev);
 
-	edid_ptr = devm_kzalloc(dev, sizeof(unsigned char)*1024, GFP_KERNEL);
+	edid_ptr = devm_kzalloc(dev, sizeof(unsigned char)*EDID_SIZE, GFP_KERNEL);
 	if (IS_ERR(edid_ptr))
 		return PTR_ERR(edid_ptr);
 
@@ -547,9 +644,14 @@ static int rtk_dptx_probe(struct platform_device *pdev)
 	
 	dptx_dev->hwinfo.out_type = DP_FORMAT_1080P_60;
 
+	if (dptx_dev->selftest)
+		rtk_dptx_enable(dptx_dev);
+
 	register_dptx_switch(dptx_dev);
 
 	dev_info(dev, "[%s] finished\n", __func__);
+	dptx_dev->isr_signal = false;
+	init_waitqueue_head(&dptx_dev->hpd_wait);
 	return 0;
 }
 

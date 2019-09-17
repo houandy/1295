@@ -23,11 +23,11 @@
  *
  *****************************************************************************/
 
-/*Image2HeaderVersion: R3 1.5.3*/
+/*Image2HeaderVersion: R3 1.5.8*/
 #include "mp_precomp.h"
 #include "../phydm_precomp.h"
 
-#if 0 /*(RTL8822C_SUPPORT == 1)*/
+#if (RTL8822C_SUPPORT == 1)
 static boolean
 check_positive(struct dm_struct *dm,
 	       const u32	condition1,
@@ -104,14 +104,15 @@ check_positive(struct dm_struct *dm,
 		return false;
 }
 
+
 /******************************************************************************
  *                           mac_reg.TXT
  ******************************************************************************/
-#if 0
-const u32 array_mp_8822c_mac_reg[];
-#endif
 
-#if 0
+const u32 array_mp_8822c_mac_reg[] = {
+
+};
+
 void
 odm_read_and_config_mp_8822c_mac_reg(struct dm_struct *dm)
 {
@@ -171,12 +172,11 @@ odm_read_and_config_mp_8822c_mac_reg(struct dm_struct *dm)
 		i = i + 2;
 	}
 }
-#endif
 
 u32
 odm_get_version_mp_8822c_mac_reg(void)
 {
-		return 25;
+		return 39;
 }
 
 #endif /* end of HWIMG_SUPPORT*/

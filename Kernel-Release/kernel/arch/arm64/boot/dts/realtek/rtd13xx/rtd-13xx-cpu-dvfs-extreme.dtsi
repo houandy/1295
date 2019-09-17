@@ -23,16 +23,12 @@
  */
 
 &A55_0 {
-	cooling-max-level = <14>;
 };
 &A55_1 {
-	cooling-max-level = <14>;
 };
 &A55_2 {
-	cooling-max-level = <14>;
 };
 &A55_3 {
-	cooling-max-level = <14>;
 };
 
 &cpu_opps {

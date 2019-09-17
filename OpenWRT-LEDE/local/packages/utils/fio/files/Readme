@@ -1,0 +1,79 @@
+Prepare 2 SSD and build 2 partition for each
+/dev/sda
+  -> /dev/sda1, /dev/sda2
+
+/dev/sdb
+  -> /dev/sdb1, /dev/sdb2
+
+1. Test Block Device
+
+  1-1. test by partition
+    DEV=/dev/sda2 fio nas-server.conf
+  1-2. test by file
+    DEV=/mnt/sda2/fio.test fio nas-server.conf
+  
+  There is no significant difference of test result between ext4 and partition accessing
+
+2. Raid
+  Build raid0(sda1+sda2)
+
+  mdadm --create --verbose /dev/md0 --level=0 --raid-devices=2 /dev/sda1 /dev/sdb1
+  mkfs.ext4 -E lazy_itable_init=0,lazy_journal_inimd0
+
+  DEV=/mnt/md0/fio.test fio nas-server.conf
+
+3. Samba
+  In openwrt
+  1. add account:admin
+  openwrt> smbpasswd -a admin
+
+  2. prepare a share folder for
+  for 2.5G ethernet test, use raid0 to be the target for accessing
+
+  In client, mount samba sharing
+  sudo mount.cifs //192.168.0.9/share ./share -o username=admin,password=admin
+	[for randow Read/Write, smb ver3.0 has best performance, for sequential Read/Write, smb ver1.0 is the best]
+  *Run:
+     sudo DEV=./share/fio.test fio samba_bw.conf
+     sudo DEV=./share/fio.test fio samba_3000_bw.conf
+
+Output:
+
+=====================================================================================
+test: (groupid=2, jobs=8): err= 0: pid=9843: Thu Aug  1 16:50:36 2019
+  read: IOPS=151, BW=156MiB/s (164MB/s)(9389MiB/60066msec)		<=== Get bandwidth
+    slat (usec): min=37, max=117253, avg=20960.06, stdev=14437.35	<=== Get latency
+    clat (msec): min=32, max=31316, avg=21262.87, stdev=8616.93		  |=
+     lat (msec): min=56, max=31339, avg=21283.74, stdev=8617.12		  |= 
+    clat percentiles (msec):
+     |  1.00th=[  634],  5.00th=[ 3071], 10.00th=[ 6342], 20.00th=[12818],
+     | 30.00th=[17113], 40.00th=[17113], 50.00th=[17113], 60.00th=[17113],
+     | 70.00th=[17113], 80.00th=[17113], 90.00th=[17113], 95.00th=[17113],
+     | 99.00th=[17113], 99.50th=[17113], 99.90th=[17113], 99.95th=[17113],
+     | 99.99th=[17113]
+   bw (  KiB/s): min=50678, max=217857, per=78.89%, avg=126268.02, stdev=4431.30, samples=559
+   iops        : min=   47, max=  210, avg=120.12, stdev= 4.34, samples=559 
+  write: IOPS=149, BW=155MiB/s (163MB/s)(9311MiB/60066msec)				<=== Get Write bandwidth if available
+    slat (usec): min=995, max=135988, avg=32144.39, stdev=15251.58
+    clat (msec): min=30, max=31329, avg=21184.78, stdev=8621.58
+     lat (msec): min=49, max=31358, avg=21216.94, stdev=8621.46
+    clat percentiles (msec):
+     |  1.00th=[  726],  5.00th=[ 3205], 10.00th=[ 6275], 20.00th=[12550],
+     | 30.00th=[17113], 40.00th=[17113], 50.00th=[17113], 60.00th=[17113],
+     | 70.00th=[17113], 80.00th=[17113], 90.00th=[17113], 95.00th=[17113],
+     | 99.00th=[17113], 99.50th=[17113], 99.90th=[17113], 99.95th=[17113],
+     | 99.99th=[17113]
+   bw (  KiB/s): min=46922, max=210535, per=78.28%, avg=124255.47, stdev=4473.86, samples=558
+   iops        : min=   42, max=  203, avg=117.95, stdev= 4.39, samples=558  		<=== Get iops
+  lat (msec)   : 50=0.05%, 100=0.08%, 250=0.23%, 500=0.38%, 750=0.39%
+  lat (msec)   : 1000=0.44%, 2000=1.65%, >=2000=100.12%
+  cpu          : usr=0.39%, sys=4.67%, ctx=2104543, majf=0, minf=1049760
+  IO depths    : 1=0.0%, 2=0.0%, 4=0.0%, 8=0.0%, 16=0.0%, 32=0.0%, >=64=100.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=99.9%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.1%
+     issued rwts: total=9096,9000,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=1024
+======================================================================================
+
+
+

@@ -42,7 +42,7 @@
 #define HUB_QUIRK_CHECK_PORT_AUTOSUSPEND	0x01
 
 #ifdef CONFIG_USB_PATCH_ON_RTK
-#ifdef CONFIG_USB_RTK_CTRL_MANAGER
+#ifdef CONFIG_RTK_USB_CTRL_MANAGER
 extern int RTK_usb_reprobe_usb_storage(struct usb_device *udev);
 extern bool RTK_usb_disable_hub_autosuspend(void);
 #endif
@@ -1759,7 +1759,7 @@ static int hub_probe(struct usb_interface *intf, const struct usb_device_id *id)
 	if (hdev->parent) {		/* normal device */
 		usb_enable_autosuspend(hdev);
 #ifdef CONFIG_USB_PATCH_ON_RTK
-#ifdef CONFIG_USB_RTK_CTRL_MANAGER
+#ifdef CONFIG_RTK_USB_CTRL_MANAGER
 		if (RTK_usb_disable_hub_autosuspend()) {
 			dev_warn(&intf->dev, "disable hub autosuspend\n");
 			usb_disable_autosuspend(hdev);
@@ -2849,7 +2849,9 @@ static int hub_port_reset(struct usb_hub *hub, int port1,
 					USB_PORT_FEAT_C_BH_PORT_RESET);
 			usb_clear_port_feature(hub->hdev, port1,
 					USB_PORT_FEAT_C_PORT_LINK_STATE);
-			usb_clear_port_feature(hub->hdev, port1,
+
+			if (udev)
+				usb_clear_port_feature(hub->hdev, port1,
 					USB_PORT_FEAT_C_CONNECTION);
 
 			/*
@@ -5029,7 +5031,7 @@ static void hub_port_connect(struct usb_hub *hub, int port1, u16 portstatus,
 		if (!status) {
 			status = usb_new_device(udev);
 #ifdef CONFIG_USB_PATCH_ON_RTK
-#ifdef CONFIG_USB_RTK_CTRL_MANAGER
+#ifdef CONFIG_RTK_USB_CTRL_MANAGER
 			if (!status)
 				RTK_usb_reprobe_usb_storage(udev);
 #endif

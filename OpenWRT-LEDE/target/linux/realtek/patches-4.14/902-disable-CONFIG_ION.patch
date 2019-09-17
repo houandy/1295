@@ -1,0 +1,31 @@
+From c4a49e92c4e934432d0506ec51751737e8f6c580 Mon Sep 17 00:00:00 2001
+From: Chien-Ming Cheng <cmcheng@realtek.com>
+Date: Fri, 28 Jun 2019 14:23:22 +0800
+Subject: [PATCH] Disable CONFIG_ION
+
+To use ION compatible with kernel 4.9 (drivers/staging/android/ion_old), should
+set only CONFIG_ION_OLD=y and CONFIG_ION_RTK=y. Do not set CONFIG_ION=y (for
+new Android ION).
+
+Thus, change CONFIG_ION to CONFIG_ION_NEW temporarily because kmod-openmax sets
+CONFIG_ION=y.
+
+To use new Android ION, remove this patch, unset CONFIG_ION_OLD & CONFIG_ION_RTK,
+and set CONFIG_ION=y and related configs. For details, refer to SW-2734.
+---
+ drivers/staging/android/ion/Kconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/staging/android/ion/Kconfig b/drivers/staging/android/ion/Kconfig
+index e85c388..3fc1440 100644
+--- a/drivers/staging/android/ion/Kconfig
++++ b/drivers/staging/android/ion/Kconfig
+@@ -1,4 +1,4 @@
+-menuconfig ION
++menuconfig ION_NEW
+ 	bool "Ion Memory Manager"
+ 	depends on HAVE_MEMBLOCK && HAS_DMA && MMU
+ 	select GENERIC_ALLOCATOR
+-- 
+2.7.4
+

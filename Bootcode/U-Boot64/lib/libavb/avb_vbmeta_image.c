@@ -191,8 +191,12 @@ AvbVBMetaVerifyResult avb_vbmeta_image_verify(
   if (avb_safe_memcmp(authentication_block + h.hash_offset,
                       computed_hash,
                       h.hash_size) != 0) {
-    avb_error("Hash does not match!\n");
-    ret = AVB_VBMETA_VERIFY_RESULT_HASH_MISMATCH;
+	if (h.flags & AVB_VBMETA_IMAGE_FLAGS_HASHTREE_DISABLED)
+		avb_error("skip verify vbmeta hash error.\n");
+	else
+		avb_error("Hash does not match!\n");
+	ret = h.flags & AVB_VBMETA_IMAGE_FLAGS_HASHTREE_DISABLED ?
+			AVB_VBMETA_VERIFY_RESULT_OK : AVB_VBMETA_VERIFY_RESULT_HASH_MISMATCH;
     goto out;
   }
 

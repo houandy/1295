@@ -43,6 +43,13 @@
 
 static void __iomem *scpu_wrap_addr;
 
+void rtk_cpu_power_up_all(void)
+{
+	writel(0x00003F3F, scpu_wrap_addr + 0x538);
+	writel(0x000000FF | readl(scpu_wrap_addr + 0x100), scpu_wrap_addr + 0x100);
+	writel(0x00003233, scpu_wrap_addr + 0x900);
+}
+
 void rtk_cpu_power_up(int cpu)
 {
 	u32 tmp = 0;
@@ -191,12 +198,6 @@ void rtk_cpu_power_down(int cpu)
 	writel(tmp, scpu_wrap_addr + 0x538);
 }
 EXPORT_SYMBOL(rtk_cpu_power_down);
-
-void cpu_do_lowpower(unsigned long secondary_entry_addr)
-{
-	__cpu_do_lowpower(secondary_entry_addr);
-}
-EXPORT_SYMBOL(cpu_do_lowpower);
 
 static int set_l4_icg(void *base)
 {

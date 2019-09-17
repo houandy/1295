@@ -13,8 +13,8 @@
 #include "cache.h"
 
 #define PAGE_TMP_ADDR		0xa1200000 - UBOOT_DDR_OFFSET
-#define SPARE_DMA_ADDR		0xa16fff00 - UBOOT_DDR_OFFSET
-#define BLK_STATE_BASE		0xa1700000 - UBOOT_DDR_OFFSET
+#define SPARE_DMA_ADDR		0xa17fff00 - UBOOT_DDR_OFFSET
+#define BLK_STATE_BASE		0xa1800000 - UBOOT_DDR_OFFSET
 
 
 #define NF_SWC_REG		(0xf000)
@@ -87,6 +87,8 @@ static int write_nand_profile_bak(const void *dev, t_nand_profile *profile);
 static int write_nand_profile(const void *dev, t_nand_profile *profile);
 static unsigned int accumulate_byte_value(const void *buf, unsigned int length);
 
+// Nand detected block size
+extern unsigned int g_BlockSize;
 
 static int test_rw(n_device_type *dev)
 {
@@ -2577,13 +2579,13 @@ int do_init_n(void *dev)
 	// init block state table
 
 	//#ifdef ERASE_WHOLE_NAND_BEFORE_WRITIE
-	if (nf_page_size =2048)
+	if (nf_page_size = 2048)
 		erase_block_bound = DVR_init_erase_block_2k_page;
 	else
 		erase_block_bound = DVR_init_erase_block_4k_page;
 
 	// erase all.
-	for (i = 0; i < erase_block_bound; i++)
+	for (i = 6; i < BOOTARRAY_BLOCK_LIMIT; i++)
 		nf_erase_block(device, i);
 
 	prints("\n");
@@ -2627,6 +2629,8 @@ int do_init_n(void *dev)
 			case BLOCK_BAD:
 			// erase unknown type of block
 			default:
+				break;
+#if 0
 				if (nf_erase_block(device, i)) {
 					prints("nf_erase_block err , BB handle \n");
 					// write 'BAD_BLOCK' signature to spare cell
@@ -2661,6 +2665,7 @@ int do_init_n(void *dev)
 					}
 
 				}
+#endif
 		}
 	}
 

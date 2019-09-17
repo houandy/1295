@@ -31,11 +31,11 @@
 #include <linux/io.h>
 #include <linux/irqchip/arm-gic.h>
 #include <linux/psci.h>
+#include <linux/cpumask.h>
 #include <asm/system_misc.h>
 #include <asm/cacheflush.h>
 #include <asm/suspend.h>
 #include <soc/realtek/memory.h>
-#include <soc/realtek/rtk_cpu.h>
 #include <uapi/linux/psci.h>
 #include <soc/realtek/rtk_rstctl.h>
 
@@ -56,6 +56,9 @@ void __iomem *RTK_ISO_BASE;
 void __iomem *RTK_SB2_BASE;
 void __iomem *RTK_RSTCTRL_BASE;
 
+extern void rtk_cpu_power_up_all(void);
+extern void rtk_cpu_power_down(int cpu);
+extern void rtk_cpu_power_up(int cpu);
 extern void rtk_ddr_calibration_save(void); /* save ddr rx calibration */
 extern void rtk_ddr_calibration_restore(void); /* restore ddr rx calibration */
 extern void psci_sys_reset(enum reboot_mode reboot_mode, const char *cmd);
@@ -110,9 +113,8 @@ static void rtk_acpu_set_flag(uint32_t flag)
 	else
 		writel(__cpu_to_be32(flag | AUTHOR_MASK(AUTHOR_SCPU)),
 			&(ipc->suspend_flag));
-#endif			
+#endif
 }
-
 
 static void rtk_notify_acpu(enum _notify_flag flag)
 {
@@ -141,9 +143,8 @@ static void rtk_notify_acpu(enum _notify_flag flag)
 	}
 
 	rtk_acpu_set_flag(NOTIFY_MASK(flag));
-#endif		
+#endif
 }
-
 
 static int rtk_suspend_wakeup_acpu(void)
 {
@@ -175,11 +176,11 @@ static void setup_restart_action(RESET_ACTION action)
 static void rtk_sys_reset(enum reboot_mode reboot_mode, const char *cmd)
 {
 	if (cmd) {
-		set_wdt_oe();
-
 		if (!strncmp("bootloader", cmd, 11)) {
+			set_wdt_oe();
 			setup_restart_action(RESET_ACTION_FASTBOOT);
 		} else if (!strncmp("recovery", cmd, 9)) {
+			set_wdt_oe();
 			setup_restart_action(RESET_ACTION_RECOVERY);
 		} else {
 			setup_restart_action(RESET_ACTION_NO_ACTION);
@@ -190,7 +191,6 @@ static void rtk_sys_reset(enum reboot_mode reboot_mode, const char *cmd)
 
 	pr_info("[%s] Power reset\n", DEV);
 #if defined(CONFIG_THOR_PM_WORKARURD)
-	writel(0x01, RTK_ISO_BASE + 0x6C4);
 	writel(0xA5, RTK_ISO_BASE + 0x680);
 	writel(0x01, RTK_ISO_BASE + 0x684);
 	writel(0x100, RTK_ISO_BASE + 0x68C);
@@ -262,6 +262,7 @@ static int rtk_suspend_standby(unsigned long unused)
 
 static int rtk_suspend_mem(unsigned long pcpu_data)
 {
+
 #if RTK_PM_DEBUG
 
 	struct suspend_param *tmp = (struct suspend_param *) pcpu_data;
@@ -289,10 +290,27 @@ static int rtk_suspend_mem(unsigned long pcpu_data)
 	return psci_system_suspend(__pa(pcpu_data));
 }
 
+static void rtk_suspend_cpu_pwr_down(void) {
+	unsigned int cpu = 1;
+
+	for (cpu = 1 ; cpu < NR_CPUS ; cpu++) {
+		rtk_cpu_power_down(cpu);
+	}
+}
+
+static void rtk_suspend_cpu_pwr_up(void) {
+	unsigned int cpu = 1;
+
+	for (cpu = 1 ; cpu < NR_CPUS ; cpu++)
+		rtk_cpu_power_up(cpu);
+}
+
 static int rtk_suspend_enter(suspend_state_t state)
 {
 	int ret = 0;
 	int i = 0;
+
+	rtk_suspend_cpu_pwr_down();
 
 	switch (state) {
 	case PM_SUSPEND_STANDBY:
@@ -329,6 +347,8 @@ static int rtk_suspend_enter(suspend_state_t state)
 		break;
 	}
 
+	rtk_cpu_power_up_all();
+
 	/* restore original value */
 	pcpu_data->wakeup_source = htonl(pcpu_data->wakeup_source);
 	pcpu_data->timerout_val = htonl(pcpu_data->timerout_val);
@@ -342,10 +362,12 @@ static int rtk_suspend_enter(suspend_state_t state)
 #endif /* RTK_DDR_CALIBRATION */
 #ifdef CONFIG_RTK_RPC
 	/* Enable ACPU clock*/
-	writel(readl(RTK_CRT_BASE + 0x58) | 0x000000C0, RTK_CRT_BASE + 0x58);
+	writel_relaxed(readl(RTK_CRT_BASE + 0x58) | 0x000000C0, RTK_CRT_BASE + 0x58);
 #endif
-	writel(readl(RTK_ISO_BASE + 0x0418) | BIT(0), RTK_ISO_BASE + 0x0418);
-	writel(readl(RTK_ISO_BASE + 0x0410) & ~BIT(10), RTK_ISO_BASE + 0x0410);
+	writel_relaxed(readl(RTK_ISO_BASE + 0x0418) | BIT(0), RTK_ISO_BASE + 0x0418);
+	writel_relaxed(readl(RTK_ISO_BASE + 0x0410) & ~BIT(10), RTK_ISO_BASE + 0x0410);
+
+	writel_relaxed(0x0000aaaa, RTK_CRT_BASE + 0xc);
 
 	return ret;
 }

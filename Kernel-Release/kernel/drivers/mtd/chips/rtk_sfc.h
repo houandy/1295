@@ -76,7 +76,7 @@
 #define MANUFACTURER_ID_WINBOND     0xef //add by alexchang
 #define MANUFACTURER_ID_ESMT        0x8c //add by alexchang
 #define MANUFACTURER_ID_GD          0xc8 //add by alexchang
-
+#define MANUFACTURER_ID_FM          0xA1
 
 #define RTK_SFC_ATTR_NONE                       0x00
 #define RTK_SFC_ATTR_SUPPORT_MD_PP              0x01

@@ -1,8 +1,10 @@
 /*
  * rtk-efuse.c - Realtek eFuse driver
  *
- * Copyright (C) 2016-2018 Realtek Semiconductor Corporation
- * Copyright (C) 2016-2018 Cheng-Yu Lee <cylee12@realtek.com>
+ * Copyright (C) 2016-2019 Realtek Semiconductor Corporation
+ *
+ * Author:
+ *      Cheng-Yu Lee <cylee12@realtek.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as

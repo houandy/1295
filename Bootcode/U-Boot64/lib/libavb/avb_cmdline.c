@@ -350,6 +350,14 @@ AvbSlotVerifyResult avb_append_options(
     goto out;
   }
 
+  if (avb_strcmp(verity_mode, "disabled") == 0) {
+      if (!cmdline_append_option(
+          slot_data, "androidboot.verifiedbootstate", "orange")) {
+          ret = AVB_SLOT_VERIFY_RESULT_ERROR_OOM;
+          goto out;
+      }
+  }
+
   ret = AVB_SLOT_VERIFY_RESULT_OK;
 
 out:

@@ -1224,15 +1224,7 @@ void tick_setup_sched_timer(void)
 
 	/* Get the next period (per-CPU) */
 	hrtimer_set_expires(&ts->sched_timer, tick_init_jiffy_update());
-#ifdef CONFIG_ARCH_RTD16xx
-	{
-		/* Offset the tick to avert jiffies_lock contentio,(CH bonding) */
-		u64 offset = ktime_to_ns(tick_period) >> 1;
-		do_div(offset, num_possible_cpus());
-		offset *= smp_processor_id();
-		hrtimer_add_expires_ns(&ts->sched_timer, offset);
-	}
-#else
+
 	/* Offset the tick to avert jiffies_lock contention. */
 	if (sched_skew_tick) {
 		u64 offset = ktime_to_ns(tick_period) >> 1;
@@ -1240,7 +1232,7 @@ void tick_setup_sched_timer(void)
 		offset *= smp_processor_id();
 		hrtimer_add_expires_ns(&ts->sched_timer, offset);
 	}
-#endif
+
 	hrtimer_forward(&ts->sched_timer, now, tick_period);
 	hrtimer_start_expires(&ts->sched_timer, HRTIMER_MODE_ABS_PINNED);
 	tick_nohz_activate(ts, NOHZ_MODE_HIGHRES);

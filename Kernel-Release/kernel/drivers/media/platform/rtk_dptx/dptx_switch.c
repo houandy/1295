@@ -49,6 +49,7 @@ static void dptx_switch_work_func(struct work_struct *work)
 			container_of(swdev, struct rtk_dptx_device, swdev);
 	struct device *dev = dptx_dev->dev;
 
+	dptx_dev->isr_signal = true;
 	swdev->state = gpio_get_value(swdev->hpd_gpio);
 	if (swdev->state != switch_get_state(&swdev->sw))
 		dev_info(dev, "%s\n", swdev->state?"plugged in":"pulled out");
@@ -58,10 +59,11 @@ static void dptx_switch_work_func(struct work_struct *work)
 	if (!swdev->state)
 		dptx_dev->cap.sink_cap_available = false;
 
-	if (dptx_dev->selftest)
+	if (swdev->state && dptx_dev->selftest)
 		dptx_config_tv_system(&dptx_dev->hwinfo);
 
 	switch_set_state(&swdev->sw, swdev->state);
+	wake_up_interruptible(&dptx_dev->hpd_wait);
 }
 
 int rtk_dptx_switch_suspend(struct rtk_dptx_device *dptx_dev)
@@ -101,6 +103,11 @@ int register_dptx_switch(struct rtk_dptx_device *dptx_dev)
 	}
 
 	gpio = of_get_gpio(hpd, 0);
+	if (gpio < 0) {
+		dev_err(dev, "[%s] can't find hot plug gpio in dtb\n", __func__);
+		goto fail;
+	}
+
 	if (gpio_request(gpio, hpd->name)) {
 		dev_err(dev, "[%s] can't get hot plug gpio\n", __func__);
 		goto fail;

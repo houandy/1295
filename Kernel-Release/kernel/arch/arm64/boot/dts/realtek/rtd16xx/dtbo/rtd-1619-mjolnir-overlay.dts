@@ -64,10 +64,6 @@
 	status = "okay";
 };
 
-&dvfs{
-	status = "okay";
-};
-
 &gpu{
 	status = "okay";
 };

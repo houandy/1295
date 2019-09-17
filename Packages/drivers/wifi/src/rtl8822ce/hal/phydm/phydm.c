@@ -1023,7 +1023,7 @@ u64 phydm_supportability_init_ce(void *dm_void)
 			ODM_BB_RSSI_MONITOR |
 			ODM_BB_CCK_PD |
 			ODM_BB_RATE_ADAPTIVE |
-			ODM_BB_PATH_DIV |
+			/* ODM_BB_PATH_DIV | */
 			ODM_BB_CFO_TRACKING |
 			ODM_BB_ENV_MONITOR;
 		break;
@@ -1383,8 +1383,7 @@ void phydm_fwoffload_ability_init(struct dm_struct *dm,
 {
 	switch (offload_ability) {
 	case PHYDM_PHY_PARAM_OFFLOAD:
-		if (dm->support_ic_type &
-		    (ODM_RTL8814A | ODM_RTL8822B | ODM_RTL8821C))
+		if (dm->support_ic_type & PHYDM_IC_SUPPORT_FW_PARAM_OFFLOAD)
 			dm->fw_offload_ability |= PHYDM_PHY_PARAM_OFFLOAD;
 		break;
 
@@ -1406,8 +1405,7 @@ void phydm_fwoffload_ability_clear(struct dm_struct *dm,
 {
 	switch (offload_ability) {
 	case PHYDM_PHY_PARAM_OFFLOAD:
-		if (dm->support_ic_type &
-		    (ODM_RTL8814A | ODM_RTL8822B | ODM_RTL8821C))
+		if (dm->support_ic_type & PHYDM_IC_SUPPORT_FW_PARAM_OFFLOAD)
 			dm->fw_offload_ability &= (~PHYDM_PHY_PARAM_OFFLOAD);
 		break;
 
@@ -2282,6 +2280,9 @@ void odm_cmn_info_init(struct dm_struct *dm, enum odm_cmninfo cmn_info,
 	case ODM_CMNINFO_HP_HWID:
 		dm->hp_hw_id = (boolean)value;
 		break;
+	case ODM_CMNINFO_DIS_DPD:
+		dm->en_dis_dpd = (boolean)value;
+		break;
 	default:
 		break;
 	}
@@ -2530,6 +2531,9 @@ void odm_cmn_info_update(struct dm_struct *dm, u32 cmn_info, u64 value)
 		break;
 	case ODM_CMNINFO_PHYDM_PATCH_ID:
 		dm->iot_table.phydm_patch_id = (u32)value;
+		break;
+	case ODM_CMNINFO_RRSR_VAL:
+		dm->dm_ra_table.rrsr_val_init = (u32)value;
 		break;
 	default:
 		break;
@@ -3048,7 +3052,8 @@ void phydm_dc_cancellation(struct dm_struct *dm)
 	for (path = RF_PATH_A; path < PHYDM_MAX_RF_PATH; path++) {
 		if (path > RF_PATH_A &&
 		    dm->support_ic_type & (ODM_RTL8821C | ODM_RTL8188F |
-					  ODM_RTL8710B | ODM_RTL8721D))
+					  ODM_RTL8710B | ODM_RTL8723D |
+					  ODM_RTL8721D))
 			break;
 		else if (path > RF_PATH_B &&
 			 dm->support_ic_type & (ODM_RTL8822B | ODM_RTL8192F))
@@ -3063,7 +3068,8 @@ void phydm_dc_cancellation(struct dm_struct *dm)
 			halrf_rf_lna_setting(dm, HALRF_LNA_DISABLE);
 		/*Turn off 3-wire*/
 		phydm_stop_3_wire(dm, PHYDM_SET);
-		if (dm->support_ic_type & (ODM_RTL8188F | ODM_RTL8710B)) {
+		if (dm->support_ic_type & (ODM_RTL8188F | ODM_RTL8710B |
+			ODM_RTL8723D)) {
 			/*set debug port to 0x235*/
 			if (!phydm_set_bb_dbg_port(dm, DBGPORT_PRI_1, 0x235)) {
 				PHYDM_DBG(dm, ODM_COMP_API,
@@ -3147,7 +3153,8 @@ void phydm_dc_cancellation(struct dm_struct *dm)
 	/*@DC_Cancellation*/
 	/*@DC compensation to CCK data path*/
 	odm_set_bb_reg(dm, R_0xa9c, BIT(20), 0x1);
-	if (dm->support_ic_type & (ODM_RTL8188F | ODM_RTL8710B)) {
+	if (dm->support_ic_type & (ODM_RTL8188F | ODM_RTL8710B |
+		ODM_RTL8723D)) {
 		offset_i_hex[0] = (reg_value32[0] & 0xffc0000) >> 18;
 		offset_q_hex[0] = (reg_value32[0] & 0x3ff00) >> 8;
 

@@ -34,7 +34,7 @@
 /memreserve/ ION_AUDIO_HEAP_PHYS_0  ION_AUDIO_HEAP_SIZE_0;
 /memreserve/ ION_MEDIA_HEAP_PHYS_1  ION_MEDIA_HEAP_SIZE_1;
 
-#include "rtd-13xx.dtsi"
+#include "rtd-1319-pymparticle.dtsi"
 #include "rtd-1319-usb.dtsi"
 #include "rtd-1319-sata.dtsi"
 
@@ -65,7 +65,7 @@
 	chosen {
 		linux,initrd-start = <ROOTFS_NORMAL_START>;
 		linux,initrd-end = <ROOTFS_NORMAL_END>;
-		bootargs = "earlycon=uart8250,mmio32,0x98007800 console=ttyS0,115200 init=/init androidboot.storage=emmc androidboot.hardware=hank loglevel=4";
+		bootargs = "earlycon=uart8250,mmio32,0x98007800 console=ttyS0,460800 init=/init androidboot.storage=emmc androidboot.hardware=hank loglevel=4";
 		swiotlb-memory-reservation-size = <512>; /*  512: 1MB,  2048: 4MB*/
 		swiotlb-force = <0>; /* 0: SWIOTLB_NORMAL, 1: SWIOTLB_FORCE, 2: SWIOTLB_NO_FORCE */
 		cma-region-enable = <1>;
@@ -211,15 +211,12 @@
 		fps = <60>;
 	};
 
-	sata_phy: sata_phy@9803FF60 {
-		sata-phy@0 {
-			status = "disabled";
-		};
-	};
-
 	ahci_sata: sata@9803F000 {
 		sata-port@0 {
-			/delete-property/ phys;
+			gpios = <&rtk_iso_gpio 80 1 1>;
+		};
+		sata-port@1 {
+			gpios = <&rtk_iso_gpio 81 1 1>;
 		};
 	};
 };

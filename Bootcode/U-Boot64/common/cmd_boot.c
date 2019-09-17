@@ -28,25 +28,28 @@
 #ifndef CONFIG_BOOT_FOR_WD
 #include <command.h>
 #include <net.h>
-#include <asm/arch/rbus/crt_reg.h>
+#include <watchdog.h>
+#include <nand.h>
+#include <rtkspi.h>
+#include <fdt_support.h>
+#include "linux/lzo.h"
+#include "../lib/fastboot/bootimg.h"
+#include <asm/sizes.h>
 #include <asm/arch/system.h>
 #include <asm/arch/fw_info.h>
 #include <asm/arch/mcp.h>
-#include <watchdog.h>
-#include <nand.h>
 #include <asm/arch/bootparam.h>
+#include <asm/arch/rbus/crt_reg.h>
 #include <asm/arch/rbus/nand_reg.h>
-#include <asm/arch/rtk_ipc_shm.h>
 #include <asm/arch/rbus/iso_reg.h>
-#include <asm/sizes.h>
+#include <asm/arch/rbus/crt_sys_reg.h>
+#include <asm/arch/rtk_ipc_shm.h>
 #include <asm/arch/cpu.h>
-#include "../lib/fastboot/bootimg.h"
+#include <asm/arch/factorylib.h>
+#include <asm/arch/rtkemmc.h>
 #ifdef CONFIG_CMD_SATA
 #include <sata.h>
 #endif
-#include <asm/arch/factorylib.h>
-#include <asm/arch/rtkemmc.h>
-#include <rtkspi.h>
 #ifdef CONFIG_CUSTOMIZE_BOOTFLOW_1
 #include <customized.h>
 #endif
@@ -55,13 +58,11 @@
 #include <version.h>
 #endif
 
-
 #ifdef CONFIG_LZMA
 #include <lzma/LzmaTypes.h>
 #include <lzma/LzmaDec.h>
 #include <lzma/LzmaTools.h>
 #endif /* CONFIG_LZMA */
-#include "linux/lzo.h"
 
 #define CONFIG_ANDROID_RECOVERY 0
 #if CONFIG_ANDROID_RECOVERY
@@ -76,14 +77,11 @@ typedef struct _bootloader_message {
 #endif
 
 #define CONFIG_FW_TABLE_SIZE    0x8000
-//#define CONFIG_FACTORY_SIZE          0x400000
-
 
 //#define BYPASS_CHECKSUM
 //#define EMMC_BLOCK_LOG
 
 DECLARE_GLOBAL_DATA_PTR;
-
 
 typedef enum{
 	BOOT_FROM_USB_DISABLE,
@@ -95,8 +93,6 @@ typedef enum{
 	BOOT_FROM_FLASH_NORMAL_MODE,
 	BOOT_FROM_FLASH_MANUAL_MODE
 }BOOT_FROM_FLASH_T;
-
-#if defined(CONFIG_RTD1295) || defined(CONFIG_RTD1395) || defined(CONFIG_RTD161x)
 
 #ifdef CONFIG_CMD_SATA
 extern int sata_boot_debug;
@@ -131,15 +127,17 @@ BOOT_FROM_FLASH_T boot_from_flash = BOOT_FROM_FLASH_NORMAL_MODE;
 BOOT_FROM_USB_T boot_from_usb = BOOT_FROM_USB_DISABLE;
 extern BOOT_MODE boot_mode;
 
-#ifdef CONFIG_TEE
-uint tee_enable=0;
-#endif /* CONFIG_TEE */
 #ifdef NAS_ENABLE
 uint initrd_size=0;
+
+#if defined(NAS_ENABLE) && defined(CONFIG_RTD161x)
+char *ion_media_heap0_size_str;
+char *ion_media_heap1_size_str;
+long ion_media_heap0_size_MB;
+long ion_media_heap1_size_MB;
+uint skip_avfw_entry = 0;
+#endif /*defined(NAS_ENABLE) && defined(CONFIG_RTD161x)*/
 #endif /* NAS_ENABLE */
-
-#endif /* defined(CONFIG_RTD1295) || defined(CONFIG_RTD1395) || defined(CONFIG_RTD161x) */
-
 #ifdef CONFIG_CMD_KEY_BURNING
 extern int OTP_Get_Byte(int offset, unsigned char *ptr, unsigned int cnt);
 extern unsigned int OTP_JUDGE_BIT(unsigned int offset);
@@ -153,12 +151,8 @@ int UBOOT_NORMAL_BOOT = 1; /* Set UBoot normal or secure boot */
 
 extern const unsigned int Kh_key_default[4];
 
-
-
 #ifdef CONFIG_CMD_GO
-
 #if defined(CONFIG_UBOOT_DEFAULT) || defined(CONFIG_FT_RESCUE)
-#if defined(CONFIG_RTD1295) || defined(CONFIG_RTD1395) || defined(CONFIG_RTD161x)
 
 #define BIST_ROOTFS_ADDR    0x30000000
 
@@ -188,6 +182,9 @@ void rtk_hexdump( const char * str, unsigned char * pcBuf, unsigned int length )
 void GetKeyFromSRAM(unsigned int sram_addr, unsigned char* key, unsigned int length);
 
 static void reset_shared_memory(void);
+#if defined(CONFIG_SYS_RTK_EMMC_FLASH) || defined(CONFIG_BOOT_FROM_SPI) || defined(CONFIG_SYS_RTK_NAND_FLASH)
+static unsigned int get_rescue_rootfs_addr(unsigned int fw_tbl_addr) __maybe_unused;
+#endif
 
 #define OTP_REG_BASE  0x98017000
 UINT32 OTP_GET_BYTE(UINT32 offset, UINT8 *ptr, UINT32 cnt)
@@ -232,11 +229,11 @@ static unsigned long do_go_kernel_image(void)
 }
 
 #if defined(CONFIG_RTD161x)
-void cmd_bl31_afw_magic(void)
+void cmd_bl31_afw_magic(unsigned int startup_addr, unsigned int magic_num)
 {
 	//write magic1
-	asm volatile("mov x1, %0" : :"r"(ACPU_STARTUP_FLAG): "cc");
-	asm volatile("mov x2, %0" : :"r"(ACPU_MAGIC1): "cc");
+	asm volatile("mov x2, %0" : :"r"(magic_num): "cc");
+	asm volatile("mov x1, %0" : :"r"(startup_addr): "cc");
 	asm volatile("mov x0, %0" : :"r"(0x8400ffff): "cc"); //function id
 	asm volatile("isb" : : : "cc");
 	asm volatile("smc #0" : : : "cc");
@@ -278,7 +275,16 @@ static unsigned long do_go_audio_fw(void)
 #if defined(CONFIG_RTD1395)
 	rtd_outl(ACPU_STARTUP_FLAG, ACPU_MAGIC1); //write magic1
 #elif defined(CONFIG_RTD161x)
-	cmd_bl31_afw_magic();
+	/* ACPU PLL setting */
+	rtd_outl(SYS_PLL_ACPU2, 0x00000005); /* OEB=1, RSTB=0, POW=1 */
+	rtd_outl(SYS_PLL_ACPU2, 0x00000007); /* OEB=1, RSTB=1, POW=1 */
+	rtd_outl(SYS_PLL_SSC_DIG_ACPU0, 0x0000000c); /* turn off OC_EN_ACPU */
+	rtd_outl(SYS_PLL_SSC_DIG_ACPU1, 0x00012ded); /* 550MHz(Default) */
+	rtd_outl(SYS_PLL_SSC_DIG_ACPU0, 0x0000000d); /* turn on OC_EN_ACPU */
+	udelay(150);
+	rtd_outl(SYS_PLL_ACPU2, 0x00000003); /* enable ACPU PLL OEB */
+
+	cmd_bl31_afw_magic(ACPU_STARTUP_FLAG, ACPU_MAGIC1);
 #else
 	rtd_outl(ISO_RESERVED_USE_3, MIPS_A_ENTRY_CODE_ADDR | MIPS_KSEG1BASE);
 #endif
@@ -293,7 +299,36 @@ static unsigned long do_go_audio_fw(void)
 	audio_fw_state = 1;
 
 	return 0;
+}
 
+static unsigned int do_go_video_fw(void)
+{
+#if defined(CONFIG_RTD131x)
+	int err;
+	unsigned int fdt_addr;
+
+	printf("Booting VCPU...\n");
+
+	/* Reserve the memory for vcpu */
+	fdt_addr = getenv_ulong("fdt_loadaddr", 16, 0x02100000);
+	err = fdt_add_mem_rsv((void *)(uintptr_t)fdt_addr, VFW_MEM_START_ADDR, VFW_MEM_SIZE);
+	if (err < 0)
+		printf("## WARNING %s Add VFW_MEMRSV: %s\n", __func__, fdt_strerror(err));
+
+	/* Continuously send smc command will hang, using mdelay to avoid it. */
+	mdelay(1);
+	cmd_bl31_afw_magic(VCPU_STARTUP_FLAG, VCPU_MAGIC1);
+	sync();
+
+	rtd_setbits(SYS_SOFT_RESET1, _BIT14|_BIT15); /* reset ve2 bist */
+	mdelay(1);
+	cmd_bl31_afw_magic(RESET_VE2_REGISTER, 0x1); /* reset ve2 bit */
+	sync();
+	rtd_outl(SYS_CLOCK_ENABLE1, 0x00C00000); /* clock enable for ve2 H256 */
+	rtd_outl(SYS_VE_CKSEL, 0x0000061B); /* VE_CKSEL */
+	rtd_outl(SYS_PLL_VE2_2, 0x00000003); /* pllvcpu2 reset control active and power control on */
+#endif
+	return 0;
 }
 
 static unsigned long do_go_all_fw(void)
@@ -306,6 +341,11 @@ static unsigned long do_go_all_fw(void)
 		return RTK_PLAT_ERR_BOOT;
 	}
 
+	if (run_command("go v", 0) != 0) {
+		printf("go v failed!\n");
+		return RTK_PLAT_ERR_BOOT;
+	}
+
 	if (run_command("go k", 0) != 0) {
 		printf("go k failed!\n");
 		return RTK_PLAT_ERR_BOOT;
@@ -313,7 +353,6 @@ static unsigned long do_go_all_fw(void)
 
 	return ret;
 }
-#endif /* defined(CONFIG_RTD1295) || defined(CONFIG_RTD1395) || defined(CONFIG_RTD161x) */
 
 #ifdef CONFIG_RESCUE_FROM_USB
 int rtk_decrypt_rescue_from_usb(char* filename, unsigned int target)
@@ -416,6 +455,7 @@ int boot_rescue_from_usb(void)
 	char tmpbuf[128];
 	int ret = RTK_PLAT_ERR_OK;
 	char *filename;
+	unsigned int rescue_rootfs_loadaddr=CONFIG_RESCUE_ROOTFS_LOADADDR;
 	unsigned int secure_mode=0;
 
 	secure_mode = rtk_get_secure_boot_type();
@@ -462,20 +502,21 @@ int boot_rescue_from_usb(void)
 	if ((filename = getenv("rescue_rootfs")) == NULL) {
 		filename =(char*) CONFIG_RESCUE_FROM_USB_ROOTFS;
 	}
+	rescue_rootfs_loadaddr = get_rescue_rootfs_addr(rescue_rootfs_loadaddr);
 	if(secure_mode == RTK_SECURE_BOOT)
 	{
-		if (rtk_decrypt_rescue_from_usb(filename, getenv_ulong("rootfs_loadaddr", 16, 0)))
+		if (rtk_decrypt_rescue_from_usb(filename, rescue_rootfs_loadaddr))
 		goto loading_failed;
 	}
 	else
 	{
-		sprintf(tmpbuf, "fatload usb 0:1 %s %s", getenv("rootfs_loadaddr"), filename);
+		sprintf(tmpbuf, "fatload usb 0:1 0x%08x %s", rescue_rootfs_loadaddr, filename);
 		if (run_command(tmpbuf, 0) != 0) {
 			goto loading_failed;
 		}
 	}
 
-	printf("Loading \"%s\" to %s is OK.\n\n", filename, getenv("rootfs_loadaddr"));
+	printf("Loading \"%s\" to 0x%08x is OK.\n\n", filename, rescue_rootfs_loadaddr);
 
 	/* audio firmware */
 	if ((filename = getenv("rescue_audio")) == NULL) {
@@ -620,31 +661,6 @@ int boot_from_sd(void)
 		printf("Loading \"%s\" to %s is OK.\n\n", filename, getenv("kernel_loadaddr"));
 	}
 
-	/* TEE OS, BL31 --------------------------------------------------------- */
-#if 0
-	/* TEE OS */
-	filename = "tee.bin";
-	sprintf(tmpbuf, "fatload sd 0:1 %x %s", CONFIG_TEE_OS_ADDR, filename);
-	if (run_command(tmpbuf, 0) == 0){
-		printf("Loading \"%s\" to 0x%08x is OK.\n\n", filename, CONFIG_TEE_OS_ADDR);
-	}
-	else{
-		printf("Loading \"%s\" from SD failed.\n", filename);
-		goto loading_failed;
-	}
-
-	/* BL31 */
-	filename = "bl31.bin";
-	sprintf(tmpbuf, "fatload sd 0:1 %x %s", CONFIG_BL31_ADDR, filename);
-	if (run_command(tmpbuf, 0) == 0){
-		printf("Loading \"%s\" to 0x%08x is OK.\n\n", filename, CONFIG_BL31_ADDR);
-	}
-	else{
-		printf("Loading \"%s\" from SD failed.\n", filename);
-		goto loading_failed;
-	}
-#endif
-
 	/* audio firmware ------------------------------------------------------- */
 	if ((filename = getenv("sd_audio")) == NULL) {
 		filename =(char*) CONFIG_BOOT_FROM_SD_AUDIO_CORE;
@@ -762,8 +778,6 @@ int do_go (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 	if (argc < 2)
 		return CMD_RET_USAGE;
 
-#if defined(CONFIG_UBOOT_DEFAULT) || defined(CONFIG_FT_RESCUE)
-#if defined(CONFIG_RTD1295) || defined(CONFIG_RTD1395) || defined(CONFIG_RTD161x)
 	if (argv[1][0] == 'a')
 	{
 		if (argv[1][1] == '\0')	// audio fw
@@ -778,6 +792,13 @@ int do_go (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		{
 			printf("Unknown command '%s'\n", argv[1]);
 			return CMD_RET_USAGE;
+		}
+	}
+	else if(argv[1][0] == 'v')
+	{
+		if (argv[1][1] == '\0')	// video fw
+		{
+			return do_go_video_fw();
 		}
 	}
 	else if( strncmp( argv[1], "sdb", 3 ) == 0 )
@@ -884,8 +905,6 @@ int do_go (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 			return 0;
 		}
 	}
-#endif /* defined(CONFIG_RTD1295) || defined(CONFIG_RTD1395) || defined(CONFIG_RTD161x) */
-#endif /* defined(CONFIG_UBOOT_DEFAULT) || defined(CONFIG_FT_RESCUE) */
 
 	addr = simple_strtoul(argv[1], NULL, 16);
 
@@ -964,6 +983,7 @@ U_BOOT_CMD(
 	"[addr/a/v/v1/v2/k] [arg ...]\n"
 	"\taddr  - start application at address 'addr'\n"
 	"\ta     - start audio firmware\n"
+	"\tv     - start video firmware\n"
 	"\tk     - start kernel\n"
 	"\tr     - start rescue linux\n"
 #ifdef CONFIG_RESCUE_FROM_USB
@@ -1563,7 +1583,6 @@ void GetKeyFromSRAM(unsigned int sram_addr, unsigned char* key, unsigned int len
 /* B00 rescue-rootfs is preload on DDR before entering LK.   */
 /* LK will then copy img from fw-tbl-addr to final addr.     */
 /* Uboot for A00/01 could just load it on default address.   */
-static unsigned int get_rescue_rootfs_addr(unsigned int fw_tbl_addr) __maybe_unused;
 static unsigned int get_rescue_rootfs_addr(unsigned int fw_tbl_addr)
 {
 	unsigned int final_addr = getenv_ulong("rescue_rootfs_loadaddr", 16, 0);
@@ -1749,7 +1768,7 @@ int rtk_plat_read_fw_image_from_eMMC(
 	unsigned int fw_length = 0;
 	int ret;
 	boot_av_info_t *boot_av;
-//	uint target_addr;
+	//uint target_addr;
 	uint block_no;
 	MEM_LAYOUT_WHEN_READ_IMAGE_T mem_layout;
 	uint imageSize = 0;
@@ -1830,6 +1849,13 @@ int rtk_plat_read_fw_image_from_eMMC(
 			continue;
 		/*The condition for decision the order of loading FW*/
 
+#if defined(NAS_ENABLE) && defined(CONFIG_RTD161x)
+		if (skip_avfw_entry) {
+			if ( entry_type == FW_TYPE_AUDIO || entry_type == FW_TYPE_IMAGE_FILE ) {
+				continue;
+			}
+		}
+#endif
 		if ( entry_type == FW_TYPE_AUDIO || entry_type == FW_TYPE_GOLD_AUDIO)
 			Auto_AFW_MEM_START = entry_target_addr;
 		/* Save the address of AFW from fw_desc */
@@ -1880,14 +1906,6 @@ int rtk_plat_read_fw_image_from_eMMC(
 						run_command(tmpbuf, 0);
 						break;
 
-					case FW_TYPE_TEE:
-#ifdef CONFIG_TEE
-						printf("TEE:\n");
-						tee_enable=1;
-						break;
-#else
-						continue;
-#endif
 					case FW_TYPE_AUDIO:
 						if(boot_mode == BOOT_KERNEL_ONLY_MODE)
 							continue;
@@ -1919,6 +1937,9 @@ int rtk_plat_read_fw_image_from_eMMC(
 						break;
 					case FW_TYPE_RESCUE_IMAGE:
 						printf("RESCUE_IMAGE:\n");
+						break;
+					case FW_TYPE_VIDEO:
+						printf("Video:\n");
 						break;
 					default:
 						//printf("Unknown FW (%d):\n", entry_type);
@@ -1963,6 +1984,9 @@ int rtk_plat_read_fw_image_from_eMMC(
 					case FW_TYPE_GOLD_IMAGE:
 						printf("GOLD_IMAGE:\n");
 						break;
+					case FW_TYPE_VIDEO:
+						printf("Video:\n");
+						break;
 					default:
 						//printf("Unknown FW (%d):\n", entry_type);
 						continue;
@@ -1999,15 +2023,6 @@ int rtk_plat_read_fw_image_from_eMMC(
 					case FW_TYPE_KERNEL_ROOTFS:
 						printf("ROOTFS:\n");
 						break;
-
-					case FW_TYPE_TEE:
-#ifdef CONFIG_TEE
-						printf("TEE:\n");
-						tee_enable=1;
-						break;
-#else
-						continue;
-#endif
 
 					case FW_TYPE_AUDIO:
 						if(boot_mode == BOOT_KERNEL_ONLY_MODE)
@@ -2110,15 +2125,18 @@ int rtk_plat_read_fw_image_from_eMMC(
 					case FW_TYPE_BOOT_IMAGE:
 						printf("BOOT_IMAGE:\n");
 						break;
+					case FW_TYPE_VIDEO:
+						printf("Video:\n");
+						break;
 					default:
 						//printf("Unknown FW (%d):\n", entry_type);
 						continue;
 				}
 			}
-#if defined(CONFIG_RTD1395) || defined(CONFIG_RTD161x)
+#ifndef CONFIG_RTD1295
 #ifndef CONFIG_BOOTCODE_LOAD_AVFW
 			// after 1395, audio fw belong to trusted fw and need to be loaded by FSBL
-			if (entry_type == FW_TYPE_AUDIO || entry_type == FW_TYPE_GOLD_AUDIO) {
+			if (entry_type == FW_TYPE_AUDIO || entry_type == FW_TYPE_GOLD_AUDIO || entry_type == FW_TYPE_VIDEO) {
 				printf("\t FW Image preload on 0x%08x, size=0x%08x (0x%08x)\n",
 					entry_target_addr, entry_length, entry_target_addr + entry_length);
 				continue;
@@ -2158,13 +2176,18 @@ int rtk_plat_read_fw_image_from_eMMC(
 					entry_type == FW_TYPE_RESCUE_ROOTFS ||
 					entry_type == FW_TYPE_AUDIO ||
 					entry_type == FW_TYPE_GOLD_KERNEL ||
-                    			entry_type == FW_TYPE_GOLD_RESCUE_ROOTFS ||
-                    			entry_type == FW_TYPE_GOLD_AUDIO)
+					entry_type == FW_TYPE_GOLD_RESCUE_ROOTFS ||
+					entry_type == FW_TYPE_GOLD_AUDIO)
 				{
 					/* get memory layout before copy fw image */
 					mem_layout.bIsEncrypted = (secure_mode != NONE_SECURE_BOOT);
 					mem_layout.bIsCompressed = entry_lzma;
 					mem_layout.image_target_addr = entry_target_addr & (~MIPS_KSEG_MSK);
+				}
+				else if (entry_type == FW_TYPE_IMAGE_FILE) {
+					mem_layout.bIsEncrypted = (secure_mode != NONE_SECURE_BOOT);
+					mem_layout.bIsCompressed = entry_lzma;
+					mem_layout.image_target_addr = entry_target_addr;
 				}
 				else
 				{
@@ -2192,13 +2215,6 @@ int rtk_plat_read_fw_image_from_eMMC(
 					printf("[ERR] Read fw error (type:%d)!\n", entry_type);
 
 					return RTK_PLAT_ERR_READ_FW_IMG;
-				}
-
-				/* Parsing android P flash layout */
-				if (entry_type == FW_TYPE_BOOT_IMAGE || entry_type == FW_TYPE_RESCUE_IMAGE ||
-					entry_type == FW_TYPE_GOLD_IMAGE) {
-					if(bootimg_parsing(entry_type, entry_target_addr))
-						return RTK_PLAT_ERR_READ_FW_IMG;
 				}
 
 #ifndef BYPASS_CHECKSUM
@@ -2241,6 +2257,13 @@ int rtk_plat_read_fw_image_from_eMMC(
 					} else {
 						return RTK_PLAT_ERR_READ_FW_IMG;
 					}
+				}
+
+				/* Parsing android P flash layout */
+				if (entry_type == FW_TYPE_BOOT_IMAGE || entry_type == FW_TYPE_RESCUE_IMAGE ||
+					entry_type == FW_TYPE_GOLD_IMAGE) {
+					if(bootimg_parsing(entry_type, entry_target_addr))
+						return RTK_PLAT_ERR_READ_FW_IMG;
 				}
 
 				/* if secure mode, do AES CBC decrypt */
@@ -2458,7 +2481,7 @@ int rtk_plat_read_fw_image_from_NAND(
 	char *tmp_cmdline = NULL;
 	u64 size;
 	char str[16];// old array size is 5, change to 16. To avoid the risk in memory overlap.
-#if defined(CONFIG_TARGET_RTD1395) || defined(CONFIG_TARGET_RTD1395_V7)
+#ifndef CONFIG_TARGET_RTD1295
 	unsigned long used_size = 0;
 	unsigned long nand_size = 0;
 #else
@@ -2512,7 +2535,7 @@ int rtk_plat_read_fw_image_from_NAND(
 	/* Add mtd_part env var */
 	if(boot_mode != BOOT_RESCUE_MODE && boot_mode != BOOT_GOLD_MODE)
 	{
-#if defined(CONFIG_TARGET_RTD1395) || defined(CONFIG_TARGET_RTD1395_V7)
+#ifndef CONFIG_TARGET_RTD1295
 		setenv("mtd_part", "mtdparts=rtk_nand:");
 
 		for(i = 0; i < part_count; i++) {
@@ -2725,7 +2748,6 @@ int rtk_plat_read_fw_image_from_NAND(
 							(unsigned int)(entry_target_addr + BOOT_LOGO_SIZE));
 						/* assign boot_av structure */
 						boot_av->dwMagicNumber = SWAPEND32(BOOT_AV_INFO_MAGICNO);
-						printf("  boot_logo_enable(%d), magic# 0x%08x\n", boot_logo_enable, boot_av->dwMagicNumber);
 						if(boot_logo_enable)
 						{
 							boot_av-> logo_enable = boot_logo_enable;
@@ -2744,7 +2766,7 @@ int rtk_plat_read_fw_image_from_NAND(
 				}
 			}
 
-#if defined(CONFIG_RTD1395) || defined(CONFIG_RTD161x)
+#ifndef CONFIG_RTD1295
 #ifndef CONFIG_BOOTCODE_LOAD_AVFW
 			// after 1395, audio fw belong to trusted fw and need to be loaded by FSBL
 			if (entry_type == FW_TYPE_AUDIO || entry_type == FW_TYPE_GOLD_AUDIO) {
@@ -2775,6 +2797,7 @@ int rtk_plat_read_fw_image_from_NAND(
 			if (entry_type == FW_TYPE_KERNEL ||
 				entry_type == FW_TYPE_KERNEL_ROOTFS ||
 				entry_type == FW_TYPE_RESCUE_ROOTFS ||
+				entry_type == FW_TYPE_IMAGE_FILE ||
 				entry_type == FW_TYPE_AUDIO ||
 				entry_type == FW_TYPE_GOLD_KERNEL ||
 				entry_type == FW_TYPE_GOLD_RESCUE_ROOTFS ||
@@ -2951,7 +2974,9 @@ int rtk_plat_read_fw_image_from_SPI(
 	uint entry_target_addr = 0;
 	u64 entry_offset = 0;
 	uint entry_length = 0;
+	uint entry_paddings = 0;
 	char tmpbuf[128];
+	unsigned int vo_secure_addr;
 
 	secure_mode = rtk_get_secure_boot_type();
 
@@ -2983,8 +3008,17 @@ int rtk_plat_read_fw_image_from_SPI(
 		FW_ENTRY_MEMBER_GET(entry_target_addr, this_entry, target_addr, version);
 		FW_ENTRY_MEMBER_GET(entry_type, this_entry, type, version);
 		FW_ENTRY_MEMBER_GET(entry_length, this_entry, length, version);
+		FW_ENTRY_MEMBER_GET(entry_paddings, this_entry, paddings, version);
 		FW_ENTRY_MEMBER_GET(entry_offset, this_entry, offset, version);
 		FW_ENTRY_MEMBER_GET(entry_lzma, this_entry, lzma, version);
+		
+#if defined(NAS_ENABLE) && defined(CONFIG_RTD161x)
+		if (skip_avfw_entry) {
+			if ( entry_type == FW_TYPE_AUDIO || entry_type == FW_TYPE_IMAGE_FILE ) {
+				continue;
+			}
+		}
+#endif
 
 		if (entry_target_addr)
 		{
@@ -3034,6 +3068,10 @@ int rtk_plat_read_fw_image_from_SPI(
 						entry_target_addr = get_kernel_rootfs_addr(entry_target_addr);
 #ifdef NAS_ENABLE
 						initrd_size = entry_length;
+						sprintf(tmpbuf, "mw.b 0x%08x 0 0x%x", entry_target_addr, entry_paddings);
+						printf("\t Clear memory at 0x%08x, size=0x%08x (0x%08x)\n",
+							entry_target_addr, entry_paddings, entry_target_addr + entry_paddings);
+						run_command(tmpbuf, 0);
 #endif
 						break;
 					}
@@ -3075,10 +3113,12 @@ int rtk_plat_read_fw_image_from_SPI(
 						continue;
 
 					printf("IMAGE FILE:\n");
-
+					vo_secure_addr = entry_target_addr + BOOT_LOGO_SIZE - 0x100000;
+					memset((void *)(uintptr_t)vo_secure_addr, 0x0, sizeof(char)*VO_SECURE_SIZE);
+					printf("Address for boot logo from %x to %x will be reserved.\n", (unsigned int)entry_target_addr,
+						(unsigned int)(entry_target_addr + BOOT_LOGO_SIZE));
 					/* assign boot_av structure */
 					boot_av->dwMagicNumber = SWAPEND32(BOOT_AV_INFO_MAGICNO);
-					printf("  boot_logo_enable(%d), magic# 0x%08x\n", boot_logo_enable, boot_av->dwMagicNumber);
 					if(boot_logo_enable)
 					{
 						boot_av-> logo_enable = boot_logo_enable;
@@ -3087,6 +3127,7 @@ int rtk_plat_read_fw_image_from_SPI(
 						boot_av-> src_height = CPU_TO_BE32(custom_logo_src_height);
 						boot_av-> dst_width = CPU_TO_BE32(custom_logo_dst_width);
 						boot_av-> dst_height = CPU_TO_BE32(custom_logo_dst_height);
+						boot_av-> vo_secure_addr = CPU_TO_BE32((unsigned int)(uintptr_t)vo_secure_addr);
 					}
 
 					break;
@@ -3106,9 +3147,6 @@ int rtk_plat_read_fw_image_from_SPI(
 			if (entry_type == FW_TYPE_KERNEL ||
 				entry_type == FW_TYPE_KERNEL_ROOTFS ||
 				entry_type == FW_TYPE_RESCUE_ROOTFS ||
-#ifdef CONFIG_BFS_SUPPORT_LOGO_IMG
-				entry_type == FW_TYPE_IMAGE_FILE ||
-#endif
 				entry_type == FW_TYPE_AUDIO)
 			{
 				/* get memory layout before copy fw image */
@@ -3116,6 +3154,14 @@ int rtk_plat_read_fw_image_from_SPI(
 				mem_layout.bIsCompressed = entry_lzma;
 				mem_layout.image_target_addr = entry_target_addr & (~MIPS_KSEG_MSK);
 			}
+#ifdef CONFIG_BFS_SUPPORT_LOGO_IMG
+			else if ( entry_type == FW_TYPE_IMAGE_FILE )
+			{
+				mem_layout.bIsEncrypted = (secure_mode != NONE_SECURE_BOOT);
+				mem_layout.bIsCompressed = entry_lzma;
+				mem_layout.image_target_addr = entry_target_addr;
+			}
+#endif
 			else
 			{
 				/* get memory layout before copy other image */
@@ -3138,6 +3184,22 @@ int rtk_plat_read_fw_image_from_SPI(
 			}
 
 		        rtkspi_read32_md(mem_layout.flash_to_ram_addr, SPI_RBUS_BASE_ADDR+entry_offset, imageSize);
+#ifdef NAS_ENABLE
+			if ((entry_type == FW_TYPE_KERNEL_ROOTFS || entry_type == FW_TYPE_RESCUE_ROOTFS) &&
+				entry_length < imageSize)
+			{
+				printf("\t Clear memory at 0x%08x, size=0x%08x (0x%08x)\n",
+					entry_target_addr + entry_length,
+					imageSize - entry_length,
+					entry_target_addr + imageSize);
+
+				sprintf(tmpbuf, "mw.b 0x%08x 0 0x%x",
+					entry_target_addr + entry_length,
+					imageSize - entry_length);
+				run_command(tmpbuf, 0);
+			}
+#endif
+
 #ifndef BYPASS_CHECKSUM
 			/* Check checksum */
 			if (FW_DESC_BASE_VERSION(version) == FW_DESC_TABLE_V1_T_VERSION_1) {
@@ -3325,14 +3387,6 @@ int rtk_plat_read_fw_image_from_SATA(
 						printf("Rescue ROOTFS:\n");
 						break;
 
-					case FW_TYPE_TEE:
-#ifdef CONFIG_TEE
-						printf("TEE:\n");
-						tee_enable=1;
-						break;
-#else
-						continue;
-#endif
 					case FW_TYPE_RESCUE_AUDIO:
 						if(boot_mode == BOOT_KERNEL_ONLY_MODE)
 							continue;
@@ -3406,15 +3460,6 @@ int rtk_plat_read_fw_image_from_SATA(
 					case FW_TYPE_KERNEL_ROOTFS:
 						printf("ROOTFS:\n");
 						break;
-
-					case FW_TYPE_TEE:
-#ifdef CONFIG_TEE
-						printf("TEE:\n");
-						tee_enable=1;
-						break;
-#else
-						continue;
-#endif
 
 					case FW_TYPE_AUDIO:
 						if(boot_mode == BOOT_KERNEL_ONLY_MODE)
@@ -3850,7 +3895,7 @@ static int rtk_plat_parse_fwdesc(fwdesc_args_t *fwdesc_args,
 
 		return RTK_PLAT_ERR_PARSE_FW_DESC;
 	}
-*/
+	*/
 
 
 	fw_desc_version = fw_desc_table_v1.version;
@@ -4066,7 +4111,7 @@ int rtk_plat_prepare_fw_image_from_eMMC(void)
 int rtk_plat_get_fw_desc_table_start(void)
 {
 #ifdef CONFIG_SYS_RTK_NAND_FLASH
-#if defined(CONFIG_TARGET_RTD1395) || defined(CONFIG_TARGET_RTD1395_V7)
+#ifndef CONFIG_TARGET_RTD1295
 
 	struct mtd_info *mtd = &nand_info[nand_curr_device];
 	int uboot_768KB = 0xc0000;
@@ -4083,7 +4128,7 @@ int rtk_plat_get_fw_desc_table_start(void)
 	reservedSize += 1*4* mtd->erasesize; //RSA_TEE*4
 	reservedSize += ALIGN(factory_4MB ,mtd->erasesize);
 
-#else //CONFIG_TARGET_RTD1395 || CONFIG_TARGET_RTD1395_V7
+#else //Not define CONFIG_TARGET_RTD1295
 #ifdef NAS_ENABLE
 	struct mtd_info *mtd = &nand_info[0];
 #else
@@ -4109,7 +4154,7 @@ int rtk_plat_get_fw_desc_table_start(void)
 	reservedSize += ALIGN(uboot_768KB ,mtd->erasesize)*4;
 	reservedSize += ALIGN(factory_8MB ,mtd->erasesize);
 
-#endif //CONFIG_TARGET_RTD1395 || CONFIG_TARGET_RTD1395_V7
+#endif //Not define CONFIG_TARGET_RTD1295
 	return reservedSize;
 #endif
 	return 0;
@@ -4608,7 +4653,7 @@ int rtk_plat_prepare_fw_image_from_SATA(void)
 #ifdef CONFIG_SYS_RTK_NAND_FLASH
 extern int rtk_plat_boot_prep_partition(void);
 #endif
-#if (defined(CONFIG_RTD1295) || defined(CONFIG_RTD1395) || defined(CONFIG_RTD161x)) && defined(NAS_ENABLE)
+#if defined(NAS_ENABLE)
 extern int rtk_plat_boot_prep_kernelargs(void);
 #endif
 
@@ -4676,7 +4721,7 @@ static int rtk_call_bootm(void)
 #ifdef CONFIG_SYS_RTK_NAND_FLASH
 	rtk_plat_boot_prep_partition();
 #endif
-#if (defined(CONFIG_RTD1295) || defined(CONFIG_RTD1395) || defined(CONFIG_RTD161x)) && defined(NAS_ENABLE)
+#if defined(NAS_ENABLE)
 	rtk_plat_boot_prep_kernelargs();
 #endif
 
@@ -4714,6 +4759,55 @@ static int rtk_call_booti(void)
 	}
 #ifdef CONFIG_NAS_ENABLE
 	void *fdt_addr = (void*)simple_strtoul(booti_argv[3], NULL, 16);
+
+#ifdef CONFIG_RTD161x
+	ion_media_heap0_size_str = getenv("ion_media_heap0_size");
+	ion_media_heap1_size_str = getenv("ion_media_heap1_size");
+	ion_media_heap0_size_MB = -1;
+	ion_media_heap1_size_MB = -1;
+	if (fdt_addr) {
+		if (ion_media_heap0_size_str)
+			ion_media_heap0_size_MB = simple_strtoul(ion_media_heap0_size_str, NULL, 10);	
+		if (ion_media_heap1_size_str) 
+			ion_media_heap1_size_MB = simple_strtoul(ion_media_heap1_size_str, NULL, 10);
+
+		if ( (ion_media_heap0_size_MB == 0) && (ion_media_heap1_size_MB == 0)) {
+			fdt_disable_rtk_ion(fdt_addr);
+		}
+		else {
+			if ( ion_media_heap0_size_MB > 0 ) {
+				if ( ion_media_heap0_size_MB > ION_MEDIA_HEAP0_SIZE_MAX ) {
+					printf(	"ion_media_heap0_size exceed MAX\n"
+						"ion_media_heap0_size is not changed");
+				}
+				else {
+					/* ion_media_heap0_size_MB = 1~ION_MEDIA_HEAP0_SIZE_MAX */
+					printf(	"ion_media_heap0_addr: 0x%08X\n"
+						"ion_media_heap0_size: %d MB\n"
+						, ION_MEDIA_HEAP_0_PHYS
+						, (uint32_t)ion_media_heap0_size_MB);
+					fdt_ion_heap(fdt_addr, ION_MEDIA_HEAP_0_PHYS, (uint32_t)ion_media_heap0_size_MB);
+				}
+			}
+			if ( ion_media_heap1_size_MB > 0 ) {
+				if ( ion_media_heap1_size_MB > ION_MEDIA_HEAP1_SIZE_MAX ) {
+					printf(	"ion_media_heap1_size exceed MAX\n"
+						"ion_media_heap1_size is not changed");
+				}
+				else {
+					/* ion_media_heap1_size_MB = 1~ION_MEDIA_HEAP1_SIZE_MAX */
+					printf(	"ion_media_heap1_addr: 0x%08X\n"
+						"ion_media_heap1_size: %d MB\n"
+						, ION_MEDIA_HEAP_1_PHYS
+						, (uint32_t)ion_media_heap1_size_MB);
+					fdt_ion_heap(fdt_addr, ION_MEDIA_HEAP_1_PHYS, (uint32_t)ion_media_heap1_size_MB);
+				}
+			}
+
+		}
+	}
+
+#endif /*CONFIG_RTD161x */
 
 	int nodeoffset;
 	struct fdt_property *prop;
@@ -4759,7 +4853,7 @@ static int rtk_call_booti(void)
 #ifdef CONFIG_SYS_RTK_NAND_FLASH
 	rtk_plat_boot_prep_partition();
 #endif
-#if (defined(CONFIG_RTD1295) || defined(CONFIG_RTD1395) || defined(CONFIG_RTD161x)) && defined(NAS_ENABLE)
+#if defined(NAS_ENABLE)
 	rtk_plat_boot_prep_kernelargs();
 #endif
 
@@ -4783,8 +4877,6 @@ static int rtk_call_booti(void)
 int rtk_plat_set_fw(void)
 {
 	int ret = RTK_PLAT_ERR_OK;
-	int magic = SWAPEND32(0x16803001);
-	int offset = SWAPEND32(MIPS_SHARED_MEMORY_ENTRY_ADDR);
 
 	printf("Start Boot Setup ... ");
 
@@ -4797,6 +4889,24 @@ int rtk_plat_set_fw(void)
 #else
 	printf("\n");
 #endif
+
+#if defined(NAS_ENABLE) && defined(CONFIG_RTD161x)
+	/* if excute "go kf" & "go ru" in uboot cmdline, this part will not be excuted */
+	ion_media_heap0_size_str = getenv("ion_media_heap0_size");
+	ion_media_heap1_size_str = getenv("ion_media_heap1_size");
+	ion_media_heap0_size_MB = -1;
+	ion_media_heap1_size_MB = -1;
+
+	if (ion_media_heap0_size_str)
+		ion_media_heap0_size_MB = simple_strtoul(ion_media_heap0_size_str, NULL, 10);
+	if (ion_media_heap1_size_str)
+		ion_media_heap1_size_MB = simple_strtoul(ion_media_heap1_size_str, NULL, 10);
+
+	if ( (ion_media_heap0_size_MB == 0) && (ion_media_heap1_size_MB == 0)) {
+		skip_avfw_entry = 1;
+	}
+#endif /* defined(NAS_ENABLE) && defined(CONFIG_RTD161x) */
+
 	if (boot_from_usb != BOOT_FROM_USB_DISABLE) // workaround path that read fw img from usb
 	{
 		ret = rtk_plat_read_fw_image_from_USB(0);
@@ -4874,33 +4984,13 @@ int rtk_plat_set_fw(void)
 	if (boot_from_flash == BOOT_FROM_FLASH_NORMAL_MODE)
 	{
 		if (ret == RTK_PLAT_ERR_OK)
-		if(!accelerate_state && !audio_fw_state)
 		{
-			/* Enable ACPU */
-			if (ipc_shm.audio_fw_entry_pt != 0){
-				printf("Start A/V Firmware ...\n");
-				memcpy((unsigned char *)(MIPS_SHARED_MEMORY_ENTRY_ADDR+0xC4), &ipc_shm, sizeof(ipc_shm));
-				memcpy((unsigned char *)(MIPS_SHARED_MEMORY_ENTRY_ADDR), &magic, sizeof(magic));
-				memcpy((unsigned char *)(MIPS_SHARED_MEMORY_ENTRY_ADDR +4), &offset, sizeof(offset));
-				flush_dcache_all();
-#if defined(CONFIG_RTD1395)
-				rtd_outl(ACPU_STARTUP_FLAG, ACPU_MAGIC1); //write magic1
-#elif defined(CONFIG_RTD161x)
-				cmd_bl31_afw_magic();
-#else
-				rtd_outl(ISO_RESERVED_USE_3, MIPS_A_ENTRY_CODE_ADDR | MIPS_KSEG1BASE);
-#endif
-				sync();
+			if(!accelerate_state && !audio_fw_state)
+			{
 				/* Enable ACPU */
-#ifdef CONFIG_RTD161x
-				rtd_setbits(CLOCK_ENABLE3_reg,_BIT7|_BIT6);
-#else
-				rtd_setbits(CLOCK_ENABLE2_reg,_BIT4);
-#endif
-				audio_fw_state = 1;
-#ifdef CONFIG_WAIT_AFW_1_SECOND
-				mdelay(1000);
-#endif
+				ret = do_go_audio_fw();
+				/* Enable VCPU */
+				ret = do_go_video_fw();
 			}
 		}
 	}
@@ -4943,8 +5033,6 @@ static void gmt_g2227_set_mode(void)
 
 #endif /* CONFIG_GMT_G2227 */
 }
-
-
 
 //all standard boot_cmd entry.
 int rtk_plat_do_boot_linux(void)
@@ -5004,7 +5092,6 @@ int  rtk_plat_boot_handler(void)
 #else
 			ret = rtk_plat_do_boot_linux ();
 #endif
-
 		}
 		else
 		{

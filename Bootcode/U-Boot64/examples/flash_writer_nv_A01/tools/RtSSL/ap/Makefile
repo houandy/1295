@@ -6,7 +6,7 @@ PLATFORM = LINUX
 STATIC_LINK ?= Y
 
 MYLIB   = lib/FileHash.a
-HOSTCC      = g++
+HOSTCC  = g++
 AR      = ar
 VPATH   = obj inc src 
 OPENSSL_PATH ?= /usr/local/ssl

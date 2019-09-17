@@ -134,6 +134,24 @@
 			realtek,function = "gspi_loc1";
 		};
 
+		iso_gspi_pins_0: iso_gspi_pins_0 {
+			realtek,pins = "iso_gspi_loc",
+			"gpio_18",
+			"gpio_19",
+			"gpio_20",
+			"gpio_31";
+			realtek,function = "iso_gspi_loc0";
+		};
+
+		iso_gspi_pins_1: iso_gspi_pins_1 {
+			realtek,pins = "iso_gspi_loc",
+			"gpio_8",
+			"gpio_9",
+			"gpio_10",
+			"gpio_11";
+			realtek,function = "iso_gspi_loc1";
+		};
+
 		smartcard_pins_0:smartcard_pins_0{
 			realtek,pins = "gpio_18",
 			"gpio_19",
@@ -287,6 +305,27 @@
 			realtek,function = "etn_led";
 		};
 
+		rgmii_mdio_pins: rgmii_mdio_pins {
+			realtek,pins = "gpio_14",
+			"gpio_15";
+			realtek,function = "rgmii";
+		};
+
+		rgmii_txrx_pins: rgmii_txrx_pins {
+			realtek,pins = "gpio_65",
+			"gpio_66",
+			"gpio_67",
+			"gpio_68",
+			"gpio_69",
+			"gpio_70",
+			"gpio_71",
+			"gpio_72",
+			"gpio_73",
+			"gpio_74",
+			"gpio_75",
+			"gpio_76";
+			realtek,function = "rgmii";
+		};
 
 		pcie_clk_pins_0: pcie_clk_pins_0 {
 			realtek,pins = "gpio_46";
@@ -421,6 +460,46 @@
 		pwm3_1_pins: pwm3_1_pins {
 			realtek,pins = "gpio_23";
 			realtek,function = "pwm3";
+		};
+
+		pwm0_0_pins_disable: pwm0_0_pins_disable {
+			realtek,pins = "gpio_12";
+			realtek,function = "gpio";
+		};
+
+		pwm0_1_pins_disable: pwm0_1_pins_disable {
+			realtek,pins = "gpio_20";
+			realtek,function = "gpio";
+		};
+
+		pwm1_0_pins_disable: pwm1_0_pins_disable {
+			realtek,pins = "gpio_13";
+			realtek,function = "gpio";
+		};
+
+		pwm1_1_pins_disable: pwm1_1_pins_disable {
+			realtek,pins = "gpio_21";
+			realtek,function = "gpio";
+		};
+
+		pwm2_0_pins_disable: pwm2_0_pins_disable {
+			realtek,pins = "gpio_14";
+			realtek,function = "gpio";
+		};
+
+		pwm2_1_pins_disable: pwm2_1_pins_disable {
+			realtek,pins = "gpio_22";
+			realtek,function = "gpio";
+		};
+
+		pwm3_0_pins_disable: pwm3_0_pins_disable {
+			realtek,pins = "gpio_15";
+			realtek,function = "gpio";
+		};
+
+		pwm3_1_pins_disable: pwm3_1_pins_disable {
+			realtek,pins = "gpio_23";
+			realtek,function = "gpio";
 		};
 
 		usb_cc1_pins: usb_cc1_pins {

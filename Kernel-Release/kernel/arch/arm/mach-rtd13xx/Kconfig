@@ -32,5 +32,6 @@ config ARCH_RTD13xx
 	select MULTI_IRQ_HANDLER
 	select PCI_DOMAINS if PCI
 	select USE_OF
+	select RTK_BUFLOCK
 	help
 	  Support for Realtek RTD13xx Platform

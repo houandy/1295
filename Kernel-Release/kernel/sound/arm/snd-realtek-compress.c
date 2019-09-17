@@ -99,6 +99,7 @@ typedef struct rtk_runtime_stream {
     long lastInRingRP;
     bool isGetInfo;
     bool isLowWater;
+    bool isRPCsetOutputMode;
 
     int status;
     size_t bytes_written; 
@@ -1031,6 +1032,15 @@ static int snd_card_compr_free(struct snd_compr_stream *cstream) {
     }
 
     destroyRingBuf(stream);
+
+    /* For NAS LEDE */
+    if (stream->isRPCsetOutputMode) {
+        // reset AO to default mode
+        RPC_TOAGENT_SET_HDMI_OUTPUT_MODE(AUDIO_DIGITAL_LPCM_DUAL_CH);
+        RPC_TOAGENT_SET_SPDIF_OUTPUT_MODE(AUDIO_DIGITAL_LPCM_DUAL_CH);
+
+        stream->isRPCsetOutputMode = false;
+    }
  
     if (alsa_client != NULL && rtk_compress_handle != NULL) {
         TRACE_CODE("%s %d free rtk_compress_handle\n", __FUNCTION__, __LINE__);
@@ -1431,6 +1441,22 @@ static int snd_card_compr_set_params(struct snd_compr_stream *cstream, struct sn
     if (createRingBuf(stream, buffer_size)) {
         ALSA_WARNING("[%s %d] create Audio Component failed\n", __FUNCTION__, __LINE__);
         return -1;
+    }
+
+    /* For NAS LEDE */
+    if (params->codec.reserved[1] & 0x2) {
+        // set AO raw out
+        if (RPC_TOAGENT_SET_HDMI_OUTPUT_MODE(AUDIO_DIGITAL_RAW) < 0) {
+            ALSA_WARNING("[%s %d fail]\n", __FUNCTION__, __LINE__);
+            return -1;
+        }
+
+        if (RPC_TOAGENT_SET_SPDIF_OUTPUT_MODE(AUDIO_DIGITAL_RAW) < 0) {
+            ALSA_WARNING("[%s %d fail]\n", __FUNCTION__, __LINE__);
+            return -1;
+        }
+
+        stream->isRPCsetOutputMode = true;
     }
 
     /*

@@ -30,6 +30,7 @@
 #include <linux/slab.h>
 #include <linux/io.h>
 #include <linux/irqchip/arm-gic.h>
+#include <linux/cpumask.h>
 #include <asm/system_misc.h>
 #include <asm/cacheflush.h>
 #include <asm/suspend.h>
@@ -43,6 +44,8 @@
 #define SYS_PLL_SCPU1 0x98000104
 #define SUSPEND_VERSION_MASK(v) ((v&0xffff) << 16)
 #define BT_WAKEUP_IGPIO(n) (0x1 << n)//n:0 to 20
+
+extern void rtk_cpu_power_down(int cpu);
 
 static int suspend_version = 2;
 static unsigned int suspend_context;
@@ -644,11 +647,21 @@ void rtk_suspend_gpip_output_change_resume(void)
 	}
 }
 
+static void rtk_suspend_cpu_pwr_down(void) {
+	unsigned int cpu = 1;
+
+	for (cpu = 1 ; cpu < NR_CPUS ; cpu++) {
+		rtk_cpu_power_down(cpu);
+	}
+}
+
 static int rtk_suspend_enter(suspend_state_t suspend_state)
 {
 	int ret = 0;
 
 	pr_info("[%s] Platform Suspend Enter ...\n", DEV_NAME);
+
+	rtk_suspend_cpu_pwr_down();
 
 	if (!rtk_suspend_valid(suspend_state)) {
 		pr_err("[%s] suspend_state:%d not support !\n",
@@ -1011,7 +1024,10 @@ int __init rtk_suspend_init(void)
 				pr_err("[%s] Set wakeup-flags error! 0x%x\n",
 					DEV_NAME, temp);
 				rtk_suspend_wakeup_flags_set(
-					fWAKEUP_ON_IR | fWAKEUP_ON_GPIO |
+#ifdef CONFIG_RTK_IR
+					fWAKEUP_ON_IR |
+#endif
+					fWAKEUP_ON_GPIO |
 					fWAKEUP_ON_ALARM | fWAKEUP_ON_CEC);
 				pr_info("[%s] wakeup flags set default : 0x%x\n",
 					DEV_NAME,
@@ -1024,7 +1040,10 @@ int __init rtk_suspend_init(void)
 			}
 		} else {
 			rtk_suspend_wakeup_flags_set(
-				fWAKEUP_ON_IR | fWAKEUP_ON_GPIO |
+#ifdef CONFIG_RTK_IR
+			fWAKEUP_ON_IR |
+#endif
+			fWAKEUP_ON_GPIO |
 				fWAKEUP_ON_ALARM | fWAKEUP_ON_CEC);
 			pr_info("[%s] Wakeup Flags Set Default : 0x%x\n",
 				DEV_NAME, rtk_suspend_wakeup_flags_get());

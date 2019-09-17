@@ -33,10 +33,9 @@
 #include <asm/io.h>
 #include <asm/smp_plat.h>
 
-#include <soc/realtek/rtk_cpu.h>
-
 #ifdef CONFIG_SMP
 
+extern void rtk_cpu_power_up(int cpu);
 extern void _rtk_cpu_power_up(int cpu);
 extern void secondary_holding_pen(void);
 
@@ -124,6 +123,8 @@ static int smp_spin_table_cpu_boot(unsigned int cpu)
 	if(cpu_hotplug[cpu] == 1){
 		__le64 __iomem *release_addr;
 		release_addr = ioremap(cpu_release_addr[cpu], sizeof(*release_addr));
+
+		rtk_cpu_power_up(cpu);
 
 		_rtk_cpu_power_up(cpu);
 

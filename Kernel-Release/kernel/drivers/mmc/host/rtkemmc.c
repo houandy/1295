@@ -1783,8 +1783,9 @@ static void rtkemmc_dqs_tuning(struct mmc_host *host)
 			emmc_set_size = 0x1c80000;
 		else if( (emmc_real_size > 0xb40000) && (emmc_real_size < 0x1200000) )  //8gb
 			emmc_set_size = 0xe40000;
-		else
+		else if((emmc_real_size > 0x720000) && (emmc_real_size < 0xb40000))
 			emmc_set_size = 0x720000;     //4gb
+		else emmc_set_size = emmc_real_size-4096;
 
 		if(emmc_real_size-emmc_set_size>0x800) {
 			dqs_tuning_blk_addr = emmc_set_size;	//non-used emmc space
@@ -5376,13 +5377,13 @@ static int rtkemmc_probe(struct platform_device *pdev)
 			PTR_ERR(rstc_emmc));
 		rstc_emmc = NULL;
 	}
-	clk_en_emmc = devm_clk_get(&pdev->dev, "clk_en_emmc");
+	clk_en_emmc = devm_clk_get(&pdev->dev, "emmc");
 	if (IS_ERR(clk_en_emmc)) {
 		printk(KERN_WARNING "%s: clk_get() returns %ld\n", __func__,
 			PTR_ERR(clk_en_emmc));
 		clk_en_emmc = NULL;
 	}
-	clk_en_emmc_ip = devm_clk_get(&pdev->dev, "clk_en_emmc_ip");
+	clk_en_emmc_ip = devm_clk_get(&pdev->dev, "emmc_ip");
 	if (IS_ERR(clk_en_emmc_ip)) {
 		printk(KERN_WARNING "%s: clk_get() returns %ld\n", __func__,
 			PTR_ERR(clk_en_emmc_ip));
@@ -5390,7 +5391,7 @@ static int rtkemmc_probe(struct platform_device *pdev)
 	}
 #ifdef CONFIG_ARCH_RTD129x
 	//1295 uses the same DMA bus bwtween SD, SDIO, and EMMC, we still need to open this clk if no SD card and SDIO driver, 1395 will separare the DMA bus
-	clk_cr = devm_clk_get(&pdev->dev, "clk_en_cr");
+	clk_cr = devm_clk_get(&pdev->dev, "cr");
 	if (IS_ERR(clk_cr)) {
 		printk(KERN_WARNING "%s: clk_get() returns %ld\n", __func__,
 			PTR_ERR(clk_cr));

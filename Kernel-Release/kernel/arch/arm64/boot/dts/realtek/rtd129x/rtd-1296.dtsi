@@ -28,8 +28,6 @@
 			clocks = <&cc CC_PLL_SCPU>;
 			cpu-supply = <&cpu_supp>;
 			operating-points-v2 = <&cpu_opps>;
-			cooling-min-level = <0>;
-			cooling-max-level = <11>;
 			#cooling-cells = <2>;
 		};
 
@@ -43,8 +41,6 @@
 			clocks = <&cc CC_PLL_SCPU>;
 			cpu-supply = <&cpu_supp>;
 			operating-points-v2 = <&cpu_opps>;
-			cooling-min-level = <0>;
-			cooling-max-level = <11>;
 			#cooling-cells = <2>;
 		};
 
@@ -58,8 +54,6 @@
 			clocks = <&cc CC_PLL_SCPU>;
 			cpu-supply = <&cpu_supp>;
 			operating-points-v2 = <&cpu_opps>;
-			cooling-min-level = <0>;
-			cooling-max-level = <11>;
 			#cooling-cells = <2>;
 		};
 
@@ -73,8 +67,6 @@
 			clocks = <&cc CC_PLL_SCPU>;
 			cpu-supply = <&cpu_supp>;
 			operating-points-v2 = <&cpu_opps>;
-			cooling-min-level = <0>;
-			cooling-max-level = <11>;
 			#cooling-cells = <2>;
 		};
 
@@ -669,6 +661,11 @@
 		status = "okay";
 	};
 
+	sb2_lock_avlog: sb2-lock@9801A63C {
+		reg = <0x9801A63C 0x4>;
+		compatible = "realtek,sb2-sem", "realtek,sb2-sem-avlog";
+	};
+
 	sb2@9801a000 {
 		compatible = "Realtek,rtk-sb2";
 		reg = <0x9801a000 0x900>;
@@ -1072,9 +1069,6 @@
 	};
 
 	dvfs: dvfs {
-		compatible = "realtek,rtd129x-dvfs";
-		status = "okay";
-		l2-supply = <&l2_supp>;
 	};
 
 	thermal-zones {

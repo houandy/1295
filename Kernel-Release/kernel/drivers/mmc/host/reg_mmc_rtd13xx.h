@@ -28,6 +28,8 @@
 #define EMMC_PSTATE_REG      		     (CR_BASE_ADDR + 0x024)
 #define EMMC_HOST_CTRL1_R		     (CR_BASE_ADDR + 0x028)
 #define EMMC_PWR_CTRL_R    		     (CR_BASE_ADDR + 0x029)
+#define EMMC_BGAP_CTRL_R		     (CR_BASE_ADDR + 0x02a)
+#define EMMC_CLK_CTRL_R			     (CR_BASE_ADDR + 0x02c)
 #define EMMC_TOUT_CTRL_R    		     (CR_BASE_ADDR + 0x02e)
 #define EMMC_SW_RST_R     		     (CR_BASE_ADDR + 0x02f)
 #define EMMC_NORMAL_INT_STAT_R		     (CR_BASE_ADDR + 0x030)
@@ -45,6 +47,7 @@
 #define EMMC_MSHC_CTRL_R                     (CR_BASE_ADDR + 0x208)
 #define EMMC_CMD_CONFLICT_CHECK              (1<<0)
 
+#define EMMC_CTRL_R			     (CR_BASE_ADDR + 0x22c)
 //hank emmc wrapper register
 #define EMMC_CP                       	(CR_BASE_ADDR + 0x41c)
 #define EMMC_OTHER1                     (CR_BASE_ADDR + 0x420)
@@ -296,8 +299,15 @@
 #define EMMC_NAND_DMA_SEL		(0x54)
 
 #define EMMC_CLK_O_ICG_EN		(1<<3)
+#define EMMC_CARD_STOP_ENABLE		(1<<23)
 
 #define EMMC_SW_RST_DAT			(1<<2)
+
+#define EMMC_ISO_pfunc1		(0x20)
+#define EMMC_ISO_pfunc2         (0x24)
+#define EMMC_ISO_pfunc3         (0x28)
+#define EMMC_ISO_pfunc4         (0x2c)
+#define EMMC_ISO_pfunc5         (0x30)
 
 #ifdef CONFIG_MMC_RTK_EMMC_CMDQ
 //command queue related registers

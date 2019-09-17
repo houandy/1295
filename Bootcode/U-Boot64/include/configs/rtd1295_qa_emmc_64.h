@@ -86,6 +86,11 @@
 		#define CONFIG_RESCUE_FROM_USB_ROOTFS			"rescue.root.emmc.cpio.gz_pad.img"
 	#endif /* CONFIG_RESCUE_FROM_USB */
 
+	/* KERNELARGS */
+	#ifndef CONFIG_KERNELARGS
+		#define CONFIG_KERNELARGS	"init=/etc/init root=/dev/mmcblk0p1 rootfstype=squashfs rootwait loglevel=8"
+	#endif
+
 #elif defined(CONFIG_SYS_RTK_NAND_FLASH)
 	/* Flash writer setting:
 	*   The corresponding setting will be located at
@@ -202,6 +207,21 @@
 
 #undef CONFIG_SYS_TEXT_BASE
 #define CONFIG_SYS_TEXT_BASE		0x00020000
+
+/* PWM */
+//#define CONFIG_CMD_RTKPWM
+//#define CONFIG_RTK_PWM
+#ifdef CONFIG_RTK_PWM
+#define CONFIG_CMD_PWM
+#define PWM_0_PIN_0
+//#define PWM_0_PIN_1
+//#define PWM_1_PIN_0
+//#define PWM_1_PIN_1
+//#define PWM_2_PIN_0
+//#define PWM_2_PIN_1
+//#define PWM_3_PIN_0
+//#define PWM_3_PIN_1
+#endif /* CONFIG_RTK_PWM */
 
 #endif /* __CONFIG_RTK_RTD1295_QA_EMMC_64_H */
 

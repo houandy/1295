@@ -47,7 +47,7 @@ static void init_bd_ring_var(_adapter *padapter)
 	r_priv->rxringcount = RX_BD_NUM_8822CE;
 }
 
-static void rtl8822ce_reset_bd(_adapter *padapter)
+void rtl8822ce_reset_bd(_adapter *padapter)
 {
 	_irqL	irqL;
 	struct xmit_priv *t_priv = &padapter->xmitpriv;
@@ -391,7 +391,7 @@ static void rtl8822ce_rx_handler(PADAPTER Adapter, u32 handled[])
 	}
 }
 
-#ifndef CONFIG_PCI_TX_POLLING
+#if (!(defined (CONFIG_PCI_TX_POLLING) || defined (CONFIG_PCI_TX_POLLING_V2)))
 static void rtl8822ce_tx_handler(PADAPTER Adapter, u32 events[], u32 handled[])
 {
 	PHAL_DATA_TYPE pHalData = GET_HAL_DATA(Adapter);
@@ -485,7 +485,7 @@ static s32 rtl8822ce_interrupt(PADAPTER Adapter)
 	rtl8822ce_rx_handler(Adapter, handled);
 
 	/* <3> Tx related */
-#ifndef CONFIG_PCI_TX_POLLING
+#if (!(defined (CONFIG_PCI_TX_POLLING) || defined (CONFIG_PCI_TX_POLLING_V2)))
 	rtl8822ce_tx_handler(Adapter, pHalData->IntArray, handled);
 #endif
 
@@ -788,6 +788,10 @@ static void gethwreg(PADAPTER padapter, u8 variable, u8 *val)
 		*val = rtw_read8(padapter, REG_PCIE_HCPWM1_V1_8822C);
 		break;
 #endif
+	case HW_VAR_RPWM_TOG:
+		*val = rtw_read8(padapter, REG_PCIE_HRPWM1_V1_8822C);
+		*val &= BIT_TOGGLE_8822C;
+		break;
 	default:
 		rtl8822c_gethwreg(padapter, variable, val);
 		break;
@@ -845,7 +849,9 @@ static void rtl8822ce_tx_poll_handler(PADAPTER Adapter)
 	rtl8822ce_tx_isr(Adapter, MGT_QUEUE_INX);
 	rtl8822ce_tx_isr(Adapter, HIGH_QUEUE_INX);
 	rtl8822ce_tx_isr(Adapter, BK_QUEUE_INX);
+#ifndef CONFIG_PCI_TX_POLLING_V2
 	rtl8822ce_tx_isr(Adapter, BE_QUEUE_INX);
+#endif
 	rtl8822ce_tx_isr(Adapter, VI_QUEUE_INX);
 	rtl8822ce_tx_isr(Adapter, VO_QUEUE_INX);
 	_exit_critical(&pdvobjpriv->irq_th_lock, &irqL);
@@ -868,6 +874,7 @@ void rtl8822ce_set_hal_ops(PADAPTER padapter)
 	ops = &padapter->hal_func;
 
 	ops->hal_init = rtl8822ce_init;
+	ops->hal_deinit = rtl8822ce_deinit;
 	ops->inirp_init = rtl8822ce_init_bd;
 	ops->inirp_deinit = rtl8822ce_free_bd;
 	ops->irp_reset = rtl8822ce_reset_bd;

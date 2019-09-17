@@ -15,7 +15,7 @@ Board_HWSETTING =          RTD161x_hwsetting_BOOT_2DDR4_8Gb_s2666
 # ********************************************************************
 SCS_ROOT_PUBLIC_RSA_KEY = "rsa_key1_2048.pem"
 TEE_ROOT_PUBLIC_RSA_KEY = "rsa_key2_2048.pem"
-BOOTARRAY_FW_TABLE_RSA_KEY = "rsa_key1_2048.pem"
+BOOTARRAY_FW_TABLE_RSA_KEY = "bootarray_fw_table_rsa_key.pem"
 SCS_EXTERNAL_PUBLIC_RSA_KEY = "rsa_key_2048.tee.pem"
 ATF_EXTERNAL_PUBLIC_RSA_KEY = "rsa_key_2048.tee.pem"
 PCPU_EXTERNAL_PUBLIC_RSA_KEY = "rsa_key_2048.tee.pem"
@@ -31,6 +31,9 @@ SegmentID_EXT = 0x0
 Mask_MSID =  0x0
 Version_EXT = 0x0
 Mask_Vers = 0xFFFFFFFF
+
+#DTE_Bootcode_RTK_Area will be padding to this fixed size
+Size_of_DTEBootcode_RTK_Area=0x61800
 
 #*****************SCS_Params*******************
 Address_of_SCS_Auxcode_Area = 0x80000000
@@ -62,108 +65,108 @@ FlashProtectionKey = "aes_128bit_key.bin"
 PCPU_AES_KEY = $(IMAGE_DIR)/pcpu_aes_key.bin
 
 #*****************RTK_Params*******************
-Address_of_BL31_Area = 0x80001000
-Address_of_TEEOS_Area = 0x10200000
-Address_of_AVFW_Area = 0x0F900000
-STR_Min_Size_of_TEEOS_Area = 0x1000
-STR_Min_Size_of_AVFW_Area = 0x1000
-Number_of_Scramble_Key = 0x10
+Address_of_BL31_Area = 0
+Address_of_TEEOS_Area = 0
+Address_of_AVFW_Area = 0
+STR_Min_Size_of_TEEOS_Area = 0
+STR_Min_Size_of_AVFW_Area = 0
+Number_of_Scramble_Key = 0
 
 # TEE Protect Region
-Address_of_TEE_Region = 0x10200000
-Size_of_TEE_Region = 0xC00000
-Protected_of_TEE_Region = 0xD0800
-Key_Idx_of_TEE_Region = 0x0
+Address_of_TEE_Region = 0
+Size_of_TEE_Region = 0
+Protected_of_TEE_Region = 0
+Key_Idx_of_TEE_Region = 0
 
 # AVFW_TEXT Protect Region
-Address_of_AVFW_TEXT_Region = 0x0F900000
-Size_of_AVFW_TEXT_Region = 0x307000
-Protected_of_AVFW_TEXT_Region = 0xD8800
-Key_Idx_of_AVFW_TEXT_Region = 0x1
+Address_of_AVFW_TEXT_Region = 0
+Size_of_AVFW_TEXT_Region = 0
+Protected_of_AVFW_TEXT_Region = 0
+Key_Idx_of_AVFW_TEXT_Region = 0
 
 # AVFW_DATA Protect Region
-Address_of_AVFW_DATA_Region = 0x0FC07000
-Size_of_AVFW_DATA_Region = 0x1F9000
-Protected_of_AVFW_DATA_Region = 0xDA800
-Key_Idx_of_AVFW_DATA_Region = 0x2
+Address_of_AVFW_DATA_Region = 0
+Size_of_AVFW_DATA_Region = 0
+Protected_of_AVFW_DATA_Region = 0
+Key_Idx_of_AVFW_DATA_Region = 0
 
 # AVFW_ISR Protect Region
-Address_of_AVFW_ISR_Region = 0x0
-Size_of_AVFW_ISR_Region = 0x1000
-Protected_of_AVFW_ISR_Region = 0x48801
-Key_Idx_of_AVFW_ISR_Region = 0x3
+Address_of_AVFW_ISR_Region = 0
+Size_of_AVFW_ISR_Region = 0
+Protected_of_AVFW_ISR_Region = 0
+Key_Idx_of_AVFW_ISR_Region = 0
 
 # AVFW_ENTRY Protect Region
-Address_of_AVFW_ENTRY_Region = 0x2000
-Size_of_AVFW_ENTRY_Region = 0x1000
-Protected_of_AVFW_ENTRY_Region = 0x4880
-Key_Idx_of_AVFW_ENTRY_Region = 0x4
+Address_of_AVFW_ENTRY_Region = 0
+Size_of_AVFW_ENTRY_Region = 0
+Protected_of_AVFW_ENTRY_Region = 0
+Key_Idx_of_AVFW_ENTRY_Region = 0
 
 #Video_Pool Protect Region
-Address_of_Video_Pool_Region = 0x32b00000
-Size_of_Video_Pool_Region = 0x12C00000
-Protected_of_Video_Pool_Region = 0xD9818
-Key_Idx_of_Video_Pool_Region = 0x5
+Address_of_Video_Pool_Region = 0
+Size_of_Video_Pool_Region = 0
+Protected_of_Video_Pool_Region = 0
+Key_Idx_of_Video_Pool_Region = 0
 
 #User Protect Region
-Address_of_User_Region = 0x0
-Size_of_User_Region = 0x0
-Protected_of_User_Region = 0x0
-Key_Idx_of_User_Region = 0x6
+Address_of_User_Region = 0
+Size_of_User_Region = 0
+Protected_of_User_Region = 0
+Key_Idx_of_User_Region = 0
 
 #REE Region 1
-Address_of_REE_Region_1 = 0x1000
-Size_of_REE_Region_1 = 0x1000
-Key_Idx_of_REE_Region_1 = 0x7
+Address_of_REE_Region_1 = 0
+Size_of_REE_Region_1 = 0
+Key_Idx_of_REE_Region_1 = 0
 
 #REE Region 2
-Address_of_REE_Region_2 = 0x3000
-Size_of_REE_Region_2 = 0xF8FD000
-Key_Idx_of_REE_Region_2 = 0x8
+Address_of_REE_Region_2 = 0
+Size_of_REE_Region_2 = 0
+Key_Idx_of_REE_Region_2 = 0
 
 #REE Region 3
-Address_of_REE_Region_3 = 0x0FE00000
-Size_of_REE_Region_3 = 0x300000
-Key_Idx_of_REE_Region_3 = 0x9
+Address_of_REE_Region_3 = 0
+Size_of_REE_Region_3 = 0
+Key_Idx_of_REE_Region_3 = 0
 
 #REE Region 4
-Address_of_REE_Region_4 = 0x13C00000
-Size_of_REE_Region_4 = 1EF00000
-Key_Idx_of_REE_Region_4 = 0xA
+Address_of_REE_Region_4 = 0
+Size_of_REE_Region_4 = 0
+Key_Idx_of_REE_Region_4 = 0
 
 #REE Region 5
-Address_of_REE_Region_5 = 0x45700000
-Size_of_REE_Region_5 = 0x3A900000
-Key_Idx_of_REE_Region_5 = 0xB
+Address_of_REE_Region_5 = 0
+Size_of_REE_Region_5 = 0
+Key_Idx_of_REE_Region_5 = 0
 
 #REE Region 6
-Address_of_REE_Region_6 = 0x0
-Size_of_REE_Region_6 = 0xDEADBEEF
-Key_Idx_of_REE_Region_6 = 0xC
+Address_of_REE_Region_6 = 0
+Size_of_REE_Region_6 = 0
+Key_Idx_of_REE_Region_6 = 0
 
 #REE Region 7
-Address_of_REE_Region_7 = 0x0
-Size_of_REE_Region_7 = 0xDEADBEEF
-Key_Idx_of_REE_Region_7 = 0xD
+Address_of_REE_Region_7 = 0
+Size_of_REE_Region_7 = 0
+Key_Idx_of_REE_Region_7 = 0
 
 #REE Region 8
-Address_of_REE_Region_8 = 0x0
-Size_of_REE_Region_8 = 0xDEADBEEF
-Key_Idx_of_REE_Region_8 = 0xE
+Address_of_REE_Region_8 = 0
+Size_of_REE_Region_8 = 0
+Key_Idx_of_REE_Region_8 = 0
 
-STR_Default_Region_Start_Address = 0x280000
-STR_Resume_Mode = 0x0
-STR_Address_of_BL31_Area = 0x0
-STR_Size_of_BL31_Area = 0x0
-TEEOS_SegmentID_EXT = 0x0
-TEEOS_Mask_MSID = 0xFFFFFFFF
-TEEOS_Version_EXT = 0x0
-TEEOS_Mask_Vers = 0xFFFFFFFF
+STR_Default_Region_Start_Address = 0
+STR_Resume_Mode = 0
+STR_Address_of_BL31_Area = 0
+STR_Size_of_BL31_Area = 0
+TEEOS_SegmentID_EXT = 0
+TEEOS_Mask_MSID = 0
+TEEOS_Version_EXT = 0
+TEEOS_Mask_Vers = 0
 
-PCPU_FW_SegmentID_EXT=0x0
-PCPU_FW_Mask_MSID = 0xFFFFFFFF
-PCPU_FW_Version_EXT=0x0
-PCPU_FW_Mask_Vers = 0xFFFFFFFF
+PCPU_FW_SegmentID_EXT = 0
+PCPU_FW_Mask_MSID = 0
+PCPU_FW_Version_EXT = 0
+PCPU_FW_Mask_Vers = 0
 
 NagraTAProtectionKey = "aes_128bit_key_1.bin"
 ATFProtectionKey = "aes_128bit_key_2.bin"
@@ -188,12 +191,13 @@ Config_Uboot_Sim_Mode =  FALSE
 # flag                      value
 # ********************************************************************
 Config_Auxcode_File_Name = "Aux_code-00.00.bin"
-Config_PCPU_Code_File_Name = "pcpu_fw.bin"
+Config_PCPU_Code_File_Name = "PCPU_Code_Area_rtk_final.bin"
 Config_DTE_Bootcode_File_Name = "FSBL_DDR-00.00.bin"
 Config_SECURE_OS = FALSE
 Config_SECURE_OS_File_Name = "secure-os-00.00.bin"
 Config_BL31 = TRUE
 Config_BL31_File_Name = "bl31.bin"
+Config_RTK_PARAM_AREA_File_Name = "RTK_Params_Area_final.bin"
 
 
 # ********************************************************************

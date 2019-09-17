@@ -570,13 +570,11 @@ static int rtk_pcie2_16xx_hw_initial(struct device *dev)
 	of_property_read_u32_array(dev->of_node, "phys", phy, size);
 	for (i = 0; i < size; i++) {
 		rtk_pcie2_16xx_ctrl_write(0xC1C, phy[i]);
-		mdelay(1);
+		udelay(100);
 	}
 	kfree(phy);
 
 	// after phy mdio set
-	ret = gpio_direction_output(pcie2_gpio, 0);
-	mdelay(100);
 	ret = gpio_direction_output(pcie2_gpio, 1);
 
 
@@ -586,7 +584,7 @@ static int rtk_pcie2_16xx_hw_initial(struct device *dev)
 	else
 		rtk_pcie2_16xx_ctrl_write(0xC00, 0x001E0022);
 
-	mdelay(50);
+	mdelay(1);
 
 	/* #Link initial setting */
 	rtk_pcie2_16xx_ctrl_write(0x710, 0x00010120);
@@ -643,8 +641,8 @@ static int rtk_pcie2_16xx_hw_initial(struct device *dev)
 	rtk_pcie2_16xx_ctrl_write(0xD04, 0x00000000);
 
 #if defined(CONFIG_R8125) || defined(CONFIG_R8125_MODULE)
-	/*pcie timeout extend to 250us*/
-	rtk_pcie2_16xx_ctrl_write(0xC78, 0x7A1201);
+	/*pcie timeout extend to 500us*/
+	rtk_pcie2_16xx_ctrl_write(0xC78, 0xF42401);
 #else
 	/* prevent pcie hang if dllp error occur*/
 	rtk_pcie2_16xx_ctrl_write(0xC78, 0x200001);
@@ -842,7 +840,7 @@ static int rtk_pcie2_16xx_suspend(struct device *dev)
 		dev_info(dev, "Idle mode\n");
 	} else {
 		dev_info(dev, "Suspend mode\n");
-
+		gpio_direction_output(pcie2_gpio, 0);
 		reset_control_assert(rstn_pcie2_stitch);
 		reset_control_assert(rstn_pcie2);
 		reset_control_assert(rstn_pcie2_core);
@@ -893,10 +891,6 @@ static int rtk_pcie2_16xx_resume(struct device *dev)
 			clk_disable_unprepare(pcie2_clk);
 			return -EINVAL;
 		}
-		ret = gpio_direction_output(pcie2_gpio, 0);
-		mdelay(100);
-		/*Reset PCIE device, Pull high reset signal.*/
-		ret = gpio_direction_output(pcie2_gpio, 1);
 
 		if (rtk_pcie2_16xx_hw_initial(dev) < 0) {
 			dev_err(dev, "rtk_pcie2_16xx_hw_initial fail\n");
@@ -921,6 +915,7 @@ static void rtk_pcie2_16xx_shutdown(struct platform_device *pdev)
 
 	dev_info(&pdev->dev, "shutdown mode\n");
 
+	gpio_direction_output(pcie2_gpio, 0);
 	reset_control_assert(rstn_pcie2_stitch);
 	reset_control_assert(rstn_pcie2);
 	reset_control_assert(rstn_pcie2_core);

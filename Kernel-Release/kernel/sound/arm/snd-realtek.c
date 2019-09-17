@@ -19,11 +19,6 @@
 #include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/hrtimer.h>
-#include <sound/core.h>
-#include <sound/control.h>
-#include <sound/pcm.h>
-#include <sound/rawmidi.h>
-#include <sound/initval.h>
 #include <linux/mutex.h>
 #include <linux/ioctl.h> /* needed for the _IOW etc stuff used later */
 #include <linux/syscalls.h> /* needed for the _IOW etc stuff used later */
@@ -32,12 +27,17 @@
 #include <linux/timer.h>
 #include <linux/workqueue.h>
 #include <linux/math64.h>
+#include <linux/dma-mapping.h>
+#include <linux/suspend.h>
 #include <sound/asound.h>
+#include <sound/core.h>
+#include <sound/control.h>
+#include <sound/pcm.h>
+#include <sound/rawmidi.h>
+#include <sound/initval.h>
 #include <asm/cacheflush.h>
 #include "snd-realtek.h"
-#include <linux/dma-mapping.h>
 #include <rtk_rpc.h>
-#include <linux/suspend.h>
 #include "snd-realtek-compress.h"
 
 #ifdef CONFIG_RTK_XEN_SUPPORT
@@ -65,6 +65,7 @@
 #define SND_REALTEK_DRIVER_AUDIO_IN "snd_alsa_rtk_audio_in"
 #define SND_REALTEK_DRIVER_AUDIO_V2_IN "snd_alsa_rtk_audio_v2_in"
 #define SND_REALTEK_DRIVER_AUDIO_V3_IN "snd_alsa_rtk_audio_v3_in"
+#define SND_REALTEK_DRIVER_AUDIO_V4_IN "snd_alsa_rtk_audio_v4_in"
 
 #ifndef MIN
 #define MIN(a, b) ((a) <= (b) ? (a) : (b))
@@ -85,6 +86,7 @@ static int snd_card_capture_nonpcm_open(snd_pcm_substream_t * substream);
 static int snd_card_capture_audio_open(snd_pcm_substream_t * substream);
 static int snd_card_capture_audio_v2_open(snd_pcm_substream_t * substream);
 static int snd_card_capture_audio_v3_open(snd_pcm_substream_t * substream);
+static int snd_card_capture_audio_v4_open(snd_pcm_substream_t * substream);
 static int snd_card_capture_close(snd_pcm_substream_t * substream);
 static int snd_card_capture_close_audio(snd_pcm_substream_t * substream);
 static int snd_card_capture_ioctl(struct snd_pcm_substream *substream,  unsigned int cmd, void *arg);
@@ -142,7 +144,7 @@ static int snd_open_count = 0;
 static int snd_open_ai_count = 0;
 static char *snd_pcm_id[] = {SND_REALTEK_DRIVER, SND_REALTEK_DRIVER_I2S_IN, SND_REALTEK_DRIVER_NONPCM_IN,
 								SND_REALTEK_DRIVER_AUDIO_IN, SND_REALTEK_DRIVER_AUDIO_V2_IN,
-								SND_REALTEK_DRIVER_AUDIO_V3_IN}; // multiple PCM instances in 1 sound card
+								SND_REALTEK_DRIVER_AUDIO_V3_IN, SND_REALTEK_DRIVER_AUDIO_V4_IN}; // multiple PCM instances in 1 sound card
 static unsigned int rtk_dec_ao_buffer = RTK_DEC_AO_BUFFER_SIZE;
 static void __iomem *clk90k_vaddr_hi = NULL;
 static void __iomem *clk90k_vaddr_lo = NULL;
@@ -284,6 +286,21 @@ static snd_pcm_ops_t snd_card_rtk_capture_audio_v2_ops = {
 // for audio processing v3 SPEECH RECOGNITION FROM DMIC
 static snd_pcm_ops_t snd_card_rtk_capture_audio_v3_ops = {
 	.open =         snd_card_capture_audio_v3_open,
+	.close =        snd_card_capture_close,
+	.ioctl =        snd_card_capture_ioctl,
+	.hw_params =    snd_card_hw_params,
+	.hw_free =      snd_card_capture_hw_free,
+	.prepare =      snd_card_capture_prepare,
+	.trigger =      snd_card_capture_trigger,
+	.pointer =      snd_card_capture_pointer,
+	.copy =         NULL,
+	.silence =      NULL,
+	.get_time_info = snd_card_capture_get_time_info
+};
+
+// for audio processing v4 SPEECH RECOGNITION FROM I2S
+static snd_pcm_ops_t snd_card_rtk_capture_audio_v4_ops = {
+	.open =         snd_card_capture_audio_v4_open,
 	.close =        snd_card_capture_close,
 	.ioctl =        snd_card_capture_ioctl,
 	.hw_params =    snd_card_hw_params,
@@ -523,13 +540,13 @@ static int snd_realtek_hw_capture_init_ringheader_of_AI(snd_pcm_runtime_t *runti
     // init ring header
     for(ch = 0; ch < runtime->channels; ++ch)
     {
-//        pAIRingHeader_LE[ch].beginAddr = (unsigned long)dpcm->pAIRingData[ch];
+        //pAIRingHeader_LE[ch].beginAddr = (unsigned long)dpcm->pAIRingData[ch];
         pAIRingHeader_LE[ch].beginAddr = (unsigned long)dpcm->phy_pAIRingData[ch];
         pAIRingHeader_LE[ch].size = dpcm->nRingSize;
         pAIRingHeader_LE[ch].readPtr[0] = pAIRingHeader_LE[ch].beginAddr;
         pAIRingHeader_LE[ch].writePtr = pAIRingHeader_LE[ch].beginAddr;
         pAIRingHeader_LE[ch].numOfReadPtr = 1;
-        
+
         pAIRingHeader[ch].beginAddr = htonl((unsigned long)pAIRingHeader_LE[ch].beginAddr);
         pAIRingHeader[ch].size = htonl(pAIRingHeader_LE[ch].size);
         pAIRingHeader[ch].readPtr[0] = htonl(pAIRingHeader_LE[ch].readPtr[0]);
@@ -539,7 +556,7 @@ static int snd_realtek_hw_capture_init_ringheader_of_AI(snd_pcm_runtime_t *runti
         //nRingHeader.pRingBufferHeaderList[ch] = (unsigned int) (pAIRingHeader + ch);
         nRingHeader.pRingBufferHeaderList[ch] = (unsigned long) (pAIRingHeader + ch) - (unsigned long)dpcm + dpcm->phy_addr;
 
-//        ALSA_VitalPrint("[ALSA ringHeader %x %x]\n", ch, nRingHeader.pRingBufferHeaderList[ch]);
+        //ALSA_VitalPrint("[ALSA ringHeader %x %x]\n", ch, nRingHeader.pRingBufferHeaderList[ch]);
         ALSA_DbgPrint("[ALSA %d ring %x %x %x %x]\n", ch, (unsigned int)pAIRingHeader_LE[ch].beginAddr
             , (unsigned int)pAIRingHeader_LE[ch].size, (unsigned int)pAIRingHeader_LE[ch].readPtr[0]
             , (unsigned int)pAIRingHeader_LE[ch].writePtr);
@@ -1438,6 +1455,7 @@ static int snd_realtek_hw_capture_free_ring(snd_pcm_runtime_t *runtime)
 	{
 		case ENUM_AIN_AUDIO_V2:
 		case ENUM_AIN_AUDIO_V3:
+		case ENUM_AIN_AUDIO_V4:
 			break;
 		default:
 			// free AI in_ring
@@ -2360,6 +2378,99 @@ fail:
 	return ret;
 }
 
+static int snd_card_capture_audio_v4_open(snd_pcm_substream_t * substream)
+{
+	snd_pcm_runtime_t *runtime = substream->runtime;
+	snd_card_RTK_capture_pcm_t *dpcm = NULL;
+	int ret = ENOMEM;
+
+#ifdef USE_ION_AUDIO_HEAP
+	ion_phys_addr_t dat;
+	size_t len;
+
+	if(alsa_capture_handle)
+	{
+		ALSA_WARNING("ERR more than 1 capture instance!!!\n");
+	}
+
+	alsa_capture_handle = ion_alloc(alsa_client, sizeof(snd_card_RTK_capture_pcm_t), 1024, RTK_PHOENIX_ION_HEAP_AUDIO_MASK, AUDIO_ION_FLAG);
+
+	if (IS_ERR(alsa_capture_handle)) {
+		ALSA_WARNING("[%s %d ion_alloc fail]\n", __FUNCTION__, __LINE__);
+		goto fail;
+	}
+
+	if(ion_phys(alsa_client, alsa_capture_handle, &dat, &len) != 0) {
+		printk("[%s %d] alloc memory faild\n", __FUNCTION__, __LINE__);
+		goto fail;
+	}
+
+	dpcm = ion_map_kernel(alsa_client, alsa_capture_handle);
+	memset(dpcm, 0, len);
+	dpcm->phy_addr = dat;
+#else
+	dma_addr_t dat;
+	void *p;
+
+	p = dma_alloc_coherent(NULL, sizeof(snd_card_RTK_pcm_t), &dat, GFP_KERNEL);
+	if (!p)
+	{
+		printk("[%s %d] alloc memory faild\n", __FUNCTION__, __LINE__);
+		goto fail;
+	}
+
+	dpcm = p;
+	dpcm->phy_addr = dat;
+#endif
+	// private data
+	runtime->private_data = dpcm;
+	runtime->private_free = snd_card_capture_runtime_free;
+
+	memcpy(&runtime->hw, &snd_card_mars_capture_audio, sizeof(struct snd_pcm_hardware));
+	dpcm->substream = substream;
+	dpcm->source_in = ENUM_AIN_AUDIO_V4;
+
+	// create AI
+	if (snd_realtek_hw_create_AI(substream) < 0)
+	{
+		ALSA_WARNING("[error %s %d]\n", __FUNCTION__, __LINE__);
+		ret = -ENOMEM;
+		goto fail;
+	}
+
+	dpcm->card = (RTK_snd_card_t *)(substream->pcm->card->private_data);
+
+	// init hr timer
+	hrtimer_init(&dpcm->hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+
+	spin_lock_init(&capture_lock);
+
+	ALSA_VitalPrint("[ALSA %s END]\n", __FUNCTION__);
+
+	ret = 0;
+
+	return ret;
+fail:
+
+#ifdef USE_ION_AUDIO_HEAP
+	if(alsa_client != NULL && alsa_capture_handle != NULL)
+	{
+		ion_unmap_kernel(alsa_client, alsa_capture_handle);
+		ion_free(alsa_client, alsa_capture_handle);
+		alsa_capture_handle = NULL;
+		dpcm = NULL;
+	}
+#else
+	if(p)
+	{
+		dma_free_coherent(NULL, sizeof(snd_card_RTK_capture_pcm_t), p, dat);
+		dpcm = NULL;
+	}
+#endif
+
+	return ret;
+}
+
 #ifdef CONFIG_REALTEK_FL3236
 extern void fl3236_disable_light(void);
 #endif
@@ -2562,7 +2673,7 @@ static unsigned int snd_capture_monitor_delay(struct snd_pcm_substream *substrea
     wp = (unsigned long)(ntohl(dpcm->nAIRing[0].writePtr));
     rp = (unsigned long)(ntohl(dpcm->nAIRing[0].readPtr[0]));
     pcm_size = ring_valid_data(base, limit, rp, wp) >> 2;
-//    printk(KERN_ALERT "AI pcm %x %x %x %x\n", (int)base, (int)limit, (int)wp, (int)rp);
+    //printk(KERN_ALERT "AI pcm %x %x %x %x\n", (int)base, (int)limit, (int)wp, (int)rp);
 
     // calculate the size of LPCM (output of AI)
     base = (unsigned long)(dpcm->nLPCMRing_LE.beginAddr);
@@ -2581,13 +2692,13 @@ static unsigned int snd_capture_monitor_delay(struct snd_pcm_substream *substrea
         default:
             ALSA_WARNING("capture err, %d @ %s %d\n", dpcm->nAIFormat, __FUNCTION__, __LINE__);
     }
-//    printk(KERN_ALERT "AI lpcm %x %x %x %x\n", (int)base, (int)limit, (int)wp, (int)rp);
+    //printk(KERN_ALERT "AI lpcm %x %x %x %x\n", (int)base, (int)limit, (int)wp, (int)rp);
 
     // calculate leatency
     pcm_latency = (pcm_size * 1000) / sample_rate;
     lpcm_latency = (lpcm_size * 1000) / sample_rate;
     ret = pcm_latency + lpcm_latency;
-//    printk(KERN_ALERT "AI latency %x + %x = %x\n", pcm_latency, lpcm_latency, ret);
+    //printk(KERN_ALERT "AI latency %x + %x = %x\n", pcm_latency, lpcm_latency, ret);
 
     return ret;
 }
@@ -2616,7 +2727,7 @@ static int snd_card_capture_ioctl(struct snd_pcm_substream *substream,  unsigned
             break;
         default:
             return snd_pcm_lib_ioctl(substream, cmd, arg);
-            break; 
+            break;
     }
     return 0;
 }
@@ -2625,7 +2736,7 @@ static int snd_card_playback_ioctl(struct snd_pcm_substream *substream,  unsigne
 {
 	snd_pcm_runtime_t *runtime = substream->runtime;
 	snd_card_RTK_pcm_t *dpcm = runtime->private_data;
-	AUDIO_RPC_EQUALIZER_MODE equalizer_mode;
+	struct AUDIO_RPC_EQUALIZER_MODE *equalizer_mode;
 
 	//printk("[ALSA %s %d]\n", __FUNCTION__, __LINE__);
 
@@ -2669,7 +2780,9 @@ static int snd_card_playback_ioctl(struct snd_pcm_substream *substream,  unsigne
 		}
 		case SNDRV_PCM_IOCTL_EQ_SET:
 		{
-			memcpy(&equalizer_mode, arg, sizeof(AUDIO_RPC_EQUALIZER_MODE));
+			equalizer_mode = kmalloc(sizeof(struct AUDIO_RPC_EQUALIZER_MODE), GFP_KERNEL);
+			if(copy_from_user((void *)equalizer_mode, (void *)arg, sizeof(struct AUDIO_RPC_EQUALIZER_MODE)))
+				printk("%s %d copy data fail\n",__func__, __LINE__);
 			RPC_TOAGENT_SET_EQ(dpcm, equalizer_mode);
 			break;
 		}
@@ -2806,6 +2919,7 @@ static int snd_card_capture_prepare_LPCM(snd_pcm_substream_t * substream)
 	{
 		case ENUM_AIN_AUDIO_V2:
 		case ENUM_AIN_AUDIO_V3:
+		case ENUM_AIN_AUDIO_V4:
 			break;
 		default:
 			// malloc AI ring buf
@@ -2859,6 +2973,7 @@ static int snd_card_capture_prepare_LPCM(snd_pcm_substream_t * substream)
 	{
 		case ENUM_AIN_AUDIO_V2:
 		case ENUM_AIN_AUDIO_V3:
+		case ENUM_AIN_AUDIO_V4:
 			// For audio processing flow, doing connect alsa before config audio v2 or v3
 			if(RPC_TOAGENT_AI_CONNECT_ALSA(runtime))
 			{
@@ -2882,6 +2997,7 @@ static int snd_card_capture_prepare_LPCM(snd_pcm_substream_t * substream)
 	{
 		case ENUM_AIN_AUDIO_V2:
 		case ENUM_AIN_AUDIO_V3:
+		case ENUM_AIN_AUDIO_V4:
 			break;
 		default:
 			if(RPC_TOAGENT_AI_CONNECT_ALSA(runtime))
@@ -2897,6 +3013,7 @@ static int snd_card_capture_prepare_LPCM(snd_pcm_substream_t * substream)
 	{
 		case ENUM_AIN_AUDIO_V2:
 		case ENUM_AIN_AUDIO_V3:
+		case ENUM_AIN_AUDIO_V4:
 			break;
 		default:
 			if(snd_realtek_hw_capture_run(dpcm))
@@ -3023,8 +3140,10 @@ static int snd_card_playback_prepare(snd_pcm_substream_t * substream)
 		ALSA_WARNING("[SNDRV_PCM_STATE_XRUN appl_ptr %d hw_ptr %d]\n", (int)runtime->control->appl_ptr, (int)runtime->status->hw_ptr);
 	}
 
-	/* Setup the hr timer using ktime */
-	dpcm->ktime = ktime_set(0 ,(runtime->period_size * 1000) / runtime->rate * 1000 * 1000); //ms to ns
+	/* Setup the hr timer using ktime .
+	 * For more precise compute the ktime in us.
+	 */
+	dpcm->ktime = ktime_set(0 ,(runtime->period_size * 1000) * 1000 / runtime->rate * 1000); //ms to ns
 
 	if (dpcm->bInitRing) {
 		/* Reset the information about playback.
@@ -3034,6 +3153,7 @@ static int snd_card_playback_prepare(snd_pcm_substream_t * substream)
 		dpcm->nTotalRead = 0;
 		dpcm->nTotalWrite = 0;
 		dpcm->nPreHWPtr = 0;
+		dpcm->nPre_appl_ptr = 0;
 		/*	DHCKYLIN-2193:
 			1.  pasue and stop AO and decoder, then destory the decoder for re-sending NewFormat.
 			2.  re-send NewFormat cmd to audio f/w when alsa is reconfigured.
@@ -3128,7 +3248,7 @@ static long snd_card_get_ring_data(RINGBUFFER_HEADER *pRing_BE, RINGBUFFER_HEADE
     //rp = (long)SND_UNCACHE_ADDRESS(ntohl(pRing_BE->readPtr[0]));
     wp = (unsigned long)(ntohl(pRing_BE->writePtr));
     rp = (unsigned long)(ntohl(pRing_BE->readPtr[0]));
-//    printk("[�� b %x l %x r %x w %x]\n", base, limit, rp, wp);
+    //printk("[�� b %x l %x r %x w %x]\n", base, limit, rp, wp);
     data_size = ring_valid_data(base, limit, rp, wp);
     return data_size;
 }
@@ -3292,20 +3412,20 @@ static void snd_card_capture_setup_pts(snd_pcm_runtime_t *runtime, AUDIO_DEC_PTS
 static void snd_card_capture_calculate_pts(snd_pcm_runtime_t *runtime, long nPeriodCount)
 {
     snd_card_RTK_capture_pcm_t *dpcm = runtime->private_data;
-//    snd_pcm_uframes_t nFrameSize = nPeriodCount * runtime->period_size;
+    //snd_pcm_uframes_t nFrameSize = nPeriodCount * runtime->period_size;
     AUDIO_DEC_PTS_INFO nPkt[2];
     AUDIO_RINGBUF_PTR_64 *pRing = &dpcm->nPTSRing;
     unsigned long temp_rp;
     unsigned int lpcm_rp = dpcm->nLPCMRing_LE.readPtr[0];
     unsigned int nPkt_ptr[2] = {0};
     unsigned int wp_offset, rp_offset, loop_count=0;
-//    unsigned long old_rp = pRing->rp;
+    //unsigned long old_rp = pRing->rp;
 
     // refresh wp of pts_ring
     wp_offset = ntohl(dpcm->nPTSRingHdr.writePtr) - (unsigned int)dpcm->nPTSMem.pPhy;
     pRing->wp = pRing->base + (unsigned long)wp_offset;
 
-//    ALSA_VitalPrint("#pkt %d\n", (int)(ring_valid_data(pRing->base, pRing->limit, pRing->rp, pRing->wp) / sizeof(AUDIO_DEC_PTS_INFO)));
+    //ALSA_VitalPrint("#pkt %d\n", (int)(ring_valid_data(pRing->base, pRing->limit, pRing->rp, pRing->wp) / sizeof(AUDIO_DEC_PTS_INFO)));
 
     ////////////////////////////
     // find corresponding pts //
@@ -3344,7 +3464,7 @@ static void snd_card_capture_calculate_pts(snd_pcm_runtime_t *runtime, long nPer
 
         nPkt_ptr[0] = ntohl(nPkt[0].wPtr);
         nPkt_ptr[1] = ntohl(nPkt[1].wPtr);
-//        ALSA_VitalPrint("lpcm %x pkt %x %x\n", lpcm_rp, nPkt_ptr[0], nPkt_ptr[1]);
+        //ALSA_VitalPrint("lpcm %x pkt %x %x\n", lpcm_rp, nPkt_ptr[0], nPkt_ptr[1]);
         if(ring_check_ptr_valid_32(nPkt_ptr[0], nPkt_ptr[1], lpcm_rp))
         {
             // get PTS
@@ -3363,12 +3483,12 @@ static void snd_card_capture_calculate_pts(snd_pcm_runtime_t *runtime, long nPer
     }while(1);
 
     // update rp
-//    ALSA_VitalPrint("pts rp %lx => %lx\n", old_rp, pRing->rp);
+    //ALSA_VitalPrint("pts rp %lx => %lx\n", old_rp, pRing->rp);
     rp_offset = pRing->rp - pRing->base;
     dpcm->nPTSRingHdr.readPtr[0] = htonl((unsigned int)dpcm->nPTSMem.pPhy + rp_offset);
 
 exit:
-/*    ALSA_VitalPrint("lpcm_rp %x time %x\n", lpcm_rp, (unsigned int)dpcm->ts.tv_sec);
+/*  ALSA_VitalPrint("lpcm_rp %x time %x\n", lpcm_rp, (unsigned int)dpcm->ts.tv_sec);
     ALSA_VitalPrint("pts b %x l %x w %x r %x\n"
         , (unsigned int)ntohl(dpcm->nPTSRingHdr.beginAddr)
         , (unsigned int)(ntohl(dpcm->nPTSRingHdr.beginAddr) + dpcm->nPTSMem.size)
@@ -3427,7 +3547,7 @@ int snd_card_capture_get_time_info(struct snd_pcm_substream *substream,
 {
     snd_pcm_runtime_t *runtime = substream->runtime;
     snd_card_RTK_capture_pcm_t *dpcm = runtime->private_data;
-//    ALSA_VitalPrint("%s\n", __func__);
+    //ALSA_VitalPrint("%s\n", __func__);
     *system_ts = dpcm->ts;
     return 0;
 }
@@ -3540,6 +3660,7 @@ static enum hrtimer_restart snd_card_capture_lpcm_timer_function(struct hrtimer 
 				case ENUM_AIN_AUDIO:
 				case ENUM_AIN_AUDIO_V2:
 				case ENUM_AIN_AUDIO_V3:
+				case ENUM_AIN_AUDIO_V4:
 					break;
 				default:
 					snd_card_capture_calculate_pts(runtime, nPeriodCount);
@@ -3627,7 +3748,7 @@ static void snd_card_capture_timer_function(unsigned long data)
     // set timer
     dpcm->nStartTimer.expires = dpcm->nPeriodJiffies + jiffies;
     //spin_lock_irqsave(&dpcm->nLock, flags);
-    spin_lock_irqsave(&capture_lock, flags); 
+    spin_lock_irqsave(&capture_lock, flags);
     if(dpcm->bStop)
         dpcm->bStop = 0;
     else
@@ -3659,13 +3780,12 @@ static enum hrtimer_restart snd_card_timer_function(struct hrtimer *timer)
 			(unsigned int)ntohl(dpcm->decOutRing[0].beginAddr) + rtk_dec_ao_buffer,
 			(unsigned int)ntohl(dpcm->decOutRing[0].readPtr[0]),
 			(unsigned int)ntohl(dpcm->decOutRing[0].writePtr));
-		//ALSA_VitalPrint("dec_out_valid_size %d\n", dec_out_valid_size);
+		//printk("dec_out_valid_size %d\n", dec_out_valid_size);
 		if (dec_out_valid_size > 0 && dec_out_valid_size <= dpcm->nRingSize)
 			dec_out_msec = ((dec_out_valid_size >> 2) * 1000) / runtime->rate;
 		else
 			dec_out_msec = 0;
-		//ALSA_VitalPrint("dec_out_msec %d\n", dec_out_msec);
-		//////////////////////////////////////////////////////////////////////////////////
+		//printk("dec_out_msec %d\n", dec_out_msec);
 
 		if (runtime->control->appl_ptr == runtime->status->hw_ptr)
 		{
@@ -3673,7 +3793,7 @@ static enum hrtimer_restart snd_card_timer_function(struct hrtimer *timer)
 			ALSA_WARNING("Need to check why data didn't send to alsa\n");
 		}
 
-		// update HW rp
+		// update HW rp (the pointer of AFW read)
 		HWRingRp = (unsigned int)(ntohl(dpcm->decInRing[0].readPtr[0]));//physical address
 		dpcm->decInRing_LE[0].readPtr[0] = HWRingRp;
 		dpcm->nHWPtr = bytes_to_frames(runtime, (unsigned long)HWRingRp - (unsigned long)dpcm->decInRing_LE[0].beginAddr);
@@ -3701,16 +3821,26 @@ static enum hrtimer_restart snd_card_timer_function(struct hrtimer *timer)
 		if (dpcm->nHWPtr != dpcm->nPreHWPtr)
 		{
 			nReadAddSize = ring_valid_data(0, runtime->buffer_size, dpcm->nPreHWPtr, dpcm->nHWPtr);
-#if 1
+
+			/* Control the rp for application.
+			 * 1. If data more than half buffer means the ability is enough,
+			 *    we can update length of the half buffer to rp.
+			 * 2. If data less than half buffer means the ability is not enough,
+			 *    we just update one period size length to rp avoiding SW-3490 problem.
+			 */
 			if (nReadAddSize > (runtime->buffer_size >> 1))
 			{
-#ifdef WORK_AROUND_BUG34499
 				nReadAddSize = runtime->buffer_size >> 1;
 				dpcm->nHWPtr = ring_add(0, runtime->buffer_size, dpcm->nPreHWPtr, nReadAddSize);
-#endif
-				//ALSA_WARNING("[ALSA maybe hang because Jitter %d, runtime->buffer size %d %s %d]\n", (int)nReadAddSize, (int)runtime->buffer_size, __FUNCTION__, __LINE__);
+				//ALSA_WARNING("[ALSA maybe hang because Jitter %d, runtime->buffer size %d]\n", (int)nReadAddSize, (int)runtime->buffer_size);
 			}
-#endif
+			else if (nReadAddSize <= (runtime->buffer_size >> 1) && nReadAddSize >= runtime->period_size)
+			{
+				nReadAddSize = runtime->period_size;
+				dpcm->nHWPtr = ring_add(0, runtime->buffer_size, dpcm->nPreHWPtr, nReadAddSize);
+				//ALSA_WARNING("[ALSA maybe hang because Jitter %d, runtime->buffer size %d]\n", (int)nReadAddSize, (int)runtime->buffer_size);
+			}
+
 			dpcm->nHWReadSize += nReadAddSize;
 			dpcm->nTotalRead = ring_add(0,
 				runtime->boundary,
@@ -3718,9 +3848,9 @@ static enum hrtimer_restart snd_card_timer_function(struct hrtimer *timer)
 				nReadAddSize);
 		}
 
-#ifndef USE_COPY_OPS
-		// update wp
+		// update wp (the pointer application send data to alsa)
 		nPeriodCount = ring_valid_data(0, runtime->boundary, dpcm->nTotalWrite, runtime->control->appl_ptr) / runtime->period_size;
+
 		if (nPeriodCount == runtime->periods)
 			nPeriodCount--;
 
@@ -3729,6 +3859,7 @@ static enum hrtimer_restart snd_card_timer_function(struct hrtimer *timer)
 		//printk("\033[0;33;33m [INRING LE %d] wp %x rp %x HWRingRp %x\033[m\n",
 		//    __LINE__, dpcm->decInRing_LE[0].writePtr, dpcm->decInRing_LE[0].readPtr[0], HWRingRp);
 
+		// Check the buffer available size between alsa and AFW
 		HWRingFreeSize = valid_free_size(dpcm->decInRing_LE[0].beginAddr,
 			dpcm->decInRing_LE[0].beginAddr + dpcm->decInRing_LE[0].size,
 			HWRingRp,
@@ -3755,29 +3886,23 @@ static enum hrtimer_restart snd_card_timer_function(struct hrtimer *timer)
 				dpcm->nTotalWrite,
 				runtime->period_size * nPeriodCount);
 
-			// update wp
-			//dpcm->decInRing[0].writePtr = htonl(dpcm->decInRing_LE[0].writePtr);
+			// update wp (tell AFW the write pointer from application is update)
 			dpcm->decInRing[0].writePtr = htonl(dpcm->decInRing_LE[0].writePtr);//record physical address
 			//printk("\033[0;33;33m [INRING LE %d update] wp %x rp %x\033[m\n", __LINE__, dpcm->decInRing_LE[0].writePtr, dpcm->decInRing_LE[0].readPtr[0]);
 		}
-#endif
 
-		//ALSA_VitalPrint("[nReadAddSize %d pre %d cur %d %d]\n", nReadAddSize, dpcm->nPreHWPtr, dpcm->nHWPtr, dpcm->nHWReadSize);
-		//ALSA_VitalPrint("[nTotalWrite %d nTotalRead %d nPeriodCount %d]\n", dpcm->nTotalWrite, dpcm->nTotalRead, nPeriodCount);
+		//printk("[nReadAddSize %d pre %d cur %d %d]\n", nReadAddSize, dpcm->nPreHWPtr, dpcm->nHWPtr, dpcm->nHWReadSize);
+		//printk("[nTotalWrite %d nTotalRead %d nPeriodCount %d]\n", dpcm->nTotalWrite, dpcm->nTotalRead, nPeriodCount);
 
 		if (runtime->status->state == SNDRV_PCM_STATE_DRAINING) {
 			switch (dpcm->nEOSState) {
 				case SND_REALTEK_EOS_STATE_NONE:
-					//dpcm->nEOSState = SND_REALTEK_EOS_STATE_PROCESSING;
 					if (RPC_TOAGENT_INBAND_EOS_SVC(dpcm) < 0)
 					{
 						ALSA_WARNING("[%s %d fail]\n", __FUNCTION__, __LINE__);
 					}
 					dpcm->nEOSState = SND_REALTEK_EOS_STATE_FINISH;
 					break;
-				//case SND_REALTEK_EOS_STATE_PROCESSING:
-				//    ALSA_VitalPrint("wilson [ALSA EOS %s %d]\n", __FUNCTION__, __LINE__);
-				//    break;
 				case SND_REALTEK_EOS_STATE_FINISH:
 					if (dpcm->nTotalWrite == dpcm->nTotalRead)
 					{
@@ -3790,7 +3915,6 @@ static enum hrtimer_restart snd_card_timer_function(struct hrtimer *timer)
 					break;
 			}
 		} else {
-			//printk("dpcm nHWReadSize %lu, runtime->period_size %lu\n", dpcm->nHWReadSize, runtime->period_size);
 			if (dpcm->nHWReadSize >= runtime->period_size) {
 				dpcm->nHWReadSize %= runtime->period_size;
 				DEBUG_CODE("[snd_pcm_period_elapsed]\n");
@@ -3798,33 +3922,29 @@ static enum hrtimer_restart snd_card_timer_function(struct hrtimer *timer)
 			}
 		}
 
-#ifndef USE_COPY_OPS
-		// check if wp and rp both stop
+		// check if wp and rp of android and AFW both stop
 		if (dpcm->nHWPtr == dpcm->nPreHWPtr && runtime->control->appl_ptr == dpcm->nPre_appl_ptr)
 			dbg_count++;
 		else
 			dbg_count = 0;
+
 		if (dbg_count >= (HZ << 1))
 		{
-	        //ALSA_WARNING("[HANG !!! %s %d]\n", __FUNCTION__, __LINE__);
-	        //ALSA_WARNING("[state %d write_state %d]\n", (int)runtime->status->state, (int)dpcm->nWriteState);
-#if 0
 			ALSA_WARNING("[state %d]\n", (int)runtime->status->state);
 			ALSA_WARNING("[runtime->control->appl_ptr %d runtime->status->hw_ptr %d]\n", (int)runtime->control->appl_ptr, (int)runtime->status->hw_ptr);
 			ALSA_WARNING("[dpcm->nTotalWrite %d dpcm->nTotalRead %d dpcm->nHWPtr %d]\n", (int)dpcm->nTotalWrite, (int)dpcm->nTotalRead, (int)dpcm->nHWPtr);
 			ALSA_WARNING("[b %x l %x w %x r %x]\n",
-			   (unsigned int)(ntohl(dpcm->decInRing[0].beginAddr)),
-			   (unsigned int)((ntohl(dpcm->decInRing[0].beginAddr)) + dpcm->decInRing_LE[0].size),
-			   (unsigned int)(ntohl(dpcm->decInRing[0].writePtr)),
-			   (unsigned int)(ntohl(dpcm->decInRing[0].readPtr[0])));
-#endif
-	        //ALSA_WARNING("[HWRingRp %x nPeriodCount %d runtime->periods %d]\n", HWRingRp, nPeriodCount, runtime->periods);
-	        //ALSA_WARNING("[HWRingFreeSize %d HWRingFreeFrame %d dpcm->nPeriodBytes %d]\n", HWRingFreeSize, HWRingFreeFrame, dpcm->nPeriodBytes);
-	        //ALSA_WARNING("[snd_pcm_playback_avail %d runtime->control->avail_min %d]\n", snd_pcm_playback_avail(runtime), runtime->control->avail_min);
+				(unsigned int)(ntohl(dpcm->decInRing[0].beginAddr)),
+				(unsigned int)((ntohl(dpcm->decInRing[0].beginAddr)) + dpcm->decInRing_LE[0].size),
+				(unsigned int)(ntohl(dpcm->decInRing[0].writePtr)),
+				(unsigned int)(ntohl(dpcm->decInRing[0].readPtr[0])));
+			ALSA_WARNING("[HWRingRp %x nPeriodCount %d runtime->periods %d]\n", HWRingRp, nPeriodCount, runtime->periods);
+			ALSA_WARNING("[snd_pcm_playback_avail %d runtime->control->avail_min %d]\n", (int)snd_pcm_playback_avail(runtime), (int)runtime->control->avail_min);
 			dbg_count = 0;
 		}
-#endif
+
 		dpcm->nPreHWPtr = dpcm->nHWPtr;
+		dpcm->nPre_appl_ptr = runtime->control->appl_ptr;
 
 		/* Set up the next time */
 		hrtimer_forward_now(timer, dpcm->ktime);
@@ -4016,7 +4136,6 @@ static int ring_check_ptr_valid_32(unsigned int ring_rp, unsigned int ring_wp, u
 	}
 }
 
-
 static unsigned long buf_memcpy2_ring(unsigned long base, unsigned long limit, unsigned long ptr, char* buf, unsigned long size)
 {
 	if (ptr + size <= limit)
@@ -4092,6 +4211,10 @@ int capture_substreams)
 		case 5:
 			snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_CAPTURE, &snd_card_rtk_capture_audio_v3_ops);
 			sprintf(pcm->name, SND_REALTEK_DRIVER_AUDIO_V3_IN);
+			break;
+		case 6:
+			snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_CAPTURE, &snd_card_rtk_capture_audio_v4_ops);
+			sprintf(pcm->name, SND_REALTEK_DRIVER_AUDIO_V4_IN);
 			break;
 		default:
 			ALSA_WARNING("[%s %d fail]\n", __FUNCTION__, __LINE__);
@@ -4581,13 +4704,15 @@ static int __init RTK_alsa_card_init(void)
     }
 #endif
     RTK_TRACE_ALSA("[+] @ %s\n", __func__);
-//    ALSA_VitalPrint("[ALSA %s %d]\n", __FUNCTION__, __LINE__);
+    //ALSA_VitalPrint("[ALSA %s %d]\n", __FUNCTION__, __LINE__);
     err = platform_driver_register(&rtk_alsa_driver);
     RTK_TRACE_ALSA(" @ %s %d\n", __func__, __LINE__);
     if (err < 0)
         goto RETURN_ERR;
 
 #ifdef USE_ION_AUDIO_HEAP
+	if (IS_ERR_OR_NULL(rtk_phoenix_ion_device))
+		goto RETURN_ERR;
     alsa_client = ion_client_create(rtk_phoenix_ion_device, "ALSADriver");
 #endif
 

@@ -91,6 +91,7 @@ struct mmc_cmdq_host_ops {
 	void (*post_req)(struct mmc_host *host, struct mmc_request *mrq,
 			 int err);
 	int (*halt)(struct mmc_host *host, bool halt);
+	void (*getrsp)(struct mmc_host *host, struct mmc_request *mrq);
 };
 #endif
 

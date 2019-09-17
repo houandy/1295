@@ -5,8 +5,7 @@
 #define PD_SRAM_VE2         1
 #define PD_SRAM_GPU         2
 #define PD_SRAM_VE3         3
-#define PD_SRAM_HDMIRX      4
-#define PD_MAX              5
+#define PD_MAX              4
 
 /* undefined */
 #define PD_SRAM_DISP

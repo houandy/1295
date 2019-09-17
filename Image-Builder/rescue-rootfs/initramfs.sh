@@ -30,10 +30,10 @@ if [ $1 = 'compress' ]; then
 	pushd rootfs > /dev/null
 	echo "need root permission"
 	sudo chown root:root -R *
-	find | cpio -H newc -o | gzip > ../rescue_rootfs.cpio.gz
+	find | cpio -H newc -o | gzip > ../rescue_updated.cpio.gz
 	popd > /dev/null
-#	dd if=rescue_updated.cpio.gz of=rescue_updated.cpio.gz_pad.img bs=$((1024*1024)) count=1 conv=sync 2> /dev/null
-#	sudo rm rescue_updated.cpio.gz
+	dd if=rescue_updated.cpio.gz of=rescue_updated.cpio.gz_pad.img bs=$((1024*1024)) count=1 conv=sync 2> /dev/null
+	sudo rm rescue_updated.cpio.gz
 	exit 0
 fi
 

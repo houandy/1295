@@ -1,7 +1,11 @@
 #!/bin/bash
 #set -x
 CPU=`grep -c ^processor /proc/cpuinfo`
-[ $# -ne 1 ] && echo -e "Usage:\n ./build.sh [DEFCONFIG]\nAvailable DEFCONFIG:\n\trtd129x_HDMI_defconfig\n\trtd129x_MM_defconfig\n\trtd129x_opencl_defconfig\n" && exit 1
+[ $# -ne 1 ] && echo -e "Usage:\n ./build.sh [DEFCONFIG]\nAvailable DEFCONFIG:\n\trtd16xx_lede_emmc_defconfig\n\trtd16xx_lede_transconde_emmc_defconfig\n\t" && exit 1
+
+if [ ! -e kernel ]; then
+	./prepare_for_lede.sh
+fi
 [ ! -e Toolchain ] && ln -s ../Toolchain
 pushd Toolchain
 	./aarch64-linux-gnu.sh

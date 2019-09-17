@@ -36,6 +36,7 @@ void __init rtd13xx_map_io(void)
 
 static const char * const rtd13xx_board_dt_compat[] = {
 	"realtek,rtd1319",
+	"realtek,hank",
 	NULL,
 };
 
@@ -44,9 +45,16 @@ static void __init rtk13xx_dt_init(void)
 	of_platform_populate(NULL, of_default_bus_match_table, NULL, NULL);
 }
 
+bool __init rtd13xx_smp_init_ops(void)
+{
+	smp_set_ops(smp_ops(rtd13xx_smp_ops));
+	return true;
+}
+
 DT_MACHINE_START(RTD1319, "Hank")
 	.map_io = rtd13xx_map_io,
 	.init_machine = rtk13xx_dt_init,
 	.dt_compat = rtd13xx_board_dt_compat,
 	.smp = smp_ops(rtd13xx_smp_ops),
+	.smp_init = smp_init_ops(rtd13xx_smp_init_ops),
 MACHINE_END

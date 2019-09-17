@@ -265,7 +265,8 @@ uint32_t rpc_get_flag(int type)
 		return __be32_to_cpu(readl(&(ipc->video_rpc_flag)));
 	}
 #endif
-
+	pr_err("[%s] rpc_get_flag type error!\n", __func__ );
+	return 0xdeaddead;
 }
 
 void rpc_send_interrupt(int type)
@@ -701,6 +702,20 @@ static int __maybe_unused rtk_rpc_probe(struct platform_device *pdev)
 
 	rpc_send_interrupt(RPC_VIDEO);
 	rpc_set_flag(RPC_VIDEO, 0xffffffff);
+	{
+		int MaxCount = 5000;
+		int wait_time = 0;
+		pr_warn("[%s] wait vcpu ready ", RPC_NAME);
+		while ((rpc_get_flag(RPC_VIDEO) == 0xffffffff) && ((MaxCount--) > 0)) {
+			mdelay(1);
+			if ((++wait_time) == 10) {
+				wait_time = 0;
+			}
+		}
+		while ((--wait_time) > 0)
+			pr_warn(".");
+		pr_warn("[%s] %s (RPC_VIDEO FLAG = 0x%08x)\n", RPC_NAME, (MaxCount > 0) ? "OK" : "timeout", rpc_get_flag(RPC_VIDEO));
+	}
 #endif
 
 #ifdef CONFIG_REALTEK_AVCPU
@@ -877,7 +892,7 @@ static int rtk_rpc_init(void)
 {
 	return platform_driver_register(&rtk_rpc_driver);
 }
-late_initcall(rtk_rpc_init);
+device_initcall(rtk_rpc_init);
 
 //module_platform_driver(rtk_rpc_driver);
 MODULE_LICENSE("Dual BSD/GPL");

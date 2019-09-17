@@ -360,9 +360,9 @@ static loff_t factory_get_start_address(void)
 	int reservedSize;
 
 	if(mtd->erasesize == 0x40000)
-		reservedSize = 50 * mtd->erasesize;
+		reservedSize = 70 * mtd->erasesize;
 	else //128KB
-		reservedSize = 74 * mtd->erasesize;
+		reservedSize = 115 * mtd->erasesize;
 
 	return reservedSize;
 }

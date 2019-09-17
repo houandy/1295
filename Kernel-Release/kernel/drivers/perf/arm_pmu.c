@@ -27,18 +27,6 @@
 #include <asm/cputype.h>
 #include <asm/irq_regs.h>
 
-#ifdef CONFIG_RTK_WORKAROUND_ARM_PMUV3
-void armpmu_wxt_cancel_hrtimer(struct perf_event *event);
-void armpmu_wxt_start_hrtimer(struct perf_event *event);
-void armpmu_wxt_init_hrtimer(struct perf_event *event);
-void armpmu_wxt_fini_hrtimer(struct perf_event *event);
-#else
-void armpmu_wxt_cancel_hrtimer(struct perf_event *event) {}
-void armpmu_wxt_start_hrtimer(struct perf_event *event) {}
-void armpmu_wxt_init_hrtimer(struct perf_event *event) {}
-void armpmu_wxt_fini_hrtimer(struct perf_event *event) {}
-#endif
-
 static int
 armpmu_map_cache_event(const unsigned (*cache_map)
 				      [PERF_COUNT_HW_CACHE_MAX]
@@ -187,8 +175,6 @@ armpmu_stop(struct perf_event *event, int flags)
 	struct arm_pmu *armpmu = to_arm_pmu(event->pmu);
 	struct hw_perf_event *hwc = &event->hw;
 
-	armpmu_wxt_cancel_hrtimer(event);
-
 	/*
 	 * ARM pmu always has to update the counter, so ignore
 	 * PERF_EF_UPDATE, see comments in armpmu_start().
@@ -222,8 +208,6 @@ static void armpmu_start(struct perf_event *event, int flags)
 	 */
 	armpmu_event_set_period(event);
 	armpmu->enable(event);
-
-	armpmu_wxt_start_hrtimer(event);
 }
 
 static void
@@ -402,7 +386,6 @@ hw_perf_event_destroy(struct perf_event *event)
 		armpmu_release_hardware(armpmu);
 		mutex_unlock(pmu_reserve_mutex);
 	}
-	armpmu_wxt_fini_hrtimer(event);
 }
 
 static int
@@ -470,8 +453,6 @@ __hw_perf_event_init(struct perf_event *event)
 		if (validate_group(event) != 0)
 			return -EINVAL;
 	}
-
-	armpmu_wxt_init_hrtimer(event);
 
 	return 0;
 }
@@ -707,6 +688,13 @@ static int cpu_pmu_request_irq(struct arm_pmu *cpu_pmu, irq_handler_t handler)
 			if (cpu_pmu->irq_affinity)
 				cpu = cpu_pmu->irq_affinity[i];
 
+#ifdef CONFIG_RTK_PLATFORM
+			if (irq_set_affinity(irq, &cpu_pmu->supported_cpus)) {
+				pr_warn("unable to set irq affinity (irq=%d, cpumask=%*pb)\n",
+					irq, cpumask_pr_args(&cpu_pmu->supported_cpus));
+				continue;
+			}
+#else
 			/*
 			 * If we have a single PMU interrupt that we can't shift,
 			 * assume that we're running on a uniprocessor machine and
@@ -717,6 +705,7 @@ static int cpu_pmu_request_irq(struct arm_pmu *cpu_pmu, irq_handler_t handler)
 					irq, cpu);
 				continue;
 			}
+#endif /* CONFIG_RTK_PLATFORM */
 
 			err = request_irq(irq, handler,
 					  IRQF_NOBALANCING | IRQF_NO_THREAD, "arm-pmu",

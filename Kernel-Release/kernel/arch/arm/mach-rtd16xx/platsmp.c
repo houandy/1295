@@ -5,110 +5,76 @@
 #include <linux/memory.h>
 #include <linux/smp.h>
 #include <linux/of.h>
+#include <linux/arm-smccc.h>
 #include <asm/smp_plat.h>
 #include <asm/cacheflush.h>
 #include <asm/cp15.h>
+#include <asm/barrier.h>
 #include <soc/realtek/rtk_cpu.h>
 
-void rtd16xx_secondary_startup(void);
+#define BL31_CMD 0x8400ff04
+#define BL31_DAT 0x00001619
+#define RELEASE_ADDR 0x98007F30
+#define CPUID 28
 
-extern void cpu_do_lowpower(unsigned long secondary_entry_addr);
+#define CPUPWRCTLR __ACCESS_CP15(c15, 0, c2, 7)
 
-static int cpu_hotplug = 0;
-
-static DEFINE_SPINLOCK(cpu_lock);
-
-static void write_pen_release(int val)
-{
-	pen_release = val;
-	smp_wmb();
-	sync_cache_w(&pen_release);
-}
-
-static void rtd16xx_secondary_init(unsigned int cpu)
-{
-	/* let primary processor know we are out of pen */
-	write_pen_release(-1);
-
-	/* syn with the boot thread */
-	spin_lock(&cpu_lock);
-	spin_unlock(&cpu_lock);
-}
+static u32 __iomem *cpu_release_virt;
 
 static int rtd16xx_boot_secondary(unsigned int cpu, struct task_struct *idle)
 {
-	unsigned long timeout;
-	unsigned long phys_cpu = cpu_logical_map(cpu);
+	unsigned long entry_pa = __pa_symbol(secondary_startup);
 
-	if(cpu_hotplug == 1){
-		arch_send_wakeup_ipi_mask(cpumask_of(cpu));
-	}
-
-	write_pen_release(phys_cpu);
+	writel_relaxed(entry_pa | (cpu << CPUID), cpu_release_virt);
 
 	arch_send_wakeup_ipi_mask(cpumask_of(cpu));
 
-	timeout = jiffies + (1*HZ);
-	while(time_before(jiffies, timeout)) {
-		smp_wmb();
-		if (pen_release == -1)
-			break;
-		udelay(10);
-	}
-
-	return pen_release != -1 ? -ENOSYS : 0;
+	return 0;
 }
 
 void rtd16xx_prepare_cpus(unsigned int max_cpus)
 {
-	int i;
+	struct device_node *np;
+	int cpu;
 
-	for (i = 0 ; i < max_cpus ; i++) {
-		set_cpu_present(i, true);
+	cpu_release_virt = ioremap(RELEASE_ADDR, sizeof(u32));
+
+	for_each_possible_cpu(cpu) {
+
+		np = of_get_cpu_node(cpu, NULL);
+		if (!np)
+			continue;
+
+		set_cpu_present(cpu, true);
 	}
-
-	smp_wmb();
-}
-
-static void __init rtd16xx_init_cpus(void)
-{
-	void __iomem *rbus_base;
-
-	rbus_base = ioremap(0x98007F30, 0x10);
-
-	writel(virt_to_phys(rtd16xx_secondary_startup), rbus_base);
-
-	iounmap(rbus_base);
 }
 
 #ifdef CONFIG_HOTPLUG_CPU
 
 static void rtd16xx_cpu_die(unsigned int cpu)
 {
-	/*
-	 * Set the fake core0 resume address to BL31
-	 * to let Bl31 know slave cpu will resume
-	 */
-	asm volatile(".arch_extension sec" : : : "cc");
-	asm volatile("isb" : : : "cc");
-	asm volatile("ldr r1, =0x20000" : : : "cc");
-	asm volatile("ldr r0, =0x8400ff04" : : : "cc");
-	asm volatile("isb" : : : "cc");
-	asm volatile("smc #0" : : : "cc");
-	asm volatile("isb" : : : "cc");
+	struct arm_smccc_res res;
+	unsigned int cpu_pwr_ctrl;
 
-	cpu_hotplug = 1;
+	writel_relaxed(0x0, cpu_release_virt);
 
+	/* notify BL31 cpu hotplug */
+	arm_smccc_smc(BL31_CMD, BL31_DAT, 0, 0, 0, 0, 0, 0, &res);
 	v7_exit_coherency_flush(louis);
 
-	cpu_do_lowpower(0x98007F30);
+	cpu_pwr_ctrl = read_sysreg(CPUPWRCTLR);
+	cpu_pwr_ctrl |= 0x1;
+	write_sysreg(cpu_pwr_ctrl, CPUPWRCTLR);
+
+	dsb(sy);
+
+	for (;;)
+		wfi();
 }
 #endif
 
 struct smp_operations rtd16xx_smp_ops __initdata = {
 	.smp_prepare_cpus = rtd16xx_prepare_cpus,
-	.smp_init_cpus = rtd16xx_init_cpus,
-	.smp_secondary_init = rtd16xx_secondary_init,
 	.smp_boot_secondary = rtd16xx_boot_secondary,
 #ifdef CONFIG_HOTPLUG_CPU
 	.cpu_die = rtd16xx_cpu_die,

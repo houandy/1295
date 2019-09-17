@@ -80,10 +80,14 @@ int hdmi_queue_setup(struct vb2_queue *vq,
 	atomic_set(&dma_q->qcnt, 0);
 	atomic_set(&dma_q->rcnt, 0);
 
-	if (dev->outfmt >= OUT_ARGB)
+	if (dev->outfmt == OUT_10BIT_YUV420) {
+		size = mipi_top.pitch * roundup16(dev->height);/* y_size */
+		size = size + (size >> 1);/* y_size x 1.5 */
+	} else if (dev->outfmt >= OUT_ARGB) {
 		size = dev->width * dev->height * dev->bpp / 8;
-	else
+	} else {
 		size = roundup16(dev->width) * roundup16(dev->height) * dev->bpp / 8;
+	}
 
 	if (size == 0)
 		return -EINVAL;
@@ -110,10 +114,14 @@ int hdmi_buffer_prepare(struct vb2_buffer *vb)
 		dev->height < 32 || dev->height > MAX_HEIGHT)
 		return -EINVAL;
 
-	if (dev->outfmt >= OUT_ARGB)
+	if (dev->outfmt == OUT_10BIT_YUV420) {
+		size = mipi_top.pitch * roundup16(dev->height);/* y_size */
+		size = size + (size >> 1);/* y_size x 1.5 */
+	} else if (dev->outfmt >= OUT_ARGB) {
 		size = dev->width * dev->height * dev->bpp / 8;
-	else
+	} else {
 		size = roundup16(dev->width) * roundup16(dev->height) * dev->bpp / 8;
+	}
 
 	if (vb2_plane_size(vb, 0) < size) {
 		HDMIRX_ERROR("[%s] data will not fit into plane (%lu < %lu)",
@@ -360,6 +368,13 @@ static inline void update_hdmirx_switch_state(struct v4l2_hdmi_dev *dev)
 		switch_set_state(&dev->hsdev, hdcp_state);
 		HDMIRX_INFO("switch hdcp state to %d", hdcp_state);
 	}
+
+	if (hdmirx_state.hdr_received != switch_get_state(&dev->hdr_sdev)) {
+		switch_set_state(&dev->hdr_sdev, hdmirx_state.hdr_received);
+
+		HDMIRX_INFO("switch hdr detect state to %d",
+			hdmirx_state.hdr_received);
+	}
 }
 
 static int mipi_top_thread(void *arg)
@@ -400,6 +415,7 @@ int hdmirx_rtk_drv_probe(struct platform_device *pdev)
 	struct switch_dev *sdev;/* video switch device */
 	struct switch_dev *asdev;/* audio switch device */
 	struct switch_dev *hsdev; /* hdcp switch device */
+	struct switch_dev *hdr_sdev; /* HDR switch device */
 	const u32 *edid_table_pro;
 	int edid_cell_size;
 	HDMIRX_DTS_EDID_TBL_T dts_edid_table;
@@ -552,6 +568,14 @@ int hdmirx_rtk_drv_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto unreg_vdev;
 	switch_set_state(&hdmi_dev->hsdev, 0);
+
+	/* Register hdr switch device */
+	hdr_sdev = &hdmi_dev->hdr_sdev;
+	hdr_sdev->name = "rx_hdr";
+	ret = switch_dev_register(hdr_sdev);
+	if (ret < 0)
+		goto unreg_vdev;
+	switch_set_state(&hdmi_dev->hdr_sdev, 0);
 
 	/* Register sysfs */
 	register_hdmirx_sysfs(pdev);

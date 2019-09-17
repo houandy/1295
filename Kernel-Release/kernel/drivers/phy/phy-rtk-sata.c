@@ -14,6 +14,11 @@
 #define PHY_MAX_CLK		5
 #define PHY_MAX_RST		5
 
+#define PHY_CLK_EN		0x18
+#define MDIO_CTR		0x60
+#define MDIO_CTR1		0x64
+#define PHY_SPD			0x68
+
 struct phy_rtk_desc {
 	unsigned int index;
 	unsigned int param_size;
@@ -124,18 +129,29 @@ static const unsigned int TX_DRV_TABLE_THOR[][6] = {
 		0x88aa2111, 0x88aa6111, 0x88aaa111 },
 };
 
-static void writel_delay(unsigned int value, void __iomem *address)
+static int write_mdio_reg(unsigned int value, void __iomem *address)
 {
+	unsigned int cnt = 0;
+
+	while (readl(address) & 0x80) {
+		udelay(10);
+		cnt++;
+		if (cnt > 5) {
+			pr_err("sata %s fail\n", __func__);
+			return -1;
+		}
+	}
 	writel(value, address);
-	mdelay(1);
+
+	return 0;
 }
 
-static unsigned int read_phyreg(unsigned int reg, void __iomem *address)
+static unsigned int read_mdio_reg(unsigned int reg, void __iomem *address)
 {
 	unsigned int value;
 
 	value = (reg << 8) | 0x10;
-	writel_delay(value, address);
+	write_mdio_reg(value, address);
 
 	value = readl(address);
 	return value;
@@ -168,7 +184,8 @@ static int phy_rtk_sata_init(struct phy *phy)
 	int i;
 	unsigned int size;
 
-	if (priv->chip_id == CHIP_ID_RTD1619) {
+	if (priv->chip_id == CHIP_ID_RTD1619 ||
+		priv->chip_id == CHIP_ID_RTD1319) {
 		for (i=0; i<PHY_MAX_RST; i++) {
 			if (desc->rsts[i] == NULL)
 				break;
@@ -183,22 +200,24 @@ static int phy_rtk_sata_init(struct phy *phy)
 		reg = reg | BIT(1) | BIT(3) | BIT(5);
 	writel(reg, sb2base);
 
-	writel_delay(desc->index, base + 4);
+	writel(desc->index, base + MDIO_CTR1);
 
 	for (i = 0; i < desc->param_size; i++) {
 		dev_info(priv->dev, "phy%d para 0x%x\n", desc->index, desc->param_table[i]);
-		writel_delay(desc->param_table[i], base);
+		write_mdio_reg(desc->param_table[i], base + MDIO_CTR);
 	}
 	for (i = 0; i < desc->txdrv_size; i++) {
 		dev_info(priv->dev, "phy%d txdrv 0x%x\n", desc->index, desc->txdrv_table[i]);
-		writel_delay(desc->txdrv_table[i], base);
-	}
-	for (i = 0; i < desc->rxsense_size; i++) {
-		dev_info(priv->dev, "phy%d rxsense 0x%x\n", desc->index, desc->rxsense_table[i]);
-		writel_delay(desc->rxsense_table[i], base);
+		write_mdio_reg(desc->txdrv_table[i], base + MDIO_CTR);
 	}
 
-	if (priv->chip_id != CHIP_ID_RTD1619) {
+	for (i = 0; i < desc->rxsense_size; i++) {
+		dev_info(priv->dev, "phy%d rxsense 0x%x\n", desc->index, desc->rxsense_table[i]);
+		write_mdio_reg(desc->rxsense_table[i], base + MDIO_CTR);
+	}
+
+	if (priv->chip_id != CHIP_ID_RTD1619 ||
+		priv->chip_id != CHIP_ID_RTD1319) {
 		if (desc->ssc_en) {
 			table = (unsigned int *)&SSCEN_SET_TABLE;
 			size = sizeof(SSCEN_SET_TABLE)/sizeof(unsigned int);
@@ -207,24 +226,28 @@ static int phy_rtk_sata_init(struct phy *phy)
 			size = sizeof(SSCDIS_SET_TABLE)/sizeof(unsigned int);
 		}
 		for (i = 0; i < size; i++)
-			writel_delay(table[i], base);
+			write_mdio_reg(table[i], base + MDIO_CTR);
 
 		if ((priv->chip_id & 0xFFF0) == CHIP_ID_RTD129X &&
 			priv->chip_revision == RTD_CHIP_B00) {
 			table = (unsigned int *)&PHY_CLOCK_DELAY;
 			size = sizeof(PHY_CLOCK_DELAY)/sizeof(unsigned int);
 			for (i = 0; i < size; i++)
-				writel_delay(table[i], base);
+				write_mdio_reg(table[i], base + MDIO_CTR);
 		}
 	}
 
 	if (desc->speed == 0)
-		writel_delay(0xA, base + 8);
+		writel(0xA, base + PHY_SPD);
 	else if (desc->speed == 2)
-		writel_delay(0x5, base + 8);
+		writel(0x5, base + PHY_SPD);
 	else if (desc->speed == 1)
-		writel_delay(0x0, base + 8);
+		writel(0x0, base + PHY_SPD);
 
+	if (priv->chip_id == CHIP_ID_RTD1319) {
+		reg = readl(base + PHY_CLK_EN) | (1 << (desc->index+7));
+		writel(reg, base + PHY_CLK_EN);
+	}
 	dev_info(priv->dev, "init phy%d OK\n", desc->index);
 
 	return 0;
@@ -272,24 +295,25 @@ static int phy_rtk_sata_set_mode(struct phy *phy, enum phy_mode mode)
 	unsigned int value;
 	int i;
 
-	if (priv->chip_id == CHIP_ID_RTD1619) {
-		writel_delay(desc->index, base + 4);
+	if (priv->chip_id == CHIP_ID_RTD1619 ||
+		priv->chip_id == CHIP_ID_RTD1319) {
+		writel(desc->index, base + MDIO_CTR1);
 		for (i=0; i<3; i++) {
-			value = read_phyreg(0x20+0x40*i, base);
+			value = read_mdio_reg(0x20+0x40*i, base + MDIO_CTR);
 			if (mode)
 				value = value | (0x3 << 28);
 			else
 				value = value & ~(0x3 << 28);
 			value = value | 0x11;
-			writel_delay(value, base);
+			write_mdio_reg(value, base + MDIO_CTR);
 
-			value = read_phyreg(0x2a+0x40*i, base);
+			value = read_mdio_reg(0x2a+0x40*i, base + MDIO_CTR);
 			if (mode)
 				value = value & ~(0x1 << 23);
 			else
 				value = value | (0x1 << 23);
 			value = value | 0x11;
-			writel_delay(value, base);
+			write_mdio_reg(value, base + MDIO_CTR);
 		}
 	} else {
 		for (i=0; i<PHY_MAX_RST; i++) {
@@ -324,7 +348,8 @@ static int get_phy_parameter(struct device *dev, struct device_node *node,
 
 	prop = of_get_property(node, "phy-param", NULL);
 	if (!prop) {
-		if (priv->chip_id == CHIP_ID_RTD1619)
+		if (priv->chip_id == CHIP_ID_RTD1619 ||
+			priv->chip_id == CHIP_ID_RTD1319)
 			size = sizeof(PHY_PARA_TABLE_THOR)/sizeof(unsigned int);
 		else
 			size = sizeof(PHY_PARA_TABLE)/sizeof(unsigned int);
@@ -336,7 +361,8 @@ static int get_phy_parameter(struct device *dev, struct device_node *node,
 	if (!table)
 		return -ENOMEM;
 	if (!prop) {
-		if (priv->chip_id == CHIP_ID_RTD1619)
+		if (priv->chip_id == CHIP_ID_RTD1619 ||
+			priv->chip_id == CHIP_ID_RTD1319)
 			memcpy(table, &PHY_PARA_TABLE_THOR, sizeof(PHY_PARA_TABLE_THOR));
 		else
 			memcpy(table, &PHY_PARA_TABLE, sizeof(PHY_PARA_TABLE));
@@ -362,7 +388,8 @@ static int get_phy_parameter(struct device *dev, struct device_node *node,
 			if (drv_level >= sizeof(TX_DRV_TABLE)/sizeof(*TX_DRV_TABLE))
 				drv_level = DEFAULT_TXDRV_LEVEL;
 			memcpy(table, TX_DRV_TABLE[drv_level], sizeof(*TX_DRV_TABLE));
-		} else if (priv->chip_id == CHIP_ID_RTD1619) {
+		} else if (priv->chip_id == CHIP_ID_RTD1619 ||
+				priv->chip_id == CHIP_ID_RTD1319) {
 			dev_info(dev, "can't find tx table\n");
 			drv_level = 0;
 			memcpy(table, TX_DRV_TABLE_THOR[drv_level], sizeof(*TX_DRV_TABLE_THOR));
@@ -374,10 +401,11 @@ static int get_phy_parameter(struct device *dev, struct device_node *node,
 	desc->txdrv_table = table;
 
 	prop = of_get_property(node, "rx-sense-tbl", NULL);
-	if (!prop)
+	if (!prop) {
 		size = sizeof(*PHY_SENSITIVITY)/sizeof(unsigned int);
-	else
+	} else {
 		size = of_property_count_u32_elems(node, "rx-sense-tbl");
+	}
 
 	table = devm_kzalloc(dev, sizeof(unsigned int)*size, GFP_KERNEL);
 	if (!table)
@@ -390,7 +418,8 @@ static int get_phy_parameter(struct device *dev, struct device_node *node,
 				num = 0;
 			else
 				num = 1;
-		} else if (priv->chip_id == CHIP_ID_RTD1619) {
+		} else if (priv->chip_id == CHIP_ID_RTD1619 ||
+				priv->chip_id == CHIP_ID_RTD1319) {
 			num = 2;
 		}
 		memcpy(table, PHY_SENSITIVITY[num], sizeof(*PHY_SENSITIVITY));
@@ -399,6 +428,9 @@ static int get_phy_parameter(struct device *dev, struct device_node *node,
 	}
 	desc->rxsense_size = size;
 	desc->rxsense_table = table;
+
+	if (priv->chip_id == CHIP_ID_RTD1319)
+		desc->rxsense_size = 0;
 
 	of_property_read_u32(node, "spread-spectrum", &desc->ssc_en);
 	of_property_read_u32(node, "speed-limit", &desc->speed);
@@ -424,6 +456,7 @@ static void phy_rtk_sata_enable(struct phy_rtk_priv *priv)
 
 static void phy_rtk_sata_disable(struct phy_rtk_priv *priv)
 {
+#ifdef DISABLE_CLKRST
 	int i;
 
 	for (i=0; i<PHY_MAX_RST; i++) {
@@ -436,6 +469,8 @@ static void phy_rtk_sata_disable(struct phy_rtk_priv *priv)
 			break;
 		clk_disable_unprepare(priv->clks[i]);
 	}
+#endif
+	return;
 }
 
 static int phy_rtk_sata_probe(struct platform_device *pdev)

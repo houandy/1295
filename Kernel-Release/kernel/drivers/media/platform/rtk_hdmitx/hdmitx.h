@@ -389,6 +389,10 @@ struct ext_edid {
 #define HDMI_GET_CONFIG_TV_SYSTEM		_IOR(HDMI_IOCTL_MAGIC, 20, struct VIDEO_RPC_VOUT_CONFIG_TV_SYSTEM)
 
 
+#define HDMI_HOTPLUG_DETECTION			_IOWR(HDMI_IOCTL_MAGIC,21, int)
+#define HDMI_WAIT_HOTPLUG				_IOWR(HDMI_IOCTL_MAGIC,22, int)
+
+
 /* HDMI ioctl */
 enum {
 	HDMI_GET_SINK_CAPABILITY,
@@ -432,6 +436,7 @@ int hdmitx_switch_get_hpd(void);
 ssize_t show_hdmitx_info(struct device *cd, struct device_attribute *attr, char *buf);
 ssize_t show_edid_info(struct device *cd, struct device_attribute *attr, char *buf);
 void register_hdmitx_sysfs(struct device *dev);
+unsigned char get_hpd_interlock(void);
 
 /* rtk_mute_gpio */
 void set_mute_gpio_pulse(void);

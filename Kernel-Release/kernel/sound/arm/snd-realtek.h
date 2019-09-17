@@ -18,9 +18,7 @@
 // Main Control //
 //////////////////
 #define USE_ION_AUDIO_HEAP
-#define WORK_AROUND_BUG34499
 #define CAPTURE_USE_PTS_RING
-//#define USE_COPY_OPS
 
 ///////////////////
 // Debug Control //
@@ -169,7 +167,8 @@ enum{
 	ENUM_AIN_I2S,  // from ADC outside of IC
 	ENUM_AIN_AUDIO,
 	ENUM_AIN_AUDIO_V2,
-	ENUM_AIN_AUDIO_V3
+	ENUM_AIN_AUDIO_V3,
+	ENUM_AIN_AUDIO_V4
 };
 
 ////////////////////////////////////////////
@@ -776,6 +775,14 @@ enum AUDIO_VOLUME_CTRL {
 };
 typedef enum AUDIO_VOLUME_CTRL AUDIO_VOLUME_CTRL;
 
+typedef enum _audio_digital_output_mode {
+	AUDIO_DIGITAL_RAW,
+	AUDIO_DIGITAL_LPCM_DUAL_CH,
+	AUDIO_DIGITAL_LPCM_MULTI_CH,
+	AUDIO_DIGITAL_AUTO,
+	AUDIO_DIGITAL_MAX
+} ENUM_AUDIO_DIGITAL_OUTPUT_MODE;
+
 enum ENUM_GBL_VAR_EQUALIZER_ID {
 	ENUM_EQUALIZER_PP = 0,
 	ENUM_EQUALIZER_MIC = 1,
@@ -783,6 +790,16 @@ enum ENUM_GBL_VAR_EQUALIZER_ID {
 	ENUM_EQUALIZER_AO = 3,
 };
 typedef enum ENUM_GBL_VAR_EQUALIZER_ID ENUM_GBL_VAR_EQUALIZER_ID;
+
+enum AIN_AUDIO_PROCESSING {
+	ENUM_AIN_AUDIO_PROCESSING_NONE = 0,
+	ENUM_AIN_AUDIO_PROCESSING_NO_INTERNAL_RING_BUF = 0 + 1,
+	ENUM_AIN_AUDIO_PROCESSING = 0 + 2,
+	ENUM_AIN_AUDIO_PROCESSING_DMIC_AND_LOOPBACK = 0 + 3,
+	ENUM_AIN_AUDIO_PROCESSING_DMIC = 0 + 4,
+	ENUM_AIN_AUDIO_PROCESSING_I2S = 0 + 5,
+};
+typedef enum AIN_AUDIO_PROCESSING AIN_AUDIO_PROCESSING;
 
 /************************************************************************/
 /* typedef                                                                     */
@@ -827,16 +844,11 @@ typedef struct {
     int privateInfo[16];
 }AUDIO_RPC_PRIVATEINFO_RETURNVAL;
 
-typedef struct AUDIO_RPC_EQUALIZER_MODE {
-	long mode;
-	long gain[10];
-}AUDIO_RPC_EQUALIZER_MODE;
-
 typedef struct AUDIO_EQUALIZER_CONFIG {
 	int instanceID;
 	int gbl_var_eq_ID;
 	unsigned char ena;
-	AUDIO_RPC_EQUALIZER_MODE app_eq_config;
+	struct AUDIO_RPC_EQUALIZER_MODE app_eq_config;
 }AUDIO_EQUALIZER_CONFIG;
 
 typedef struct AUDIO_RPC_INSTANCE {
@@ -844,7 +856,7 @@ typedef struct AUDIO_RPC_INSTANCE {
     int type;
 }AUDIO_RPC_INSTANCE;
 
-typedef struct { 
+typedef struct {
     AUDIO_RPC_INSTANCE info;
     RPCRES_LONG retval;
     HRESULT ret;
@@ -1306,6 +1318,8 @@ int RPC_TOAGENT_PAUSE(snd_pcm_substream_t * substream);
 int RPC_TOAGENT_SET_TRUEHD_ERR_SELF_RESET(bool isON);
 int RPC_TOAGENT_SET_VOLUME(int volume);
 int RPC_TOAGENT_GET_VOLUME(snd_card_RTK_pcm_t *mars);
+int RPC_TOAGENT_SET_HDMI_OUTPUT_MODE(int mode);
+int RPC_TOAGENT_SET_SPDIF_OUTPUT_MODE(int mode);
 int RPC_TOAGENT_PUT_SHARE_MEMORY(void *p, int type);
 int RPC_TOAGENT_PUT_SHARE_MEMORY_LATENCY(void *p, void *p2, int decID, int type);
 int RPC_TOAGENT_CREATE_AI_AGENT(snd_card_RTK_capture_pcm_t *dpcm);
@@ -1325,6 +1339,6 @@ int RPC_TOAGENT_SET_AI_FLASH_VOLUME(snd_card_RTK_capture_pcm_t *dpcm, unsigned i
 int RPC_TOAGENT_SET_SOFTWARE_AI_FLASH_VOLUME(snd_card_RTK_capture_pcm_t *dpcm, unsigned int volume);
 int RPC_TOAGENT_SET_LOW_WATER_LEVEL(bool isLowWater);
 int RPC_TOAGENT_GET_AI_AGENT(snd_card_RTK_capture_pcm_t *dpcm);
-int RPC_TOAGENT_SET_EQ(snd_card_RTK_pcm_t *dpcm, AUDIO_RPC_EQUALIZER_MODE equalizer_mode);
+int RPC_TOAGENT_SET_EQ(snd_card_RTK_pcm_t *dpcm, struct AUDIO_RPC_EQUALIZER_MODE *equalizer_mode);
 
 #endif //SND_REALTEK_H

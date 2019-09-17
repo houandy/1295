@@ -99,7 +99,7 @@ static int g22xx_powerkey_show(struct seq_file *s, void *data)
 
 	ret = regmap_read(r, G2227_REG_PWRKEY, &val);
 	if (ret) {
-		seq_printf(s, "faield to read REG_PWRKEY\n");
+		seq_puts(s, "faield to read REG_PWRKEY");
 		return 0;
 	}
 
@@ -115,7 +115,7 @@ static int g22xx_powerkey_show(struct seq_file *s, void *data)
 
 	ret = regmap_read(r, G2227_REG_INTR_MASK, &val);
 	if (ret) {
-		seq_printf(s, "faield to read REG_INTR_MASK\n");
+		seq_puts(s, "faield to read REG_INTR_MASK");
 		return 0;
 	}
 	val >>= 3;
@@ -226,7 +226,8 @@ static void g22xx_powerkey_poll(struct input_polled_dev *ipdev)
 		} else if (pwrkey_lp == 1) {
 			dev_dbg(dev, "state_it: pwrkey long press\n");
 			action = G22XX_ACT_KEY_POWEY_LP;
-		} else if (ktime_ms_delta(cur, pdata->it_timestamp) >= pdata->lp_timeout) {
+		} else if (ktime_ms_delta(cur, pdata->it_timestamp) >=
+			   pdata->lp_timeout) {
 			dev_dbg(dev, "state_it: pwrkey long press timeout\n");
 			action = G22XX_ACT_KEY_POWEY;
 		} else
@@ -240,7 +241,8 @@ static void g22xx_powerkey_poll(struct input_polled_dev *ipdev)
 	switch (action) {
 	case G22XX_ACT_KEY_POWEY_LP:
 		dev_dbg(dev, "pwrkey longpress start\n");
-		pdata->lp_emu_left = DIV_ROUND_UP(pdata->lp_time, pdata->ipdev->poll_interval);
+		pdata->lp_emu_left = DIV_ROUND_UP(pdata->lp_time,
+						  pdata->ipdev->poll_interval);
 		input_report_key(idev, KEY_POWER, 1);
 		input_sync(idev);
 		break;
@@ -304,9 +306,11 @@ static int g22xx_powerkey_apply_config(struct g22xx_powerkey_data *pdata)
 {
 	if (pdata->lp_hw_en == 1) {
 		g22xx_powerkey_set_config(pdata, G22XX_ENLPOFF, 1);
-		g22xx_powerkey_set_config(pdata, G22XX_TIME_LPOFF, pdata->lpoff_sel);
+		g22xx_powerkey_set_config(pdata, G22XX_TIME_LPOFF,
+					  pdata->lpoff_sel);
 		g22xx_powerkey_set_config(pdata, G22XX_MASK_LP, 1);
-		g22xx_powerkey_set_config(pdata, G22XX_LPOFF_TO_DO, pdata->lpoff_act);
+		g22xx_powerkey_set_config(pdata, G22XX_LPOFF_TO_DO,
+					  pdata->lpoff_act);
 	} else if (pdata->lp_sw_en == 1) {
 		g22xx_powerkey_set_config(pdata, G22XX_ENLPOFF, 0);
 		g22xx_powerkey_set_config(pdata, G22XX_TIME_LP, pdata->lp_sel);
@@ -361,6 +365,9 @@ static int g22xx_powerkey_probe(struct platform_device *pdev)
 	int ret;
 	int i;
 
+	if (!dev->of_node || !of_device_is_available(dev->of_node))
+		return -ENODEV;
+
 	if (!gdev) {
 		dev_err(dev, "no parent device\n");
 		return -EINVAL;
@@ -371,15 +378,17 @@ static int g22xx_powerkey_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 
-	pdata->ipdev = devm_input_allocate_polled_device(dev);;
+	pdata->ipdev = devm_input_allocate_polled_device(dev);
 	if (!pdata->ipdev)
 		return -ENOMEM;
 
 	for (i = 0; i < G22XX_MAX; i++) {
-		pdata->regs[i] = devm_regmap_field_alloc(dev, gdev->regmap, g22xx_powerkey_fields[i]);
+		pdata->regs[i] = devm_regmap_field_alloc(dev, gdev->regmap,
+						g22xx_powerkey_fields[i]);
 		if (IS_ERR(pdata->regs[i])) {
 			ret = PTR_ERR(pdata->regs[i]);
-			dev_err(dev, "failed to alloc regmap field %d: %d\n", i, ret);
+			dev_err(dev, "failed to alloc regmap field %d: %d\n", i,
+				ret);
 			return ret;
 		}
 	}
@@ -409,7 +418,8 @@ static int g22xx_powerkey_probe(struct platform_device *pdev)
 		return ret;
 	}
 no_input_polldev:
-	pdata->d = debugfs_create_file("g22xx_powerkey_info", 0444, NULL, pdata, &g22xx_powerkey_fops);
+	pdata->d = debugfs_create_file("g22xx_powerkey_info", 0444, NULL, pdata,
+				       &g22xx_powerkey_fops);
 	if (!pdata->d)
 		dev_warn(dev, "debugfs_create_file() failed\n");
 	platform_set_drvdata(pdev, pdata);
@@ -423,17 +433,15 @@ static int g22xx_powerkey_remove(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 
 	platform_set_drvdata(pdev, NULL);
-	if (pdata->d)
-		debugfs_remove(pdata->d);
+	debugfs_remove(pdata->d);
 	if (pdata->lp_sw_en || pdata->it_sw_en)
 		input_unregister_polled_device(pdata->ipdev);
 	dev_info(dev, "removed\n");
 	return 0;
 }
 
-static struct of_device_id g22xx_powerkey_ids[] = {
+static const struct of_device_id g22xx_powerkey_ids[] = {
 	{ .compatible = "gmt,g22xx-powerkey", },
-	{ .compatible = "anpec,apw8889-powerkey", }, /* compatible with g2271 */
 	{}
 };
 

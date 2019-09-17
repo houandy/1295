@@ -241,21 +241,22 @@ static void rtkemmc_restore_registers()
 
 static void rtkemmc_backup_registers(void)
 {
-    gRegTbl.cr_ISO_muxpad4 = cr_readl(ISO_muxpad4);
-    gRegTbl.cr_pfunc_emmc0 = cr_readl(pfunc_emmc0);
-    gRegTbl.cr_pfunc_emmc1 = cr_readl(pfunc_emmc1);
-    gRegTbl.cr_pfunc_emmc2 = cr_readl(pfunc_emmc2);
-    gRegTbl.cr_pfunc_emmc3 = cr_readl(pfunc_emmc3);
-    gRegTbl.cr_pfunc_emmc4 = cr_readl(pfunc_emmc4);
-    gRegTbl.cr_pfunc_emmc5 = cr_readl(pfunc_emmc5);
+	gRegTbl.cr_ISO_muxpad4 = cr_readl(ISO_muxpad4);
+	gRegTbl.cr_pfunc_emmc0 = cr_readl(pfunc_emmc0);
+	gRegTbl.cr_pfunc_emmc1 = cr_readl(pfunc_emmc1);
+	gRegTbl.cr_pfunc_emmc2 = cr_readl(pfunc_emmc2);
+	gRegTbl.cr_pfunc_emmc3 = cr_readl(pfunc_emmc3);
+	gRegTbl.cr_pfunc_emmc4 = cr_readl(pfunc_emmc4);
+	gRegTbl.cr_pfunc_emmc5 = cr_readl(pfunc_emmc5);
 
-    gRegTbl.emmc_ctype = cr_readl(CR_EMMC_CTYPE);
-    gRegTbl.emmc_uhsreg = cr_readl(CR_EMMC_UHSREG);
-    gRegTbl.emmc_ddr_reg = cr_readl(CR_EMMC_DDR_REG);
-    gRegTbl.emmc_card_thr_ctl = cr_readl(CR_EMMC_CARD_THR_CTL);
-    gRegTbl.emmc_clk_div = cr_readl(CR_EMMC_CLKDIV);
-    gRegTbl.emmc_ckgen_ctl = cr_readl(CR_EMMC_CKGEN_CTL);
-    gRegTbl.emmc_dqs_ctrl1 = cr_readl(CR_EMMC_DQS_CTRL1);
+	gRegTbl.emmc_ctype = cr_readl(CR_EMMC_CTYPE);
+	gRegTbl.emmc_uhsreg = cr_readl(CR_EMMC_UHSREG);
+	gRegTbl.emmc_ddr_reg = cr_readl(CR_EMMC_DDR_REG);
+	gRegTbl.emmc_card_thr_ctl = cr_readl(CR_EMMC_CARD_THR_CTL);
+	gRegTbl.emmc_clk_div = cr_readl(CR_EMMC_CLKDIV);
+	gRegTbl.emmc_ckgen_ctl = cr_readl(CR_EMMC_CKGEN_CTL);
+	gRegTbl.emmc_dqs_ctrl1 = cr_readl(CR_EMMC_DQS_CTRL1);
+	gRegTbl.emmc_drto_mask_ori = cr_readl(CR_EMMC_DUMMY_SYS);
 }
 
 
@@ -1521,103 +1522,105 @@ int polling_to_tran_state(int cmd_idx, int bIgnore)
 }
 
 void card_stop(void){
-        MMCPRINTF("host_card_stop \n");
-        volatile u32 reg;
-        rtkemmc_backup_registers();
+	MMCPRINTF("host_card_stop \n");
+	volatile u32 reg;
+	rtkemmc_backup_registers();
 
-        //CRT reset eMMC
-        reg = cr_readl(SOFT_RESET2);
-		CP15ISB;
-        sync();
-        cr_writel(reg&0xfffff7ff, SOFT_RESET2);
-		CP15ISB;
-        sync();
+	//CRT reset eMMC
+	reg = cr_readl(SOFT_RESET2);
+	CP15ISB;
+	sync();
+	cr_writel(reg&0xfffff7ff, SOFT_RESET2);
+	CP15ISB;
+	sync();
 #if 0
-		//[A01] 98000450[1]: reset test_mux_main2 soft reset
-		if (get_rtd129x_cpu_revision() >= RTD129x_CHIP_REVISION_A01 ) {
-			MMCPRINTF("reset CRT_DUMMY(0x%08x) \n", CRT_DUMMY);
-			reg = cr_readl(CRT_DUMMY);
-			CP15ISB;
-			sync();
-			cr_writel(reg&0xfffffffd, CRT_DUMMY);
-			CP15ISB;
-			sync();
-			MMCPRINTF("reg(CRT_DUMMY) = 0x%08x \n", cr_readl(CRT_DUMMY));
-		}
+	//[A01] 98000450[1]: reset test_mux_main2 soft reset
+	if (get_rtd129x_cpu_revision() >= RTD129x_CHIP_REVISION_A01 ) {
+		MMCPRINTF("reset CRT_DUMMY(0x%08x) \n", CRT_DUMMY);
+		reg = cr_readl(CRT_DUMMY);
+		CP15ISB;
+		sync();
+		cr_writel(reg&0xfffffffd, CRT_DUMMY);
+		CP15ISB;
+		sync();
+		MMCPRINTF("reg(CRT_DUMMY) = 0x%08x \n", cr_readl(CRT_DUMMY));
+	}
 #endif
-        //CRT release eMMC reset
-        reg = cr_readl(SOFT_RESET2);
-		CP15ISB;
-        sync();
-        cr_writel(reg|0x00000800, SOFT_RESET2);
-		CP15ISB;
-        sync();
+	//CRT release eMMC reset
+	reg = cr_readl(SOFT_RESET2);
+	CP15ISB;
+	sync();
+	cr_writel(reg|0x00000800, SOFT_RESET2);
+	CP15ISB;
+	sync();
 #if 0
-		//[A01] 98000450[1]: release test_mux_main2 soft reset
-		if (get_rtd129x_cpu_revision() >= RTD129x_CHIP_REVISION_A01 ) {
-			MMCPRINTF("release CRT_DUMMY(0x%08x) \n", CRT_DUMMY);
-			reg = cr_readl(CRT_DUMMY);
-			CP15ISB;
-			sync();
-			cr_writel(reg | 0x00000002, CRT_DUMMY);
-			CP15ISB;
-			sync();
-			MMCPRINTF("reg(CRT_DUMMY) = 0x%08x \n", cr_readl(CRT_DUMMY));
-		}
+	//[A01] 98000450[1]: release test_mux_main2 soft reset
+	if (get_rtd129x_cpu_revision() >= RTD129x_CHIP_REVISION_A01 ) {
+		MMCPRINTF("release CRT_DUMMY(0x%08x) \n", CRT_DUMMY);
+		reg = cr_readl(CRT_DUMMY);
+		CP15ISB;
+		sync();
+		cr_writel(reg | 0x00000002, CRT_DUMMY);
+		CP15ISB;
+		sync();
+		MMCPRINTF("reg(CRT_DUMMY) = 0x%08x \n", cr_readl(CRT_DUMMY));
+	}
 
-		if (get_rtd129x_cpu_revision() >= RTD129x_CHIP_REVISION_A01 ) {
-			cr_writel((~cr_readl(CR_EMMC_DUMMY_SYS)) & 0x40000000, CR_EMMC_DUMMY_SYS);
-			CP15ISB;
-			sync();
-			udelay(200);
-		}	
+	if (get_rtd129x_cpu_revision() >= RTD129x_CHIP_REVISION_A01 ) {
+		cr_writel((~cr_readl(CR_EMMC_DUMMY_SYS)) & 0x40000000, CR_EMMC_DUMMY_SYS);
+		CP15ISB;
+		sync();
+		udelay(200);
+	}
 #endif
-        cr_writel(gRegTbl.cr_ISO_muxpad4, ISO_muxpad4);
-        cr_writel(gRegTbl.cr_pfunc_emmc0, pfunc_emmc0);
-        cr_writel(gRegTbl.cr_pfunc_emmc1, pfunc_emmc1);
-        cr_writel(gRegTbl.cr_pfunc_emmc2, pfunc_emmc2);
-        cr_writel(gRegTbl.cr_pfunc_emmc3, pfunc_emmc3);
-        cr_writel(gRegTbl.cr_pfunc_emmc4, pfunc_emmc4);
+	cr_writel(gRegTbl.cr_ISO_muxpad4, ISO_muxpad4);
+	cr_writel(gRegTbl.cr_pfunc_emmc0, pfunc_emmc0);
+	cr_writel(gRegTbl.cr_pfunc_emmc1, pfunc_emmc1);
+	cr_writel(gRegTbl.cr_pfunc_emmc2, pfunc_emmc2);
+	cr_writel(gRegTbl.cr_pfunc_emmc3, pfunc_emmc3);
+	cr_writel(gRegTbl.cr_pfunc_emmc4, pfunc_emmc4);
 	cr_writel(gRegTbl.cr_pfunc_emmc5, pfunc_emmc5);
 
 	cr_writel(gRegTbl.emmc_ckgen_ctl, CR_EMMC_CKGEN_CTL);
-        sync();
+	sync();
 
-        rtkemmc_host_reset();
+	rtkemmc_host_reset();
 
-        cr_writel(gRegTbl.emmc_ctype, CR_EMMC_CTYPE);
-        cr_writel(gRegTbl.emmc_uhsreg, CR_EMMC_UHSREG);
-        cr_writel(gRegTbl.emmc_ddr_reg, CR_EMMC_DDR_REG);
-        cr_writel(gRegTbl.emmc_card_thr_ctl, CR_EMMC_CARD_THR_CTL);
-        cr_writel(gRegTbl.emmc_dqs_ctrl1, CR_EMMC_DQS_CTRL1);
-        sync();
+	cr_writel(gRegTbl.emmc_ctype, CR_EMMC_CTYPE);
+	cr_writel(gRegTbl.emmc_uhsreg, CR_EMMC_UHSREG);
+	cr_writel(gRegTbl.emmc_ddr_reg, CR_EMMC_DDR_REG);
+	cr_writel(gRegTbl.emmc_card_thr_ctl, CR_EMMC_CARD_THR_CTL);
+	cr_writel(gRegTbl.emmc_dqs_ctrl1, CR_EMMC_DQS_CTRL1);
+	sync();
 
-        cr_writel(0, CR_EMMC_CLKENA); // 0x10, clk enable, disable clock
-        sync();
+	cr_writel(gRegTbl.emmc_drto_mask_ori, CR_EMMC_DUMMY_SYS);
+	sync();
 
-        cr_writel(0xa0202000, CR_EMMC_CMD); // 0x10, clk enable, disable clock
-        sync();
+	cr_writel(0, CR_EMMC_CLKENA); // 0x10, clk enable, disable clock
+	sync();
 
-        // 0x2c, wait for CIU to take the command
-        wait_done_timeout((volatile u32 *)(uintptr_t)CR_EMMC_CMD, 0x80000000,0);
-        cr_writel(gRegTbl.emmc_clk_div, CR_EMMC_CLKDIV);
-        sync();
+	cr_writel(0xa0202000, CR_EMMC_CMD); // 0x10, clk enable, disable clock
+	sync();
 
-        cr_writel(0xa0202000, CR_EMMC_CMD);  // 0x2c = start_cmd, upd_clk_reg_only, wait_prvdata_complete
-        sync();
+	// 0x2c, wait for CIU to take the command
+	wait_done_timeout((volatile u32 *)(uintptr_t)CR_EMMC_CMD, 0x80000000,0);
+	cr_writel(gRegTbl.emmc_clk_div, CR_EMMC_CLKDIV);
+	sync();
 
-        // 0x2c, wait for CIU to take the command
-        wait_done_timeout((volatile u32 *)(uintptr_t)CR_EMMC_CMD, 0x80000000,0);
+	cr_writel(0xa0202000, CR_EMMC_CMD);  // 0x2c = start_cmd, upd_clk_reg_only, wait_prvdata_complete
+	sync();
 
-        cr_writel(0x10001, CR_EMMC_CLKENA); // 0x10, clk enable, disable clock
-        sync();
+	// 0x2c, wait for CIU to take the command
+	wait_done_timeout((volatile u32 *)(uintptr_t)CR_EMMC_CMD, 0x80000000,0);
 
-        cr_writel(0xa0202000, CR_EMMC_CMD);  // 0x2c = start_cmd, upd_clk_reg_only, wait_prvdata_complete
-        sync();
+	cr_writel(0x10001, CR_EMMC_CLKENA); // 0x10, clk enable, disable clock
+	sync();
 
-        // 0x2c, wait for CIU to take the command
-        wait_done_timeout((volatile u32 *)(uintptr_t)CR_EMMC_CMD, 0x80000000,0);
+	cr_writel(0xa0202000, CR_EMMC_CMD);  // 0x2c = start_cmd, upd_clk_reg_only, wait_prvdata_complete
+	sync();
 
+	// 0x2c, wait for CIU to take the command
+	wait_done_timeout((volatile u32 *)(uintptr_t)CR_EMMC_CMD, 0x80000000,0);
 }
 
 int rtkemmc_send_cmd18(void)
@@ -4042,16 +4045,16 @@ int kylin_cr_init(void){
 	cr_writel(0x02000001, CR_EMMC_CARD_THR_CTL);
 	CP15ISB;
 	sync();
-	
-	
+
+	cr_writel(cr_readl(CR_EMMC_DUMMY_SYS) | 0x1, CR_EMMC_DUMMY_SYS);
+
 	//cr_writel(0xaaaa5aa8, 0x98012600);
 	//CP15ISB;
 	//sync();
 	//Just for set mux to emmc mode
 
 	//Card identification
-	frequency(0x46, 0x80); //devider = 2 * 128 = 256	
-	
+	frequency(0x46, 0x80); //devider = 2 * 128 = 256
 
 	emmc_send_cmd_get_rsp(MMC_GO_IDLE_STATE, 0, 0, 0); //rsp_con: 0: no rsp, 1: short rsp, 3: long rsp
 	emmc_send_cmd_get_rsp(MMC_GO_IDLE_STATE, 0, 0, 0); //rsp_con: 0: no rsp, 1: short rsp, 3: long rsp
@@ -4060,7 +4063,7 @@ int kylin_cr_init(void){
 	emmc_send_cmd_get_rsp(MMC_GO_IDLE_STATE, 0, 0, 0); //rsp_con: 0: no rsp, 1: short rsp, 3: long rsp
 	CP15ISB;
 	sync();
-	
+
 	ret_err = emmc_send_cmd_get_rsp(MMC_SEND_OP_COND, 0x40000080, 1, 0); //rsp_con: 0: no rsp, 1: short rsp, 3: long rsp
 
 	CP15ISB;
@@ -4070,10 +4073,10 @@ int kylin_cr_init(void){
 		if(n++ > 0x100)
 		{
 			printf("CMD1 ERROR! \n");
-			return ret_err;      
-	 	}   
+			return ret_err;
+		}
 		ret_err = emmc_send_cmd_get_rsp(MMC_SEND_OP_COND, 0x40000080, 1, 0); //rsp_con: 0: no rsp, 1: short rsp, 3: long rsp
-			
+
 		CP15ISB;
 		sync();
 	}
@@ -4103,19 +4106,19 @@ int kylin_cr_init(void){
 	switch_bus(2);
 	CP15ISB;
 	sync();
-	
+
 //==================================================	
 //Set the HS200
-	
+
 	emmc_read_write_ip(MMC_SEND_EXT_CSD, 0, ext_csd, 512);
 	invalidate_dcache_range(PTR_U32(ext_csd), PTR_U32(ext_csd) + 512);
-	
+
 	/* ext_csd[196] shows weather this board supporting HS200 or not. */
 	if ((ext_csd[196] & 0x10) == 0)
 	{	
 		HS200_PHASE_INHERITED = 0;
 	}
-	
+
 	HS200_PHASE_INHERITED = 0;
 	if (HS200_PHASE_INHERITED == 1)
 	{
@@ -4125,14 +4128,14 @@ int kylin_cr_init(void){
 		frequency(0xa6, 0);//divider = 1
 		pad_driving(0x4, 0x4, 0x4, 0x4);
 		phase(savedVP0, savedVP1);
-		
+
 		/*For rx tuning stable in Thor*/
 		phase_setup_change = cr_readl(0x98012420);
 		cr_writel( phase_setup_change & 0xfffffff7 ,0x98012420);
 		udelay(1);
 		cr_writel( phase_setup_change | 0x8 ,0x98012420);
 		/*For rx tuning stable in Thor*/
-		
+
 		printf("PLL_EMMC1 = 0x%08x\n", cr_readl(SYS_PLL_EMMC1));
 		card_stop();
 		polling_to_tran_state(MMC_CMD_READ_MULTIPLE_BLOCK,1);
@@ -4146,7 +4149,7 @@ int kylin_cr_init(void){
 		frequency(0x57, 1);//divider = 2 * 1 = 2
 		pad_driving(0x0, 0x0, 0x0, 0x0);
 	}	
-	
+
 	#if 0
 	if(get_rtd129x_cpu_revision() < RTD129x_CHIP_REVISION_B00){
 		int err = 0;
@@ -4160,7 +4163,7 @@ int kylin_cr_init(void){
 	#endif
 	/*Tx and Rx parameters are tuned in FSBL.*/
 //==================================================	
-	
+
 	return 0;
 }
 

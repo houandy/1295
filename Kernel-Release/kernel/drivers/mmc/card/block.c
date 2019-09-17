@@ -2521,6 +2521,30 @@ static struct mmc_cmdq_req *mmc_blk_cmdq_rw_prep(
 	return &mqrq->cmdq_req;
 }
 
+static struct mmc_cmdq_req *mmc_blk_cmdq_prep_discard_req(struct mmc_queue *mq,
+						struct request *req)
+{
+	struct mmc_blk_data *md = mq->data;
+	struct mmc_card *card = md->queue.card;
+	struct mmc_host *host = card->host;
+	struct mmc_cmdq_context_info *ctx_info = &host->cmdq_ctx;
+	struct mmc_cmdq_req *cmdq_req;
+	struct mmc_queue_req *active_mqrq;
+
+	BUG_ON(req->tag > card->ext_csd.cmdq_depth);
+	BUG_ON(test_and_set_bit(req->tag, &host->cmdq_ctx.active_reqs));
+
+	set_bit(CMDQ_STATE_DCMD_ACTIVE, &ctx_info->curr_state);
+	active_mqrq = &mq->mqrq_cmdq[req->tag];
+	active_mqrq->req = req;
+	cmdq_req = mmc_cmdq_prep_dcmd(active_mqrq, mq);
+	cmdq_req->cmdq_req_flags |= QBR;
+	cmdq_req->mrq.cmd = &cmdq_req->cmd;
+	cmdq_req->tag = req->tag;
+
+	return cmdq_req;
+}
+
 int mmc_blk_cmdq_issue_rw_rq(struct mmc_queue *mq, struct request *req)
 {
 	struct mmc_queue_req *active_mqrq;
@@ -2579,6 +2603,49 @@ int mmc_blk_cmdq_issue_flush_rq(struct mmc_queue *mq, struct request *req)
 	return err;
 }
 EXPORT_SYMBOL(mmc_blk_cmdq_issue_flush_rq);
+
+int mmc_blk_cmdq_issue_discard_rq(struct mmc_queue *mq,
+					struct request *req)
+{
+	struct mmc_blk_data *md = mq->data;
+	struct mmc_card *card = md->queue.card;
+	struct mmc_cmdq_req *cmdq_req = NULL;
+	unsigned int from, nr, arg;
+	int err = 0;
+	if (!mmc_can_erase(card)) {
+		err = -EOPNOTSUPP;
+		blk_end_request(req, err, blk_rq_bytes(req));
+		goto out;
+	}
+	from = blk_rq_pos(req);
+	nr = blk_rq_sectors(req);
+
+	if (mmc_can_discard(card))
+		arg = MMC_DISCARD_ARG;
+	else if (mmc_can_trim(card))
+		arg = MMC_TRIM_ARG;
+	else
+		arg = MMC_ERASE_ARG;
+	cmdq_req = mmc_blk_cmdq_prep_discard_req(mq, req);
+	if (card->quirks & MMC_QUIRK_INAND_CMD38) {
+		__mmc_switch_cmdq_mode(cmdq_req->mrq.cmd,
+				EXT_CSD_CMD_SET_NORMAL,
+				INAND_CMD38_ARG_EXT_CSD,
+				arg == MMC_TRIM_ARG ?
+				INAND_CMD38_ARG_TRIM :
+				INAND_CMD38_ARG_ERASE,
+				0, true, false);
+		err = mmc_cmdq_wait_for_dcmd(card->host, cmdq_req);
+		if (err)
+			goto clear_dcmd;
+	}
+	err = mmc_cmdq_erase(cmdq_req, card, from, nr, arg);
+clear_dcmd:
+	blk_complete_request(req);
+out:
+	return err ? 1 : 0;
+}
+EXPORT_SYMBOL(mmc_blk_cmdq_issue_discard_rq);
 
 /* invoked by block layer in softirq context */
 static void mmc_blk_cmdq_complete_rq(struct request *rq)
@@ -2852,7 +2919,14 @@ static int mmc_blk_cmdq_issue_rq(struct mmc_queue *mq, struct request *req)
 	}
 
 	if (req) {
-		if (req && req_op(req) == REQ_OP_FLUSH) {
+		if (req && req_op(req) == REQ_OP_DISCARD) {
+			ret = mmc_blk_cmdq_issue_discard_rq(mq, req);
+		}
+		else if(req && req_op(req) == REQ_OP_SECURE_ERASE) {
+			printk(KERN_ERR "REQ_OP_SECURE_ERASE is not implemented yet !!!!!!\n");
+			//TBD
+		}
+		else if (req && req_op(req) == REQ_OP_FLUSH) {
 			ret = mmc_blk_cmdq_issue_flush_rq(mq, req);
 		}
 		else {

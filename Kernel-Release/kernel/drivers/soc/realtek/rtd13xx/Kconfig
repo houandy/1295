@@ -6,6 +6,10 @@ config RTK_PSCI_BOOT
 	help
 	  Using PSCI method to control slave CPU power.
 
+config RTK_MMIO_SECURE_RTD13XX_GENERIC_CRT
+	bool
+	select RTK_MMIO_SECURE
+
 endmenu #RTD13xx general setup
 
 menu "RTD13xx Device Drivers"

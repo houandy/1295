@@ -109,48 +109,9 @@ reset:
 	 * Slave CPUs
 	 */
 slave_cpu:
-	wfe
-	mov	x0, #0
-	ldr	x1, =CPU_RELEASE_ADDR
-	ldr	w0, [x1]
-	cbz	x0, slave_cpu
-#ifdef CONFIG_TARGET_RTD1295
-	//A01 Jump to BL31 at EL3
-	
-#if defined(CONFIG_SYS_RTK_SPI_FLASH) || defined(CONFIG_SYS_RTK_SD_FLASH) || defined(CONFIG_SYS_NO_BL31)
-	mov w2, #RTD129x_CHIP_REVISION_A00
-#else
- 	ldr x1, =SB2_CHIP_INFO
- 	ldr	w2, [x1]
-#endif
- 	cmp w2, #RTD129x_CHIP_REVISION_A01
- 	bne JUMP_TO_KERNEL   /*Just A01 need to go BL31*/
-JUMP_TO_BL31:
-    ldr x30, =BL31_ENTRY_ADDR
-	ret
-#endif /* CONFIG_TARGET_RTD1295 */
-JUMP_TO_KERNEL:
-#ifdef CONFIG_RTK_ARM32
-	mov	x4, x0
-	ldr	x5, =ES_TO_AARCH32
-	bl	armv8_switch_to_el1_aarch
-#endif
-	br	x0			/* branch to the given address */
+	bl slave_cpu_spin
 
 master_cpu:
-#ifdef CONFIG_RTK_ARM32
-	ldr x1, =0x980076a4 //core 0 resume register
-	ldr x0, =RESUME_ADDR_SMC_ID
-	isb
-	smc #0
-	isb
-	cbz	x0, main_loop
-
-	mov	x4, x0
-	ldr	x5, =ES_TO_AARCH32
-	bl	armv8_switch_to_el1_aarch
-main_loop:
-#endif
 	/* On the master CPU */
 #endif /* CONFIG_ARMV8_MULTIENTRY */
 

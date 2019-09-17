@@ -37,7 +37,7 @@ struct power_control {
 
 	atomic_t usage_cnt;
 	unsigned long flags;
-	struct blocking_notifier_head notifier_head;
+	struct raw_notifier_head notifier_head;
 #ifdef CONFIG_POWER_CONTROL_DEBUGFS
 	struct dentry *debugfs;
 #endif
@@ -46,6 +46,7 @@ struct power_control {
 
 #define POWER_CONTROL_FLAG_ASYNC_POWER_OFF        (0x1)
 #define POWER_CONTROL_FLAG_SHARED_POWER           (0x2)
+#define POWER_CONTROL_FLAG_IGNORE_UNUSED          (0x4)
 
 struct of_phandle_args;
 

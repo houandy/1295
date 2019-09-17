@@ -48,6 +48,9 @@ void set_blue_logo_info(void)
 	fdt_addr = getenv_ulong("fdt_loadaddr", 16, 0x02100000);
 	nodeoffset = fdt_path_offset((void *)(uintptr_t)fdt_addr, "/chosen");
 
+#ifdef NAS_ENABLE
+	if (fdt_rsv_mem_for_ion_exist((void*)(uintptr_t)fdt_addr) >= 0) {
+#endif
 	/*
 	 *  Set the reserved address information for boot logo in device tree.
 	 */
@@ -66,6 +69,9 @@ void set_blue_logo_info(void)
 				printf("WARNING: could not set logo-area size %s.\n",
 					fdt_strerror(err));
 	}
+#ifdef NAS_ENABLE
+	}
+#endif
 }
 
 /************************************************************************

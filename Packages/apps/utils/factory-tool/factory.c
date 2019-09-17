@@ -273,6 +273,8 @@ int check_if_rtc_exist()
         printf("%s: unable to find device\n", devpath);
         rc = EXIT_FAILURE;
     }
+	else
+		close(fd);
     free(devpath);
     return rc;
 }

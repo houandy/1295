@@ -34,7 +34,6 @@
 #include <asm/cacheflush.h>
 #include <asm/suspend.h>
 #include <soc/realtek/memory.h>
-#include <soc/realtek/rtk_cpu.h>
 
 #include "gpio-rtd13xx-suspend.h"
 

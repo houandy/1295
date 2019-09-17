@@ -39,7 +39,6 @@
 #define CYAN_BOLD_ITALIC "\033[36;1;3m"
 #define RESET "\033[0;m"
 
-
 struct rtkemmc_host {
 	struct mmc_host     *mmc;           /* MMC structure */
 	u32                 rtflags;        /* Driver states */
@@ -87,9 +86,14 @@ struct rtkemmc_host {
 	u8		rx_user_defined;
 	u8		tx_reference_phase;
 	u8		rx_reference_phase;
+	u32		dqs_dly_tape;
 	unsigned long	emmc_tuning_addr;
 #if defined(CONFIG_MMC_RTK_EMMC_CMDQ)
 	struct cmdq_host *cq_host;
+#endif
+#if defined(CONFIG_MMC_RTK_EMMC_PON)
+	unsigned long pon_addr;
+	u32 emmc_pon_gpio;
 #endif
 };
 
@@ -175,20 +179,6 @@ struct sd_cmd_pkt {
 	u32                 timeout;
 };
 
-struct backupRegs {
-
-	u32			emmc_ctype;
-	u32			emmc_uhsreg;
-	u32			emmc_ddr_reg;
-	u32			emmc_card_thr_ctl;
-	u32			emmc_clk_div;
-	u32			emmc_ckgen_ctl;
-	u32			emmc_dqs_ctrl1;
-	u32			emmc_clken;
-	u32			emmc_drto_mask_ori;
-	u32			emmc_other1;
-};
-
 #define MAX_CMD_RETRY_COUNT 4
 
 #define RCA_SHIFTER             16
@@ -255,18 +245,24 @@ struct backupRegs {
 	} while(0)	
 
 #define rtkemmc_writel(val, addr) \
-	sync(emmc_port);					\
-	writel(val, addr);					
+	do {    \
+		sync(emmc_port);					\
+		writel(val, addr);					\
+	} while(0)
 
 #define rtkemmc_writew(val, addr) \
-        sync(emmc_port);                                        \
-        writew(val, addr);
+	do {    \
+		sync(emmc_port);                                        \
+		writew(val, addr);					\
+	} while(0)
 
 #define rtkemmc_writeb(val, addr) \
-        sync(emmc_port);                                        \
-        writeb(val, addr);
+	do {    \
+		sync(emmc_port);                                        \
+		writeb(val, addr);					\
+	} while(0)
 
-static const char *const state_tlb[9] = {
+static const char *const state_tlb[11] = {
 	"STATE_IDLE",
 	"STATE_READY",
 	"STATE_IDENT",
@@ -275,7 +271,9 @@ static const char *const state_tlb[9] = {
 	"STATE_DATA",
 	"STATE_RCV",
 	"STATE_PRG",
-	"STATE_DIS"
+	"STATE_DIS",
+	"STATE_BTST",
+	"STATE_SLEEP"
 };
 
 /* Only ADTC type cmd use */
@@ -303,7 +301,7 @@ static const unsigned char rtk_sd_cmdcode[64] = {
 /* rtk function definition */
 
 /* rtk function definition */
-int error_handling(struct rtkemmc_host *emmc_port, unsigned int cmd_idx, unsigned int bIgnore);
+void error_handling(struct rtkemmc_host *emmc_port);
 int rtkemmc_send_cmd25(struct rtkemmc_host *emmc_port,int,unsigned long, int,int*);
 int rtkemmc_send_cmd18(struct rtkemmc_host *emmc_port,int,unsigned long);
 int rtkemmc_send_cmd24(struct rtkemmc_host *emmc_port);

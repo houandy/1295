@@ -68,7 +68,7 @@ int RTK_ehci_usb2_phy_toggle(struct device *hcd_dev, bool isConnect)
 	return 0;
 }
 
-extern int rtk_usb_init_gpio_power_on(struct device *usb_dev);
+extern int rtk_usb_init_port_power_on(struct device *usb_dev);
 extern int rtk_usb_manager_schedule_work(struct device *usb_dev, struct work_struct *work);
 
 static void ehci_rtk_probe_work(struct work_struct *work)
@@ -93,7 +93,7 @@ static void ehci_rtk_probe_work(struct work_struct *work)
 		usb_put_hcd(hcd);
 	}
 
-	rtk_usb_init_gpio_power_on(dev);
+	rtk_usb_init_port_power_on(dev);
 
 	dev_info(dev, "%s End ... ok! (take %d ms)\n", __func__,
 			jiffies_to_msecs(jiffies - probe_time));

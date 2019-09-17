@@ -144,12 +144,6 @@ int hse_engine_init(struct hse_device *hdev, int index)
 	if (!eng)
 		return -ENOMEM;
 
-	if (hdev->irqs[index >> 1] == 0) {
-		dev_warn(dev, "irq%d is required by engine%d\n",
-			index >> 1, index);
-		return -EINVAL;
-	}
-
 	eng->hdev = hdev;
 	eng->base_offset = HSE_REG_ENGINE_BASE(index);
 

@@ -32,7 +32,7 @@
 #include "rtd-1619-usb.dtsi"
 
 / {
-	model= "Realtek_Rescue_1GB";
+	model= "Realtek_Rescue_1GB_TEE";
 	model_hex= <0x00000653>;
 
 	chosen {
@@ -148,6 +148,10 @@
 
 	sdmmc@98010400 {
 		status = "disabled";
+	};
+
+	emmc@98012000 {
+		kernel_hs400_tuning = <1>;
 	};
 
 	mcp@0 {

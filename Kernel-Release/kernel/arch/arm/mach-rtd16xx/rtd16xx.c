@@ -54,10 +54,17 @@ static void __init rtk16xx_timer_init(void)
 	tick_setup_hrtimer_broadcast();
 }
 
+bool __init rtd16xx_smp_init_ops(void)
+{
+	smp_set_ops(smp_ops(rtd16xx_smp_ops));
+	return true;
+}
+
 DT_MACHINE_START(RTD1619, "Thor")
 	.map_io = rtd16xx_map_io,
 	.init_machine = rtk16xx_dt_init,
 	.init_time = rtk16xx_timer_init,
 	.dt_compat = rtd16xx_board_dt_compat,
 	.smp = smp_ops(rtd16xx_smp_ops),
+	.smp_init = smp_init_ops(rtd16xx_smp_init_ops),
 MACHINE_END

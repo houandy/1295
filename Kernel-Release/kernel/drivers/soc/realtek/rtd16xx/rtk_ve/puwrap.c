@@ -27,7 +27,7 @@
 #ifdef CONFIG_RTK_RESERVE_MEMORY
 #define USE_ION_ALLOCATOR
 #ifdef USE_ION_ALLOCATOR
-#define NUM_ION_STRUCT 256
+#define NUM_ION_STRUCT 512 //__LINUX_MEDIA_NAS__
 #include "../../../../staging/android/ion/ion.h"
 #include "../../../../staging/android/uapi/ion_rtk.h"
 struct rtkdrv_ion_buffer_t {

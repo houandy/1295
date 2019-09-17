@@ -247,7 +247,7 @@ static int of_config_sy8827e_regulator(struct device *dev,
 
 	init_data = of_get_regulator_init_data(dev, np, &sy8827e_desc);
 	if (!init_data)	{
-		dev_err(dev, "of_get_regulator_init_data() returns NULL\n");
+		dev_err(dev, "failed to get regulator_init_data\n");
 		return -ENOMEM;
 	}
 	data->init_data = init_data;
@@ -279,7 +279,7 @@ static struct regmap_field *create_regmap_field(struct sy8827e_data *data,
 		reg, mask, lsb, msb);
 	rmap = devm_regmap_field_alloc(data->dev, data->regmap, map);
 	if (IS_ERR(rmap)) {
-		dev_err(data->dev, "regmap_field_alloc() for (reg=%02x, mask=%02x) returns %ld\n",
+		dev_err(data->dev, "failed to alloc regmap_field (reg=%02x, mask=%02x): %ld\n",
 			reg, mask, PTR_ERR(rmap));
 	}
 	return rmap;
@@ -314,8 +314,6 @@ static int sy8827e_regulator_probe(struct i2c_client *client,
 	struct regulation_constraints *c;
 	int ret;
 	u32 chip_id, rev;
-
-	dev_info(dev, "%s\n", __func__);
 
 	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
 	if (!data)
@@ -379,6 +377,7 @@ static int sy8827e_regulator_probe(struct i2c_client *client,
 
 	i2c_set_clientdata(client, data);
 
+	dev_info(dev, "initialized\n");
 	return 0;
 }
 
@@ -387,10 +386,10 @@ static void sy8827e_regulator_shutdown(struct i2c_client *client)
 	struct device *dev = &client->dev;
 	struct sy8827e_data *data = i2c_get_clientdata(client);
 
-	dev_info(dev, "Enter %s\n", __func__);
+	dev_info(dev, "enter %s\n", __func__);
 	sy8827e_regulator_prepare_state_suspend(data, 1);
 	regulator_suspend_prepare(PM_SUSPEND_MEM);
-	dev_info(dev, "Exit %s\n", __func__);
+	dev_info(dev, "exit %s\n", __func__);
 }
 
 static const struct i2c_device_id sy8827e_regulator_ids[] = {

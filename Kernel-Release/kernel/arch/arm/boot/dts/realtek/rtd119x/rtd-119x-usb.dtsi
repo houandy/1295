@@ -12,10 +12,6 @@
 rtk_usb_power_manager@0 {
 	compatible = "Realtek,usb-manager";
 	reg = <0x18000000 0x10>;
-	//realtek,port0-power-gpio = <&rtk_iso_gpio 1 1 0>;
-	//realtek,port1-power-gpio = <&rtk_misc_gpio 19 1 0>;
-	port0 = <&dwc3>;
-	port2 = <&ehci &ohci>;
 
 	dis_hub_autosuspend;
 	en_usb_storage_reprobe; /* To enable usb storage re-probe*/
@@ -35,7 +31,20 @@ rtk_usb_power_manager@0 {
 		"u3phy0",
 		"u3mdio0";
 
-	//power_ctrl_reg {
+	gpio0: gpio0 {
+		realtek,power-gpio = <&rtk_misc_gpio 5 1 0>; /*usb3 power , output, default low */
+	};
+
+	port0 {
+		usb = <&dwc3>;
+		gpio = <&gpio0>;
+	};
+	port1 {
+		usb = <&ehci &ohci>;
+		//gpio = <&gpio1>;
+	};
+
+	//rtk_usb {
 	//};
 };
 

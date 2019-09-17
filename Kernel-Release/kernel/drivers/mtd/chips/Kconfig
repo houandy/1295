@@ -273,4 +273,12 @@ config MTD_RTK_SFC_PSTORE
 	help
 	  This is used by SST/SPANSION/MXIC SPI Serial Flash with
 	  Realtek Serial Flash Controller.
+
+config NOR_AUTO_HW_POLLING
+	bool "Enable auto hardware polling for nor flash driver"
+	depends on MTD_RTK_SFC
+	default y
+	help
+	  Setting this to 'n' will disable auto hardware polling for nor flash driver.
+
 endmenu

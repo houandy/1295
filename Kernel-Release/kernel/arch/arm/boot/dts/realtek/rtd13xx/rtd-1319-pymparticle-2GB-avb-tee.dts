@@ -2,6 +2,6 @@
 #include "rtd-13xx-avb.dtsi"
 
 / {
-	model= "Realtek_PymParticle_2GB_AVB";
+	model= "Realtek_PymParticle_2GB_AVB_TEE";
 };
 

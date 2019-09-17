@@ -254,6 +254,7 @@ irqreturn_t isr_dcsys_dbg(int irq, void *pdev)
 				WRITE_EN(W_EN3_B10);
 
 			writel(int_clear, DC_MT_MODE + offset);
+			writel(CLR_EVER_TRAP(dc_table), DC_MT_TABLE + offset);
 		}
 	}
 
@@ -365,6 +366,9 @@ static int dcsys_dbg_init(struct platform_device *pdev)
 			0x98008240 + offset,
 			tmp);
 	}
+
+	/* Disable cross range check to get more precise violation info */
+	writel(0x1, DC_MT_MISC);
 
 	for (i = 0 ; i < MM_NUM ; i++)
 		kfree(mt[i]);

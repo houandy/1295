@@ -102,7 +102,7 @@
 #define CONFIG_RESCUE_FROM_USB
 #ifdef CONFIG_RESCUE_FROM_USB
 	#define CONFIG_RESCUE_FROM_USB_VMLINUX		"emmc.uImage"
-	#define CONFIG_RESCUE_FROM_USB_DTB		"rescue.emmc.dtb"
+	#define CONFIG_RESCUE_FROM_USB_DTB			"rescue.emmc.dtb"
 	#define CONFIG_RESCUE_FROM_USB_ROOTFS		"rescue.root.emmc.cpio.gz_pad.img"
 	#define CONFIG_RESCUE_FROM_USB_AUDIO_CORE	"bluecore.audio"
 #endif /* CONFIG_RESCUE_FROM_USB */
@@ -115,9 +115,34 @@
 
 // #define CONFIG_ACPU_LOGBUF_ENABLE
 #ifdef CONFIG_ACPU_LOGBUF_ENABLE
-#define CONFIG_ACPU_LOGBUF_ADDR                0x0FE00000
-#define CONFIG_ACPU_LOGBUF_SIZE                0x00002000
+#define CONFIG_ACPU_LOGBUF_ADDR		0x0FE00000
+#define CONFIG_ACPU_LOGBUF_SIZE		0x00002000
 #endif
 
+/* PWM */
+//#define CONFIG_RTK_PWM
+#ifdef CONFIG_RTK_PWM
+#define CONFIG_CMD_PWM
+//#define PWM_0_PIN_0
+//#define PWM_0_PIN_1
+//#define PWM_1_PIN_0
+//#define PWM_1_PIN_1
+//#define PWM_2_PIN_0
+//#define PWM_2_PIN_1
+//#define PWM_3_PIN_0
+//#define PWM_3_PIN_1
+#define PWM_OPEN_DRAIN_EN 0
+#endif /* CONFIG_RTK_PWM */
+
+/* LSADC */
+#ifdef CONFIG_RTK_LSADC
+#define CONFIG_CMD_RTKLSADC
+#define RTK_LSADC_CLK_GATING_EN 1
+#define RTK_LSADC_ACTIVE 1
+#define RTK_LSADC_VOLTAGE_THRESHOLD 2
+#define RTK_LSADC_SW_IDX 0
+#define RTK_LSADC_CTRL_MODE 0
+#define RTK_LSADC_DEBOUNCE_CNT 8
+#endif /* CONFIG_RTK_LSADC */
 #endif /* __CONFIG_RTK_RTD1395_QA_EMMC_H */
 

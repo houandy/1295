@@ -1,7 +1,16 @@
 VERSION = 2015
 PATCHLEVEL = 07
 SUBLEVEL =
-EXTRAVERSION =
+ifneq ("", "$(wildcard $(PWD)/../.version)")
+-include ../.version
+EXTRAVERSION = $(cid)
+else ifneq ("","$(wildcard $(PWD)/../.git)")
+EXTRAVERSION = `git rev-parse --verify HEAD --short` 
+else ifneq ("","$(wildcard $(PWD)/.git)")
+EXTRAVERSION = `git rev-parse --verify HEAD --short`
+else
+EXTRAVERSION = nonversion
+endif
 NAME =
 
 # *DOCUMENTATION*
@@ -124,12 +133,11 @@ ifdef CONFIG_RTD1395
 SUBDIR_EXAMPLES = examples/flash_writer_vm
 endif
 ifdef CONFIG_RTD161x
+SUBDIR_EXAMPLES = examples/flash_writer_nv
+SUBDIR_EXAMPLES2 = examples/flash_writer_nv_A01
     ifeq ($(CONFIG_CHIP_TYPE), 0001)
         SUBDIR_EXAMPLES = examples/flash_writer_nv_A01
         SUBDIR_EXAMPLES2 = examples/flash_writer_nv
-    else
-        SUBDIR_EXAMPLES = examples/flash_writer_nv
-        SUBDIR_EXAMPLES2 = examples/flash_writer_nv_A01
     endif
 endif
 
@@ -443,7 +451,7 @@ KBUILD_AFLAGS   := -D__ASSEMBLY__
 
 # Read UBOOTRELEASE from include/config/uboot.release (if it exists)
 UBOOTRELEASE = $(shell cat include/config/uboot.release 2> /dev/null)
-UBOOTVERSION = $(VERSION)$(if $(PATCHLEVEL),.$(PATCHLEVEL)$(if $(SUBLEVEL),.$(SUBLEVEL)))$(EXTRAVERSION)
+UBOOTVERSION = $(VERSION)$(if $(PATCHLEVEL),.$(PATCHLEVEL)$(if $(SUBLEVEL),.$(SUBLEVEL)))-$(EXTRAVERSION)
 
 export VERSION PATCHLEVEL SUBLEVEL UBOOTRELEASE UBOOTVERSION
 export ARCH CPU BOARD VENDOR SOC CPUDIR BOARDDIR
@@ -1647,22 +1655,6 @@ distclean: mrproper_v2
 		-o -name '*.pyc' \) \
 		-type f -print | xargs rm -f
 	@rm -f boards.cfg
-	@rm -f examples/flash_writer_nv_A01/Bind/DTE_Bootcode_RTK_Area*
-	@rm -f examples/flash_writer_nv_A01/Bind/bind.bin*
-	@rm -f examples/flash_writer_nv_A01/Bind/nand.bind.bin
-	@rm -f examples/flash_writer_nv_A01/Bind/uda_emmc.bind.bin*
-	@rm -f examples/flash_writer_nv_A01/dvrboot.*
-	@rm -f examples/flash_writer_nv_A01/install_a/lk.bin
-	@rm -f examples/flash_writer_nv_A01/temp_target_array.h
-	@rm -f examples/flash_writer_nv_A01/tools/RtSSL/RtSSL
-	@rm -f examples/flash_writer_nv_A01/tools/RtSSL/ap/lib/*
-	@rm -f examples/flash_writer_nv_A01/tools/RtSSL/mcp/lib/*
-	@rm -f examples/flash_writer_nv_A01/tools/bindAllBins/bindAllBins
-	@rm -f examples/flash_writer_nv_A01/tools/hw_setting_maker/generate_config
-	@rm -f examples/flash_writer_nv_A01/u-boot.bin
-	@rm -rf DVRBOOT_OUT/
-	
-
 
 backup:
 	F=`basename $(srctree)` ; cd .. ; \

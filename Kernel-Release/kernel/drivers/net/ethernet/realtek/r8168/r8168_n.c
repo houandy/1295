@@ -25168,8 +25168,16 @@ rtl8168_init_board(struct pci_dev *pdev,
 
         pci_set_master(pdev);
 
-        /* ioremap MMIO region */
-        ioaddr = ioremap(pci_resource_start(pdev, 2), R8168_REGS_SIZE);
+	/* ioremap MMIO region */
+#ifdef CONFIG_ARCH_RTD129x
+	if (pdev->bus->number == 0)
+		ioaddr = ioremap(0x9804f000, R8168_REGS_SIZE);
+	else
+		ioaddr = ioremap(0x9803C000, R8168_REGS_SIZE);
+
+#else
+	ioaddr = ioremap(pci_resource_start(pdev, 2), R8168_REGS_SIZE);
+#endif
         if (ioaddr == NULL) {
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,0)
                 if (netif_msg_probe(tp))

@@ -86,7 +86,7 @@
 
 #define WLAN_RX_FILTER0		0xFFFFFFFF
 #define WLAN_RX_FILTER2		0xFFFF
-#define WLAN_RCR_CFG		0xE400220E
+#define WLAN_RCR_CFG		0xE410220E
 #define WLAN_RXPKT_MAX_SZ	12288
 #define WLAN_RXPKT_MAX_SZ_512	(WLAN_RXPKT_MAX_SZ >> 9)
 
@@ -122,7 +122,7 @@
 #define WLAN_TX_FUNC_CFG2		0x30
 #define WLAN_MAC_OPT_NORM_FUNC1		0x98
 #define WLAN_MAC_OPT_LB_FUNC1		0x80
-#define WLAN_MAC_OPT_FUNC2		0x30810041
+#define WLAN_MAC_OPT_FUNC2		0xB1810041
 
 #define WLAN_SIFS_CFG	(WLAN_SIFS_CCK_CONT_TX | \
 			(WLAN_SIFS_OFDM_CONT_TX << BIT_SHIFT_SIFS_OFDM_CTX) | \
@@ -467,6 +467,8 @@ init_trx_cfg_8822c(struct halmac_adapter *adapter, enum halmac_trx_mode mode)
 	u8 value8;
 	struct halmac_api *api = (struct halmac_api *)adapter->halmac_api;
 	enum halmac_ret_status status = HALMAC_RET_SUCCESS;
+	u8 en_fwff;
+	u16 value16;
 
 	adapter->trx_mode = mode;
 
@@ -478,10 +480,21 @@ init_trx_cfg_8822c(struct halmac_adapter *adapter, enum halmac_trx_mode mode)
 		return status;
 	}
 
+	en_fwff = HALMAC_REG_R8(REG_WMAC_FWPKT_CR) & BIT_FWEN;
+	if (en_fwff) {
+		HALMAC_REG_W8_CLR(REG_WMAC_FWPKT_CR, BIT_FWEN);
+		if (fwff_is_empty_88xx(adapter) != HALMAC_RET_SUCCESS)
+			PLTFM_MSG_ERR("[ERR]fwff is not empty\n");
+	}
 	value8 = 0;
 	HALMAC_REG_W8(REG_CR, value8);
+	value16 = HALMAC_REG_R16(REG_FWFF_PKT_INFO);
+	HALMAC_REG_W16(REG_FWFF_CTRL, value16);
+
 	value8 = MAC_TRX_ENABLE;
 	HALMAC_REG_W8(REG_CR, value8);
+	if (en_fwff)
+		HALMAC_REG_W8_SET(REG_WMAC_FWPKT_CR, BIT_FWEN);
 	HALMAC_REG_W32(REG_H2CQ_CSR, BIT(31));
 
 	status = priority_queue_cfg_8822c(adapter, mode);
@@ -1036,6 +1049,9 @@ init_wmac_cfg_8822c(struct halmac_adapter *adapter)
 
 	PLTFM_MSG_TRACE("[TRACE]%s ===>\n", __func__);
 
+	HALMAC_REG_W32(REG_MAR, 0xFFFFFFFF);
+	HALMAC_REG_W32(REG_MAR + 4, 0xFFFFFFFF);
+
 	HALMAC_REG_W8(REG_BBPSF_CTRL + 2, WLAN_RESP_TXRATE);
 	HALMAC_REG_W8(REG_ACKTO, WLAN_ACK_TO);
 	HALMAC_REG_W8(REG_ACKTO_CCK, WLAN_ACK_TO_CCK);
@@ -1043,12 +1059,16 @@ init_wmac_cfg_8822c(struct halmac_adapter *adapter)
 
 	HALMAC_REG_W8(REG_NAV_CTRL + 2, WLAN_NAV_MAX);
 
+	HALMAC_REG_W8_SET(REG_WMAC_TRXPTCL_CTL_H, BIT_EN_TXCTS_IN_RXNAV_V1);
 	HALMAC_REG_W8(REG_WMAC_TRXPTCL_CTL_H  + 2, WLAN_BAR_ACK_TYPE);
 
 	HALMAC_REG_W32(REG_RXFLTMAP0, WLAN_RX_FILTER0);
 	HALMAC_REG_W16(REG_RXFLTMAP2, WLAN_RX_FILTER2);
 
 	HALMAC_REG_W32(REG_RCR, WLAN_RCR_CFG);
+	value8 = HALMAC_REG_R8(REG_RXPSF_CTRL + 2);
+	value8 = value8 | 0xe;
+	HALMAC_REG_W8(REG_RXPSF_CTRL + 2, value8);
 
 	HALMAC_REG_W8(REG_RX_PKT_LIMIT, WLAN_RXPKT_MAX_SZ_512);
 
@@ -1069,12 +1089,6 @@ init_wmac_cfg_8822c(struct halmac_adapter *adapter)
 	status = api->halmac_init_low_pwr(adapter);
 	if (status != HALMAC_RET_SUCCESS)
 		return status;
-
-	if (adapter->intf == HALMAC_INTERFACE_USB) {
-		HALMAC_REG_W8_SET(REG_WMAC_OPTION_FUNCTION_2 + 3, BIT(7));
-		HALMAC_REG_W8_CLR(REG_RCR + 2, BIT(4));
-		HALMAC_REG_W8(REG_RX_DLK_TIME, RX_DLK_TIME);
-	}
 
 	PLTFM_MSG_TRACE("[TRACE]%s <===\n", __func__);
 

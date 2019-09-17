@@ -23,6 +23,11 @@
 #include <linux/uaccess.h>
 
 #include "rtk_rpc.h"
+#ifdef CONFIG_ION_RTK /*ion is unavailable if RTD1295 purenas*/
+#include "../../../../drivers/staging/android/ion/ion.h"
+#include "../../../../drivers/staging/android/uapi/ion_rtk.h"
+extern struct ion_device *rtk_phoenix_ion_device;
+#endif
 
 volatile RPC_DEV *rpc_poll_devices;
 
@@ -33,9 +38,88 @@ volatile RPC_DEV *rpc_poll_kcpu_devices;
 int rpc_poll_is_paused;
 int rpc_poll_is_suspend;
 
+#ifndef CONFIG_ION_RTK /*ion is unavailable if RTD1295 purenas*/
 static unsigned int *DbgFlag_A;
 static unsigned int phy_DbgFlag_A;
+#endif
 
+#ifdef CONFIG_ION_RTK /*ion is unavailable if RTD1295 purenas*/
+static struct rpc_debug_flag {
+    unsigned int acpu;
+    unsigned int reserve_acpu[127];
+    unsigned int vcpu;
+    unsigned int reserve_vcpu[127];
+};
+
+static struct rpc_debug_flag_memory {
+    struct ion_client * client;
+    struct ion_handle * handle;
+    struct rpc_debug_flag * debug_flag;
+    ion_phys_addr_t         debug_phys;
+    size_t                  debug_size;
+};
+
+static struct rpc_debug_flag_memory * mDebugFlagMemory = NULL;
+static struct rpc_debug_flag_memory * get_debug_flag_memory(void)
+{
+    do {
+        if (mDebugFlagMemory == NULL) {
+            struct rpc_debug_flag_memory * tmp = (struct rpc_debug_flag_memory *) kzalloc(
+                    sizeof(struct rpc_debug_flag_memory), GFP_KERNEL);
+            if (tmp == NULL)
+                break;
+
+            tmp->client = ion_client_create(rtk_phoenix_ion_device, "rtk_rpc");
+            if (IS_ERR(tmp->client)) {
+                kfree(tmp);
+                break;
+            }
+
+            unsigned int ion_flag_mask = ION_FLAG_NONCACHED | ION_USAGE_MMAP_NONCACHED;
+            ion_flag_mask |= ION_FLAG_SCPUACC | ION_FLAG_ACPUACC;
+#ifdef CONFIG_ARCH_RTD13xx
+            ion_flag_mask |= ION_FLAG_VCPU_FWACC;
+#endif
+            tmp->handle = ion_alloc(tmp->client, sizeof(struct rpc_debug_flag), 0 /*align*/,
+                    RTK_PHOENIX_ION_HEAP_AUDIO_MASK, ion_flag_mask);
+
+            if (IS_ERR(tmp->handle))
+                tmp->handle = ion_alloc(tmp->client, sizeof(struct rpc_debug_flag), 0 /*align*/,
+                        RTK_PHOENIX_ION_HEAP_MEDIA_MASK, ion_flag_mask);
+
+            if (IS_ERR(tmp->handle)) {
+                ion_client_destroy(tmp->client);
+                kfree(tmp);
+                break;
+            }
+
+            if (ion_phys(tmp->client, tmp->handle, &tmp->debug_phys, &tmp->debug_size) != 0) {
+                ion_free(tmp->client, tmp->handle);
+                ion_client_destroy(tmp->client);
+                kfree(tmp);
+                break;
+            }
+
+            tmp->debug_flag = (struct rpc_debug_flag *) ion_map_kernel(tmp->client, tmp->handle);
+
+            mDebugFlagMemory = tmp;
+        }
+    } while (0);
+    return mDebugFlagMemory;
+}
+
+static struct rpc_debug_flag * get_debug_flag(void)
+{
+    struct rpc_debug_flag_memory * debug_memory = get_debug_flag_memory();
+    return (debug_memory) ? debug_memory->debug_flag : NULL;
+}
+
+static ion_phys_addr_t * get_debug_flag_phyAddr(void)
+{
+    struct rpc_debug_flag_memory * debug_memory = get_debug_flag_memory();
+    return (debug_memory) ? debug_memory->debug_phys : -1UL;
+}
+#endif
 RPC_DEV_EXTRA rpc_poll_extra[RPC_NR_DEVS/RPC_NR_PAIR];
 
 int rpc_poll_init(void)
@@ -596,29 +680,68 @@ long rpc_ctrl_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		pr_info("[RPC]done...\n");
 		break;
+
 	case RPC_IOCTRGETDBGREG_A:
+#ifdef CONFIG_ION_RTK /*ion is unavailable if RTD1295 purenas*/
+	case RPC_IOCTRGETDBGREG_V:
+#endif
 
 		if (copy_from_user(&dFlag, (void __user *)arg, sizeof(dFlag)))
 			return -EFAULT;
+#ifdef CONFIG_ION_RTK /*ion is unavailable if RTD1295 purenas*/		
+        else {
+            unsigned int * puDebugFlag = NULL;
+            struct rpc_debug_flag * debug_flag = get_debug_flag();
+            ion_phys_addr_t debug_flag_phyAddr = get_debug_flag_phyAddr();
 
-		if (DbgFlag_A == NULL) {
-			DbgFlag_A = &phy_DbgFlag_A;
-			//dma_alloc_coherent(NULL, sizeof(unsigned int), &phy_DbgFlag_A, GFP_KERNEL);
-			*DbgFlag_A = 0;
-			//pr_info("DbgFlag_A %x\n", *DbgFlag_A);
-		}
+            if (debug_flag == NULL || IS_ERR(debug_flag_phyAddr))
+                return -EFAULT;
 
-		if (dFlag.op == RPC_DBGREG_SET) {
-			//pr_info("\033[0;31;31mIOCTL RPC DEBUG AUDIO op %s Value %x Addr %x \033[m\n", "SET", dFlag.flagValue, dFlag.flagAddr);
-			*DbgFlag_A = dFlag.flagValue;
-		} else {
-			dFlag.flagValue = (unsigned int)*DbgFlag_A;
-			dFlag.flagAddr = (uint32_t)virt_to_phys(&phy_DbgFlag_A);
-			//pr_info("\033[0;31;31mIOCTL RPC DEBUG AUDIO op %s Value %x Addr %x \033[m\n", "GET", dFlag.flagValue, dFlag.flagAddr);
-			if (copy_to_user((void __user *)arg, &dFlag, sizeof(dFlag)))
-				return -EFAULT;
-		}
-		break;
+            if (cmd == RPC_IOCTRGETDBGREG_V) {
+                puDebugFlag = &debug_flag->vcpu;
+                debug_flag_phyAddr = debug_flag_phyAddr + offsetof(struct rpc_debug_flag, vcpu);
+            } else {
+                puDebugFlag = &debug_flag->acpu;
+                debug_flag_phyAddr = debug_flag_phyAddr + offsetof(struct rpc_debug_flag, acpu);
+            }
+#else
+               if (DbgFlag_A == NULL) {
+                       DbgFlag_A = &phy_DbgFlag_A;
+                       //dma_alloc_coherent(NULL, sizeof(unsigned int), &phy_DbgFlag_A, GFP_KERNEL);
+                       *DbgFlag_A = 0;
+                       //pr_info("DbgFlag_A %x\n", *DbgFlag_A);
+               }
+#endif
+#ifdef CONFIG_ION_RTK /*ion is unavailable if RTD1295 purenas*/
+            if (dFlag.op == RPC_DBGREG_SET)
+                *puDebugFlag = dFlag.flagValue;
+            else {
+                dFlag.flagValue = (unsigned int)*puDebugFlag;
+                dFlag.flagAddr = (uint32_t) debug_flag_phyAddr & -1U;
+                if (copy_to_user((void __user *)arg, &dFlag, sizeof(dFlag)))
+                    return -EFAULT;
+            }
+#else
+           if (dFlag.op == RPC_DBGREG_SET) {
+                   //pr_info("\033[0;31;31mIOCTL RPC DEBUG AUDIO op %s Value %x Addr %x \033[m\n", "SET", dFlag.flagValue, dFlag.flagAddr);
+                   *DbgFlag_A = dFlag.flagValue;
+           } else {
+                   dFlag.flagValue = (unsigned int)*DbgFlag_A;
+                   dFlag.flagAddr = (uint32_t)virt_to_phys(&phy_DbgFlag_A);
+                   //pr_info("\033[0;31;31mIOCTL RPC DEBUG AUDIO op %s Value %x Addr %x \033[m\n", "GET", dFlag.flagValue, dFlag.flagAddr);
+                   if (copy_to_user((void __user *)arg, &dFlag, sizeof(dFlag)))
+                           return -EFAULT;
+           }
+           break;            
+#endif
+#ifdef CONFIG_ION_RTK /*ion is unavailable if RTD1295 purenas*/           
+            pr_debug("RPC_DEBUG cmd=%s op=%s phyAddr=0x%08lx flag=0x%08lx",
+                    (cmd == RPC_IOCTRGETDBGREG_V) ? "RPC_IOCTRGETDBGREG_V" : "RPC_IOCTRGETDBGREG_A",
+                    (dFlag.op == RPC_DBGREG_SET) ? "SET" : "GET",
+                    debug_flag_phyAddr, *puDebugFlag);
+        }
+        break;
+#endif        
 	default:
 		pr_warn("[RPC]: error ioctl command...\n");
 		break;

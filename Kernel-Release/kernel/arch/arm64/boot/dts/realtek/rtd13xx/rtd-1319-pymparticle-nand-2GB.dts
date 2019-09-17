@@ -34,12 +34,12 @@
 /memreserve/ ION_AUDIO_HEAP_PHYS_0  ION_AUDIO_HEAP_SIZE_0;
 /memreserve/ ION_MEDIA_HEAP_PHYS_1  ION_MEDIA_HEAP_SIZE_1;
 
-#include "rtd-13xx.dtsi"
+#include "rtd-1319-pymparticle.dtsi"
 #include "rtd-1319-usb.dtsi"
 #include "rtd-1319-sata.dtsi"
 
 / {
-	model= "Realtek_PymParticle_2GB";
+	model= "Realtek_PymParticle_2GB_NAND";
 	model_hex= <0x00000527>;
 
 	/*
@@ -203,15 +203,13 @@
 
 	nand@98010000 { status = "okay"; };
 	emmc@98012000 { status = "disabled"; };
-	sata_phy: sata_phy@9803FF60 {
-		sata-phy@0 {
-			status = "disabled";
-		};
-	};
-
+	
 	ahci_sata: sata@9803F000 {
 		sata-port@0 {
-			/delete-property/ phys;
+			gpios = <&rtk_iso_gpio 80 1 1>;
+		};
+		sata-port@1 {
+			gpios = <&rtk_iso_gpio 81 1 1>;
 		};
 	};
 };

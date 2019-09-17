@@ -1,7 +1,6 @@
 
-totalversion=%C
-version=%V
-project=%P
+version=1.0.0
+project=nas
 
 #FAIL_LEVEL  0x01
 #INFO_LEVEL  0x02
@@ -29,8 +28,6 @@ burn_fwtbl=y
 seqnum_1stfw=$((0))
 seqnum_2ndfw=$((0))
 
-swap_part=n
-swap_part_size_MB=700
 burn_bootpart=y
 
 #Factory file
@@ -40,7 +37,7 @@ burn_factory=y
 kerneldtb_file=normal.dtb
 kerneldtb_zone=$((57344))
 kerneldtb_1stfw_addr=$(($storage_start_addr))
-start_addr_2ndfw=$((0x2073000))
+start_addr_2ndfw=$((0x2473000))
 kerneldtb_2ndfw_addr=$((start_addr_2ndfw))
 burn_kerneldtb=y
 
@@ -60,15 +57,15 @@ burn_rescue_rootfs=y
 
 #bluecore
 bluecore_file=bluecore.audio
-bluecore_zone=$((0x42D000))
+bluecore_zone=$((0x430000))
 bluecore_1stfw_addr=$((rescuefs_1stfw_addr+rescuefs_zone))
 bluecore_2ndfw_addr=$((rescuefs_2ndfw_addr+rescuefs_zone))
 burn_bluecore=y
-
+encrypted_bluecore=n
 
 #kernel
 kernel_file=Image
-kernel_zone=$((0x1140000))
+kernel_zone=$((0x1200000))
 kernel_1stfw_addr=$((bluecore_1stfw_addr+bluecore_zone))
 kernel_2ndfw_addr=$((bluecore_2ndfw_addr+bluecore_zone))
 burn_kernel=y
@@ -88,6 +85,13 @@ bootpart_zone=$((0xA000000))
 bootpart_addr=$((bootlogo_2ndfw_addr+bootlogo_zone))
 #installer forces to enables overlayfs and reserve mmcblk0p2 in the same size
 
+normalpart_count=$((1))
 
+normalpart1_type=overlay
+normalpart1_zone=$((0xA000000))
+normalpart1_addr=$((bootpart_addr+bootpart_zone))
 
+normalpart2_type=swap
+normalpart2_zone=$((0x2BC00000))
+normalpart2_addr=$((normalpart1_addr+normalpart1_zone))
 

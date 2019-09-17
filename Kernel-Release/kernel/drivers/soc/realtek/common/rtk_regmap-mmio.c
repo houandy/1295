@@ -2,7 +2,9 @@
  * This file is based on 'drivers/base/regmap/regmap-mmio.c'
  *
  * Copyright (c) 2018, Realtek Semiconductor Corporation
- * Copyright (C) 2018, Cheng-Yu Lee <cylee12@realtek.com>
+ *
+ * Author:
+ *      Cheng-Yu Lee <cylee12@realtek.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -25,58 +27,15 @@
 #include <linux/arm-smccc.h>
 #include <soc/realtek/rtk_regmap.h>
 
-#define RTK_REGMAP_NAME_LENGTH          20
+#define RTK_REGMAP_NAME_LENGTH          30
 
 struct rtk_regmap_mmio_context {
 	void __iomem *regs;
 	const struct secure_register_desc *descs;
 	u32 num_descs;
 	u32 addr;
-	char *name;
+	char name[RTK_REGMAP_NAME_LENGTH];
 };
-
-static void swc_write(struct rtk_regmap_mmio_context *ctx,
-		      const struct secure_register_desc *desc,
-		      u32 val)
-{
-#ifdef CONFIG_RTK_REGMAP_SECURE_MMIO
-	struct arm_smccc_res res;
-
-	switch (desc->fmt) {
-	case SMCCC_FMT_CMD:
-		arm_smccc_smc(desc->wcmd, val, 0, 0, 0, 0, 0, 0, &res);
-		break;
-	case SMCCC_FMT_CMD_PHYS:
-		arm_smccc_smc(desc->wcmd, ctx->addr + desc->offset, val, 0, 0, 0, 0, 0, &res);
-		break;
-	}
-	return;
-#else
-	BUG();
-	return;
-#endif
-}
-
-static u32 swc_read(struct rtk_regmap_mmio_context *ctx,
-		    const struct secure_register_desc *desc)
-{
-#ifdef CONFIG_RTK_REGMAP_SECURE_MMIO
-	struct arm_smccc_res res;
-
-	switch (desc->fmt) {
-	case SMCCC_FMT_CMD:
-		arm_smccc_smc(desc->rcmd, 0, 0, 0, 0, 0, 0, 0, &res);
-		break;
-	case SMCCC_FMT_CMD_PHYS:
-		arm_smccc_smc(desc->rcmd, ctx->addr + desc->offset, 0, 0, 0, 0, 0, 0, &res);
-		break;
-	}
-	return res.a0;
-#else
-	BUG();
-	return 0;
-#endif
-}
 
 enum {
 	SWC_READ,
@@ -84,6 +43,40 @@ enum {
 };
 
 #ifdef CONFIG_RTK_REGMAP_SECURE_MMIO
+
+static void swc_write(struct rtk_regmap_mmio_context *ctx,
+		      const struct secure_register_desc *desc,
+		      u32 val)
+{
+	struct arm_smccc_res res;
+
+	switch (desc->fmt) {
+	case SMCCC_FMT_CMD:
+		arm_smccc_smc(desc->wcmd, val, 0, 0, 0, 0, 0, 0, &res);
+		break;
+	case SMCCC_FMT_CMD_PHYS:
+		arm_smccc_smc(desc->wcmd, ctx->addr + desc->offset, val, 0, 0,
+			0, 0, 0, &res);
+		break;
+	}
+}
+
+static u32 swc_read(struct rtk_regmap_mmio_context *ctx,
+		    const struct secure_register_desc *desc)
+{
+	struct arm_smccc_res res;
+
+	switch (desc->fmt) {
+	case SMCCC_FMT_CMD:
+		arm_smccc_smc(desc->rcmd, 0, 0, 0, 0, 0, 0, 0, &res);
+		break;
+	case SMCCC_FMT_CMD_PHYS:
+		arm_smccc_smc(desc->rcmd, ctx->addr + desc->offset, 0, 0, 0, 0,
+			0, 0, &res);
+		break;
+	}
+	return res.a0;
+}
 
 static const
 struct secure_register_desc *find_desc(struct rtk_regmap_mmio_context *ctx,
@@ -113,6 +106,21 @@ struct secure_register_desc *find_desc(struct rtk_regmap_mmio_context *ctx,
 }
 
 #else
+
+static void swc_write(struct rtk_regmap_mmio_context *ctx,
+		      const struct secure_register_desc *desc,
+		      u32 val)
+{
+	BUG();
+}
+
+static u32 swc_read(struct rtk_regmap_mmio_context *ctx,
+		    const struct secure_register_desc *desc)
+{
+	BUG();
+	return 0;
+}
+
 static inline const
 struct secure_register_desc *find_desc(struct rtk_regmap_mmio_context *ctx,
 				       u32 reg,
@@ -120,15 +128,19 @@ struct secure_register_desc *find_desc(struct rtk_regmap_mmio_context *ctx,
 {
 	return NULL;
 }
-#endif
 
-static int rtk_regmap_mmio_write(void *context, unsigned int reg, unsigned int val)
+#endif /* CONFIG_RTK_REGMAP_SECURE_MMIO */
+
+static int rtk_regmap_mmio_write(void *context,
+				 unsigned int reg,
+				 unsigned int val)
 {
 	struct rtk_regmap_mmio_context *ctx = context;
 	const struct secure_register_desc *desc = NULL;
 
 	desc = find_desc(ctx, reg, SWC_WRITE);
-	pr_debug("%s: type=W, off=%03x, val=%08x, flag=%c\n", ctx->name, reg, val, desc != NULL ? 'S' : '-');
+	pr_debug("%s: type=W, off=%03x, val=%08x, flag=%c\n",
+		ctx->name, reg, val, desc != NULL ? 'S' : '-');
 	if (desc)
 		swc_write(ctx, desc, val);
 	else
@@ -136,7 +148,9 @@ static int rtk_regmap_mmio_write(void *context, unsigned int reg, unsigned int v
 	return 0;
 }
 
-static int rtk_regmap_mmio_read(void *context, unsigned int reg, unsigned int *val)
+static int rtk_regmap_mmio_read(void *context,
+				unsigned int reg,
+				unsigned int *val)
 {
 	struct rtk_regmap_mmio_context *ctx = context;
 	const struct secure_register_desc *desc = NULL;
@@ -146,7 +160,8 @@ static int rtk_regmap_mmio_read(void *context, unsigned int reg, unsigned int *v
 		*val = swc_read(ctx, desc);
 	else
 		*val = readl(ctx->regs + reg);
-	pr_debug("%s: type=R, off=%03x, val=%08x, flag=%c\n", ctx->name, reg, *val, desc != NULL ? 'S' : '-');
+	pr_debug("%s: type=R, off=%03x, val=%08x, flag=%c\n",
+		ctx->name, reg, *val, desc != NULL ? 'S' : '-');
 	return 0;
 }
 
@@ -155,7 +170,6 @@ static void rtk_regmap_mmio_free_context(void *context)
 	struct rtk_regmap_mmio_context *ctx = context;
 
 	kfree(ctx->descs);
-	kfree(ctx->name);
 	kfree(ctx);
 }
 
@@ -166,9 +180,10 @@ static const struct regmap_bus rtk_regmap_mmio = {
 	.free_context = rtk_regmap_mmio_free_context,
 };
 
-static struct rtk_regmap_mmio_context *regmap_mmio_gen_context(struct device *dev,
-							       void __iomem *regs,
-							       const struct regmap_config *config)
+static struct rtk_regmap_mmio_context *
+regmap_mmio_gen_context(struct device *dev,
+			void __iomem *regs,
+			const struct regmap_config *config)
 {
 	struct rtk_regmap_mmio_context *ctx;
 
@@ -181,7 +196,7 @@ static struct rtk_regmap_mmio_context *regmap_mmio_gen_context(struct device *de
 		return ERR_PTR(-ENOMEM);
 
 	if (config->name)
-		ctx->name = kstrdup(config->name, GFP_KERNEL);
+		strlcpy(ctx->name, config->name, sizeof(ctx->name));
 	ctx->regs = regs;
 
 	return ctx;
@@ -221,23 +236,24 @@ struct regmap *__devm_rtk_regmap_init_mmio(struct device *dev,
 }
 EXPORT_SYMBOL_GPL(__devm_rtk_regmap_init_mmio);
 
-static struct rtk_regmap_mmio_context *regmap_secure_mmio_gen_context(struct device *dev,
-								      void __iomem *regs,
-								      const struct rtk_regmap_config *config)
+static struct rtk_regmap_mmio_context *
+regmap_secure_mmio_gen_context(struct device *dev,
+			       void __iomem *regs,
+			       const struct rtk_regmap_config *config)
 {
 	struct rtk_regmap_mmio_context *ctx;
 
 	ctx = regmap_mmio_gen_context(dev, regs, &config->config);
 	if (IS_ERR(ctx))
 		return ctx;
+	if (!config->config.name)
+		snprintf(ctx->name, sizeof(ctx->name), "regmap-mmio.%x",
+			config->addr);
 
-	if (!ctx->name) {
-		ctx->name = kzalloc(RTK_REGMAP_NAME_LENGTH, GFP_KERNEL);
-		snprintf(ctx->name, RTK_REGMAP_NAME_LENGTH, "regmap-mmio.%x", config->addr);
-	}
 	ctx->addr = config->addr;
 	ctx->num_descs = config->num_descs;
-	ctx->descs = kmemdup(config->descs, sizeof(*config->descs) * config->num_descs, GFP_KERNEL);
+	ctx->descs = kmemdup(config->descs,
+		sizeof(*config->descs) * config->num_descs, GFP_KERNEL);
 	if (!ctx->descs) {
 		rtk_regmap_mmio_free_context(ctx);
 		return ERR_PTR(-ENOMEM);
@@ -246,11 +262,12 @@ static struct rtk_regmap_mmio_context *regmap_secure_mmio_gen_context(struct dev
 	return ctx;
 }
 
-struct regmap *__rtk_regmap_init_secure_mmio(struct device *dev,
-					     void __iomem *regs,
-					     const struct rtk_regmap_config *config,
-					     struct lock_class_key *lock_key,
-					     const char *lock_name)
+struct regmap *
+__rtk_regmap_init_secure_mmio(struct device *dev,
+			      void __iomem *regs,
+			      const struct rtk_regmap_config *config,
+			      struct lock_class_key *lock_key,
+			      const char *lock_name)
 {
 	struct rtk_regmap_mmio_context *ctx;
 
@@ -263,11 +280,12 @@ struct regmap *__rtk_regmap_init_secure_mmio(struct device *dev,
 }
 EXPORT_SYMBOL_GPL(__rtk_regmap_init_secure_mmio);
 
-struct regmap *__devm_rtk_regmap_init_secure_mmio(struct device *dev,
-						  void __iomem *regs,
-						  const struct rtk_regmap_config *config,
-						  struct lock_class_key *lock_key,
-						  const char *lock_name)
+struct regmap *
+__devm_rtk_regmap_init_secure_mmio(struct device *dev,
+				   void __iomem *regs,
+				   const struct rtk_regmap_config *config,
+				   struct lock_class_key *lock_key,
+				   const char *lock_name)
 {
 	struct rtk_regmap_mmio_context *ctx;
 

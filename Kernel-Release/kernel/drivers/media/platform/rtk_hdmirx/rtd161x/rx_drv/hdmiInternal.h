@@ -359,6 +359,16 @@ typedef enum {
 	MAIN_FSM_HDMI_VIDEO_READY
 } HDMI_MAIN_FSM_T;
 
+enum INFOFRAME_TYPE_CODES {
+	INFOFRAME_VSI = 0x81,
+	INFOFRAME_AVI = 0x82,
+	INFOFRAME_SPD = 0x83,
+	INFOFRAME_AUDIO = 0x84,
+	INFOFRAME_MPEG = 0x85,
+	INFOFRAME_NTSC = 0x86,
+	INFOFRAME_DRM = 0x87,
+};
+
 typedef struct {
 	unsigned char spd_vn_name[8];
 	unsigned char psd_pd_desc[16];
@@ -375,9 +385,9 @@ typedef struct	{
 } HDMI_ACTIVE_SPACE_TABLE_T;
 
 typedef struct {
-	unsigned char VSIF_TypeCode;
-	unsigned char VSIF_Version;
-	unsigned char Length;
+	unsigned char type_code;
+	unsigned char ver;
+	unsigned char len;
 	unsigned char Checksum;
 	unsigned char Reg_ID[3];
 	unsigned char Payload[25];
@@ -582,6 +592,7 @@ typedef struct {
 	unsigned char detect_done;
 	unsigned char audio_detect_done;
 	unsigned char hdcp_state;/* enum HDCPRX_STATE */
+	unsigned char hdr_received;
 } HDMIRX_STATE_STRUCT_T;
 
 typedef struct {

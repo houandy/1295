@@ -2,6 +2,6 @@
 #include "rtd-16xx-avb.dtsi"
 
 / {
-	model= "Realtek_Mjolnir_2GB_AVB";
+	model= "Realtek_Mjolnir_2GB_AVB_TEE";
 };
 

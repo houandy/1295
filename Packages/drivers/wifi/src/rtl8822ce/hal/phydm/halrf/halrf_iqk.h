@@ -47,6 +47,9 @@ struct dm_dack_info {
 	u32 qc_a;
 	u32 ic_b;
 	u32 qc_b;
+	boolean dack_en;
+	u16 msbk_d[2][2][15];
+	u8 dck_d[2][2][2];
 };
 
 struct dm_iqk_info {
@@ -61,6 +64,7 @@ struct dm_iqk_info {
 	u8 rxiqk_step;
 	u8 tmp1bcc;
 	u8 txgain;
+	u32 txgain56;
 	u8 kcount;
 	u8 rfk_ing; /*bit0:IQKing, bit1:LCKing, bit2:DPKing*/
 	boolean rfk_forbidden;
@@ -76,10 +80,12 @@ struct dm_iqk_info {
 	/*channel / path / TRX(TX:0, RX:1) / CFIR_real*/
 	/*channel index = 2 is just for debug*/
 #if (RTL8812F_SUPPORT == 1 || RTL8822C_SUPPORT == 1 )
-	u32 iqk_cfir_real[3][4][2][17];
+	u16 iqk_cfir_real[3][2][2][17];
 	/*channel / path / TRX(TX:0, RX:1) / CFIR_imag*/
 	/*channel index = 2 is just for debug*/
-	u32 iqk_cfir_imag[3][4][2][17];
+	u16 iqk_cfir_imag[3][2][2][17];
+	u32 rx_cfir_real[2][2][17];
+	u32 rx_cfir_imag[2][2][17];
 	u32 rx_cfir[2][2];
 	/*times/path*/
 #else

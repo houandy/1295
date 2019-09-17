@@ -11,7 +11,7 @@ struct t_fwdesc_entry {
 	char fwpart[16];
 	char typecode[128];
 	char filename[128];
-	uint32_t storage_addr;
+	uint64_t storage_addr;
 	uint32_t actual_size;
 	uint32_t zone_size;
 };
@@ -19,6 +19,12 @@ struct t_fwdesc_entry {
 struct t_fwdesc_entry fwimg[MAX_FWDESC_ENTRY];
 
 uint64_t total_size;
+uint32_t align_size;
+
+uint32_t SIZE_ALIGN_BOUNDARY_MORE(uint32_t len, uint32_t size)
+{
+	return (((len - 1) & ~((size) - 1)) + size);
+}
 
 void print_fwimg_sort(unsigned int sort[MAX_FWDESC_ENTRY])
 {
@@ -29,7 +35,7 @@ void print_fwimg_sort(unsigned int sort[MAX_FWDESC_ENTRY])
 		i = sort[s];
 		if (fwimg[i].zone_size == 0)
 			continue;
-		printf("%2d [%s] [%s] [%s] 0x%x 0x%x 0x%x\n",
+		printf("%2d [%s] [%s] [%s] 0x%lx 0x%x 0x%x\n",
 		       i, fwimg[i].fwpart, fwimg[i].typecode,
 		       fwimg[i].filename, fwimg[i].storage_addr,
 		       fwimg[i].actual_size, fwimg[i].zone_size);
@@ -43,7 +49,7 @@ void print_fwimg_struct(void)
 	for (i = 0; i < MAX_FWDESC_ENTRY; i++) {
 		if (fwimg[i].zone_size == 0)
 			continue;
-		printf("%2d [%s] [%s] [%s] 0x%x 0x%x 0x%x\n",
+		printf("%2d [%s] [%s] [%s] 0x%lx 0x%x 0x%x\n",
 		       i, fwimg[i].fwpart, fwimg[i].typecode,
 		       fwimg[i].filename, fwimg[i].storage_addr,
 		       fwimg[i].actual_size, fwimg[i].zone_size);
@@ -56,7 +62,7 @@ int print_fwimg_layout(void)
 	int i, j;
 	uint64_t flash_top_addr = 0, diff_size;
 	int error = 0;
-	uint32_t bootlogo_1st_addr = 0, bootlogo_2nd_addr = 0;
+	uint64_t bootlogo_1st_addr = 0, bootlogo_2nd_addr = 0;
 	int skip_bootlogo_check = 0;
 
 	/* Set sort[] to the index of fwimg[] */
@@ -125,7 +131,7 @@ int print_fwimg_layout(void)
 			    ("   |            FREE SPACE :                                 %10ld bytes [0x%08lx] |\n",
 			     diff_size, diff_size);
 			printf
-			    ("   +---------------------------------------------------------------------------------------+ 0x%012x\n",
+			    ("   +---------------------------------------------------------------------------------------+ 0x%012lx\n",
 			     fwimg[sort[i]].storage_addr +
 			     fwimg[sort[i]].zone_size);
 		}
@@ -145,7 +151,7 @@ int print_fwimg_layout(void)
 					("        !!! ERROR !!!        %10ld bytes [0x%08lx] zone overlapped\n",
 					diff_size, diff_size);
 				printf
-					("   +---------------------------------------------------------------------------------------+ 0x%012x\n",
+					("   +---------------------------------------------------------------------------------------+ 0x%012lx\n",
 					fwimg[sort[i]].storage_addr +
 					fwimg[sort[i]].zone_size);
 				error = 1;	
@@ -153,11 +159,26 @@ int print_fwimg_layout(void)
 		}
 
 		/* Print this fwpart's actual size / zone size and filename */
-		printf
-		    ("   | %8s %12s : %10d bytes [0x%08x] / %10d bytes [0x%08x] |\n",
-		     fwimg[sort[i]].fwpart, fwimg[sort[i]].typecode,
-		     fwimg[sort[i]].actual_size, fwimg[sort[i]].actual_size,
-		     fwimg[sort[i]].zone_size, fwimg[sort[i]].zone_size);
+		/* Special case: audioKernel
+		 * To avoid verification fail in bootcode,
+		 * the length of audioKernel in fwdesc entry is not aligned.
+		 * But the audioKernel written into flash is still the aligned one.
+		 */
+		if (strcmp(fwimg[sort[i]].typecode, "audioKernel") == 0) {
+			printf
+			    ("   | %8s %12s : %10d bytes [0x%08x] / %10d bytes [0x%08x] |\n",
+			     fwimg[sort[i]].fwpart, fwimg[sort[i]].typecode,
+			     SIZE_ALIGN_BOUNDARY_MORE(fwimg[sort[i]].actual_size, align_size),
+				 SIZE_ALIGN_BOUNDARY_MORE(fwimg[sort[i]].actual_size, align_size),
+			     fwimg[sort[i]].zone_size, fwimg[sort[i]].zone_size);
+		}
+		else {
+			printf
+			    ("   | %8s %12s : %10d bytes [0x%08x] / %10d bytes [0x%08x] |\n",
+			     fwimg[sort[i]].fwpart, fwimg[sort[i]].typecode,
+			     fwimg[sort[i]].actual_size, fwimg[sort[i]].actual_size,
+			     fwimg[sort[i]].zone_size, fwimg[sort[i]].zone_size);
+		}
 		printf
 		    ("   |              %40s                                 |\n",
 		     fwimg[sort[i]].filename);
@@ -173,7 +194,7 @@ int print_fwimg_layout(void)
 
 		/* Print this fwpart's start address */
 		printf
-		    ("   +---------------------------------------------------------------------------------------+ 0x%012x\n",
+		    ("   +---------------------------------------------------------------------------------------+ 0x%012lx\n",
 		     fwimg[sort[i]].storage_addr);
 
 		flash_top_addr = fwimg[sort[i]].storage_addr;
@@ -190,7 +211,8 @@ int main(int argc, char *argv[])
 	FILE *fp = NULL;
 	char newline[256], key[32], value[32];
 	char fwpart[16], typecode[128], filename[128], compress[128];
-	uint32_t ram_addr, storage_addr, actual_size, zone_size;
+	uint32_t ram_addr, actual_size, zone_size;
+	uint64_t storage_addr;
 	int i = 0, ret = 0;
 
 	if (argc < 2) {
@@ -218,15 +240,20 @@ int main(int argc, char *argv[])
 		sscanf(newline, "%[^=]=%s", key, value);
 		if (strncmp(key, "total_size", strlen("total_size")) == 0)
 			total_size = atol(value);
-
+		if (strncmp(key, "align_size", strlen("align_size")) == 0)
+			align_size = atol(value);	
 		/* Get line with "xxxfw = ..." or "fw = " and "bootpart = ..." */
 		if ((strncmp(newline + strlen("1st"), "fw = ", 5) == 0)
 		    || (strncmp(newline, "fw = ", 5) == 0))
-			sscanf(newline, "%s = %s %s %s %x %x %x %x", fwpart,
+			sscanf(newline, "%s = %s %s %s %x %lx %x %x", fwpart,
 			       typecode, filename, compress, &ram_addr,
 			       &storage_addr, &actual_size, &zone_size);
 		else if (strncmp(newline, "bootpart", strlen("bootpart")) == 0)
-			sscanf(newline, "%s = %s %s %x %x %x",
+			sscanf(newline, "%s = %s %s %lx %x %x",
+			       fwpart, typecode, filename, &storage_addr,
+			       &actual_size, &zone_size);
+		else if (strncmp(newline, "normalpart", strlen("normalpart")) == 0)
+			sscanf(newline, "%s = %s %s %lx %x %x",
 			       fwpart, typecode, filename, &storage_addr,
 			       &actual_size, &zone_size);
 		else

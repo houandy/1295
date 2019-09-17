@@ -32,11 +32,6 @@
 
 #include "smpboot.h"
 
-#ifdef CONFIG_RTK_PLATFORM
-extern void rtk_cpu_power_down(int cpu);
-extern void rtk_cpu_power_up(int cpu);
-#endif /* CONFIG_RTK_PLATFORM */
-
 /**
  * cpuhp_cpu_state - Per cpu hotplug state storage
  * @state:	The current cpu state
@@ -1138,9 +1133,6 @@ int freeze_secondary_cpus(int primary)
 			continue;
 		trace_suspend_resume(TPS("CPU_OFF"), cpu, true);
 		error = _cpu_down(cpu, 1, CPUHP_OFFLINE);
-#if defined(CONFIG_RTK_PLATFORM) && !defined(CONFIG_RTK_PSCI_BOOT)
-		rtk_cpu_power_down(cpu);
-#endif /* CONFIG_RTK_PLATFORM */
 
 		trace_suspend_resume(TPS("CPU_OFF"), cpu, false);
 		if (!error)
@@ -1192,9 +1184,6 @@ void enable_nonboot_cpus(void)
 
 	for_each_cpu(cpu, frozen_cpus) {
 		trace_suspend_resume(TPS("CPU_ON"), cpu, true);
-#if defined(CONFIG_RTK_PLATFORM) && !defined(CONFIG_RTK_PSCI_BOOT)
-		rtk_cpu_power_up(cpu);
-#endif /* CONFIG_RTK_PLATFORM */
 		error = _cpu_up(cpu, 1, CPUHP_ONLINE);
 		trace_suspend_resume(TPS("CPU_ON"), cpu, false);
 		if (!error) {

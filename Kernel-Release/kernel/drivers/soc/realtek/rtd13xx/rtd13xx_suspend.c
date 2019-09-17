@@ -31,11 +31,11 @@
 #include <linux/io.h>
 #include <linux/irqchip/arm-gic.h>
 #include <linux/psci.h>
+#include <linux/cpumask.h>
 #include <asm/system_misc.h>
 #include <asm/cacheflush.h>
 #include <asm/suspend.h>
 #include <soc/realtek/memory.h>
-#include <soc/realtek/rtk_cpu.h>
 #include <uapi/linux/psci.h>
 #include <soc/realtek/rtk_rstctl.h>
 
@@ -56,6 +56,8 @@ void __iomem *RTK_ISO_BASE;
 void __iomem *RTK_SB2_BASE;
 void __iomem *RTK_RSTCTRL_BASE;
 
+extern void rtk_cpu_power_down(int cpu);
+extern void rtk_cpu_power_up(int cpu);
 extern void rtk_ddr_calibration_save(void); /* save ddr rx calibration */
 extern void rtk_ddr_calibration_restore(void); /* restore ddr rx calibration */
 extern void psci_sys_reset(enum reboot_mode reboot_mode, const char *cmd);
@@ -285,10 +287,28 @@ static int rtk_suspend_mem(unsigned long pcpu_data)
 	return psci_system_suspend(__pa(pcpu_data));
 }
 
+static void rtk_suspend_cpu_pwr_down(void) {
+	unsigned int cpu = 1;
+
+	for (cpu = 1 ; cpu < NR_CPUS ; cpu++) {
+		rtk_cpu_power_down(cpu);
+	}
+}
+
+static void rtk_suspend_cpu_pwr_up(void) {
+	unsigned int cpu = 1;
+
+	for (cpu = 1 ; cpu < NR_CPUS ; cpu++) {
+		rtk_cpu_power_up(cpu);
+	}
+}
+
 static int rtk_suspend_enter(suspend_state_t state)
 {
 	int ret = 0;
 	int i = 0;
+
+	rtk_suspend_cpu_pwr_down();
 
 	switch (state) {
 	case PM_SUSPEND_STANDBY:
@@ -342,6 +362,8 @@ static int rtk_suspend_enter(suspend_state_t state)
 
 	writel(readl(RTK_ISO_BASE + 0x0418) | BIT(0), RTK_ISO_BASE + 0x0418);
 	writel(readl(RTK_ISO_BASE + 0x0410) & ~BIT(10), RTK_ISO_BASE + 0x0410);
+
+	rtk_suspend_cpu_pwr_up();
 
 	return ret;
 }

@@ -5,10 +5,14 @@
 #include <linux/memory.h>
 #include <linux/smp.h>
 #include <linux/of.h>
+#include <linux/arm-smccc.h>
 #include <asm/smp_plat.h>
 #include <asm/cacheflush.h>
 #include <asm/cp15.h>
 #include <soc/realtek/rtk_cpu.h>
+
+#define BL31_CMD 0x8400ff04
+#define BL31_DAT 0x00001319
 
 void rtd13xx_secondary_startup(void);
 
@@ -85,20 +89,11 @@ static void __init rtd13xx_init_cpus(void)
 
 static void rtd13xx_cpu_die(unsigned int cpu)
 {
-	/*
-	 * Set the fake core0 resume address to BL31
-	 * to let Bl31 know slave cpu will resume
-	 */
-	asm volatile(".arch_extension sec" : : : "cc");
-	asm volatile("isb" : : : "cc");
-	asm volatile("ldr r1, =0x20000" : : : "cc");
-	asm volatile("ldr r0, =0x8400ff04" : : : "cc");
-	asm volatile("isb" : : : "cc");
-	asm volatile("smc #0" : : : "cc");
-	asm volatile("isb" : : : "cc");
+	struct arm_smccc_res res;
 
+	/* notify BL31 cpu hotplug */
+	arm_smccc_smc(BL31_CMD, BL31_DAT, 0, 0, 0, 0, 0, 0, &res);
 	cpu_hotplug = 1;
-
 	v7_exit_coherency_flush(louis);
 
 	cpu_do_lowpower(0x98007F30);

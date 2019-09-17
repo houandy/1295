@@ -291,16 +291,16 @@ int rtk_plat_boot_prep_partition(void)
 }
 #endif
 
-#if (defined(CONFIG_RTD1295) || defined(CONFIG_RTD1395) || defined(CONFIG_RTD161x)) && defined(NAS_ENABLE)
+#if defined(NAS_ENABLE)
 
 /*****************************************************************************
  * This function is a template code for creating customized boot arguments.
  * It provides room for customers to append programmable arguments.
- * For example, the path of boot device might be 
+ * For example, the path of boot device might be
  * "/dev/mmcblk0p0" or "/dev/mmcblk0p1", depending on circumstances.
  * This can be done as follows:
- * 
- * if (case_boot_part_zero) 
+ *
+ * if (case_boot_part_zero)
  *     part_num=0;
  * else
  *     part_num=1;
@@ -323,11 +323,11 @@ int rtk_plat_boot_prep_kernelargs(void)
 	char *kernelargs = getenv("kernelargs");
 	char *temp_args = NULL;
 	char custom_boot_args[256]={0};
-	char initrd[32];
+	char empty_str[1]={0};
 
-	if(boot_mode == BOOT_RESCUE_MODE && initrd_size != 0) {
-		sprintf(initrd, "initrd=%s,0x%08x", getenv("rescue_rootfs_loadaddr"), initrd_size);
-		kernelargs = initrd;
+	// clear kernelargs variable for rescue mode
+	if (boot_mode == BOOT_RESCUE_MODE) {
+		kernelargs = empty_str;
 		setenv("kernelargs", kernelargs);
 	}
 	if (!kernelargs)
@@ -456,6 +456,18 @@ static void boot_jump_linux(bootm_headers_t *images, int flag)
 	bootup_slave_cpu();
 #endif
 
+#if defined(NAS_ENABLE) && defined(CONFIG_RTD161x)
+	char *fdt_addr_str = NULL;
+	void *fdt_addr;
+
+	if ((fdt_addr_str = getenv("fdt_loadaddr")) == NULL) {
+		fdt_addr_str = (char*) CONFIG_FDT_LOADADDR;
+	}
+	fdt_addr = (void*) simple_strtoul(fdt_addr_str, NULL, 16);
+
+	if (fdt_addr) {
+		if (fdt_rsv_mem_for_ion_exist(fdt_addr) >= 0) {
+#endif
 	if(!Auto_AFW_MEM_START)
 		Auto_AFW_MEM_START = AFW_MEM_START_ADDR;
 	 /* If AFW load failed, using default address of AFW. */
@@ -463,12 +475,23 @@ static void boot_jump_linux(bootm_headers_t *images, int flag)
 	err = fdt_add_mem_rsv(images->ft_addr, Auto_AFW_MEM_START, AFW_MEM_SIZE);
 	if (err < 0)
 		printf("## WARNING %s Add AFW_MEMRSV: %s\n", __func__, fdt_strerror(err));
+#if defined(NAS_ENABLE) && defined(CONFIG_RTD161x)
+		}
+	}
+#endif
+
+/* Bootcode is part of suspend/resume flow of Kylin, this mem region has to be reserved */
+#ifdef CONFIG_RTD1295
 	err = fdt_add_mem_rsv(images->ft_addr, UBOOT_MEM_START_ADDR, UBOOT_MEM_SIZE);
 	if (err < 0)
 		printf("## WARNING %s Add UBOOT_MEMRSV: %s\n", __func__, fdt_strerror(err));
+#endif
+
+#ifndef CONFIG_SYS_NON_TEE
 	err = fdt_add_mem_rsv(images->ft_addr, TEE_MEM_START_ADDR, TEE_MEM_SIZE);
 	if (err < 0)
 		printf("## WARNING %s Add TEE_MEMRSV: %s\n", __func__, fdt_strerror(err));
+#endif
 	if (reserve_acpu_logbuf(images->ft_addr))
 		return;
 #ifdef CONFIG_ARM64

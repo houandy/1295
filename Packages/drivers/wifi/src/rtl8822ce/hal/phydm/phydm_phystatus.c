@@ -1097,7 +1097,7 @@ void phydm_rx_physts_bw_parsing(struct phydm_phyinfo_struct *phy_info,
 				struct phy_status_rpt_8812 *
 				phy_sts)
 {
-	if (pktinfo->data_rate <= ODM_RATE54M) {
+	if (pktinfo->data_rate > ODM_RATE54M) {
 		switch (phy_sts->r_RFMOD) {
 		case 1:
 			if (phy_sts->sub_chnl == 0)

@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
+#include <mtd/mtd-user.h>
 #include <unistd.h>
 #include <crypt.h>
 #include <errno.h>
@@ -18,9 +19,10 @@
 
 #define BLKRRPART  _IO(0x12,95)
 
-#define zone_size_OF_FWTBL 0x8000
-
 #define DIGEST_FUNC "sha256sum"
+
+/* MAX_PART_LEN = bootpart(1) + normalpart(3) */
+#define MAX_PART_LEN 4
 
 typedef struct fw_mapping_s {
 	fw_type_code_e code;
@@ -30,11 +32,11 @@ typedef struct fw_mapping_s {
 
 typedef struct fs_mapping_s {
 	fs_type_code_e code;
-	const char *fs_name;
+	char fs_name[32];
 	char file[256];
 	uint32_t zone_size;
 	uint32_t actual_size;
-	uint32_t address;
+	uint64_t address;
 } fs_mapping_t;
 
 static fw_mapping_t fw_support[]= {
@@ -45,14 +47,23 @@ static fw_mapping_t fw_support[]= {
 	{FW_TYPE_RESCUE_ROOTFS, "rescueRootFS"},
 	{FW_TYPE_AUDIO, 		"audioKernel"},
 	{FW_TYPE_IMAGE_FILE,	"bootLogo"},
+	{FW_TYPE_KERNEL_ROOTFS,	"initramfs"},
 };
-static fs_mapping_t bootpart;
+/* count_part: bootpart + normalpart
+ * count_normalpart: normalpart
+ */
+uint32_t count_part=0, count_normalpart=0;
+static fs_mapping_t bootpart, normalpart[MAX_PART_LEN-1];
+
 long int addr_1stfwtbl;
 long int addr_2ndfwtbl;
 long int fwtbl_size;
+unsigned int mtd_erasesize;
 
 char in_factorytar_file[IN_FACTORYTAR_NAMESIZE]={0};
 char storage_dev[64]={0};
+char *parted_cmd[MAX_PART_LEN+1]={0};
+int parted_cmd_len=0;
 
 create_var_fun(debug_level)
 create_yn_fun(use_spi)
@@ -75,11 +86,10 @@ create_yn_fun(burn_kerneldtb)
 create_yn_fun(burn_rescuedtb)
 create_yn_fun(burn_rescue_rootfs)
 create_yn_fun(burn_bluecore)
+create_yn_fun(burn_initramfs)
 create_yn_fun(burn_bootpart)
 create_yn_fun(burn_bootlogo)
 create_yn_fun(burn_fwtbl)
-create_yn_fun(swap_part)
-create_var_fun(swap_part_size_MB)
 
 const char USAGE[] = \
 "Usage:" \
@@ -283,7 +293,7 @@ static int search_fw_typecode(char *fw_name, char *file)
 			return fw_support[i].code;
 		}
 	}
-	install_fail("unknow typecode %s\n the supporting type are ...\n", fw_name);
+	install_fail("unknown typecode %s\n the supporting type are ...\n", fw_name);
 	for (i=0;i<sizeof(fw_support)/sizeof(fw_mapping_t);i++)
 	{
 		install_fail("%s = %d\n", fw_support[i].fw_name, fw_support[i].code);
@@ -325,7 +335,10 @@ static int search_fs_typecode(char *fs_name)
 	if (strcmp("ubifs", fs_name)==0)	
 		return FS_TYPE_UBIFS;
 
-	install_fail("unknow typecode %s\n The supporting type are [squashfs|swap|raw|ext4|ubifs]\n", fs_name);
+	if (strcmp("overlay", fs_name)==0)
+		return FS_TYPE_NONE;
+
+	install_fail("unknown typecode %s\n The supporting type are [squashfs|swap|raw|ext4|ubifs|overlay]\n", fs_name);
 	exit(1);
 
 	return FS_TYPE_UNKNOWN;
@@ -349,7 +362,8 @@ int compute_filesum(const char *filepath, char *hash)
 
 static int add_firmware(char* str, fw_desc_entry_v2_t *fwdesc)
 {
-	uint32_t actual_size, storage_addr, ram_addr, zone_size;
+	uint32_t actual_size, ram_addr, zone_size;
+	uint64_t storage_addr;
 	char filename[128], compress[128], sha256[65],typecode[128];
 	char filepath[256] = { 0 };
 	// sanity-check
@@ -360,12 +374,12 @@ static int add_firmware(char* str, fw_desc_entry_v2_t *fwdesc)
 		str = skip_space(str);
 	install_info("input %s %p\n", str, fwdesc);
 
-	sscanf(str, "%s %s %s %x %x %x %x", typecode, filename, compress, &ram_addr, &storage_addr, &actual_size, &zone_size);
+	sscanf(str, "%s %s %s %x %llx %x %x", typecode, filename, compress, &ram_addr, &storage_addr, &actual_size, &zone_size);
 	install_info("typecode %s\n", typecode);
 	install_info("filename %s\n", filename);
 	install_info("compress %s\n", compress);
 	install_info("ram_addr 0x%x\n", ram_addr);
-	install_info("storage_addr 0x%x\n", storage_addr);
+	install_info("storage_addr 0x%llx\n", storage_addr);
 	install_info("actual_size 0x%x\n", actual_size);
 	install_info("zone_size 0x%x\n", zone_size);
 
@@ -385,15 +399,16 @@ static int add_firmware(char* str, fw_desc_entry_v2_t *fwdesc)
 	fwdesc->target_addr=ram_addr;
 	fwdesc->paddings=zone_size;
 	fwdesc->offset=storage_addr;
-	fwdesc->length=SIZE_ALIGN_BOUNDARY_MORE(actual_size,align_size);
+	fwdesc->length=actual_size;
 	asciis_2_hexs((char*)fwdesc->sha_hash, sha256, sizeof(sha256));
 	dump_fw_desc_entry_v2(fwdesc);
 	return 0;
 }
 
-int add_partition(char* str, part_desc_entry_v1_t *partdesc)
+int add_partition(char* str, part_desc_entry_v1_t *partdesc, fs_mapping_t *partinfo)
 {
-	uint32_t actual_size, storage_addr, zone_size;
+	uint32_t actual_size, zone_size;
+	uint64_t storage_addr;
 	char typecode[32], filename[128];
 
 	// sanity-check
@@ -403,10 +418,10 @@ int add_partition(char* str, part_desc_entry_v1_t *partdesc)
 	if(str[0] == ' ')
 		str = skip_space(str);
 	install_info("input %s %p\n", str, partdesc[0]);
-	sscanf(str, "%s %s %x %x %x", typecode, filename, &storage_addr, &actual_size, &zone_size);
+	sscanf(str, "%s %s %llx %x %x", typecode, filename, &storage_addr, &actual_size, &zone_size);
 	install_info("typecode %s\n", typecode);
 	install_info("filename %s\n", filename);
-	install_info("storage_addr 0x%x\n", storage_addr);
+	install_info("storage_addr 0x%llx\n", storage_addr);
 	install_info("actual_size 0x%x\n", actual_size);
 	install_info("zone_size 0x%x\n", zone_size);
 	partdesc[0].fw_type=search_fs_typecode(typecode);
@@ -415,11 +430,19 @@ int add_partition(char* str, part_desc_entry_v1_t *partdesc)
 	partdesc[0].length=actual_size;
 	partdesc[0].fw_count=1;
 	partdesc[0].partIdx=1;//mmcblk0;
-	strcpy(partdesc[0].mount_point, "/");	
-	strcpy(bootpart.file, &filename[1]);
-	bootpart.zone_size=zone_size;
-	bootpart.actual_size=actual_size;
-	bootpart.address=storage_addr;
+	if (partinfo == &bootpart)
+		strcpy(partdesc[0].mount_point, "/");
+	else
+		partdesc[0].mount_point[0] = '\0';
+	strcpy(partinfo->file, &filename[1]);
+	strcpy(partinfo->fs_name, typecode);
+	partinfo->zone_size=zone_size;
+	partinfo->actual_size=actual_size;
+	partinfo->address=storage_addr;
+
+	// partitions for NAND are specified via kernelargs (set count_part=0 later)
+	if (use_nand)
+		install_info("NOTE: Partition (part_desc_entry) will not be set in Firmware Table!\n");
 	dump_part_desc_entry_v1(partdesc);
 	return 0;	
 }
@@ -451,10 +474,10 @@ int fill_fwtbl(fw_desc_table_v1_t* pFWTblDesc,
 
 	install_info("Input:Firmware table %p\n", pFWTblDesc);
 	install_info("Input:Firmware %p(count %d)\n", pFWDesc, fw_count);
-	install_info("Input:Partition %p\n", pPartDesc);
+	install_info("Input:Partition %p(count %d)\n", pPartDesc, count_part);
 	
 	pFWTblDesc->fw_list_len=sizeof(fw_desc_entry_v2_t)*fw_count;
-	pFWTblDesc->part_list_len = sizeof(part_desc_entry_v1_t);
+	pFWTblDesc->part_list_len = sizeof(part_desc_entry_v1_t)*count_part;
 	// fw_desc setting, checksum fw_desc_entry
 	i=0;
 	while(i<fw_count)
@@ -463,9 +486,14 @@ int fill_fwtbl(fw_desc_table_v1_t* pFWTblDesc,
 		bytecnt += sizeof(fw_desc_entry_v2_t);
 		i++;
 	}
-	// part_desc setting, checksum fw_desc_entry
-	pFWTblDesc->checksum += get_checksum((uint8_t*) &pPartDesc[0], sizeof(part_desc_entry_v1_t));
-	bytecnt += sizeof(part_desc_entry_v1_t);
+	// part_desc setting, checksum part_desc_entry
+	i=0;
+	while(i<count_part)
+	{
+		pFWTblDesc->checksum += get_checksum((uint8_t*) &pPartDesc[i], sizeof(part_desc_entry_v1_t));
+		bytecnt += sizeof(part_desc_entry_v1_t);
+		i++;
+	}
 /* 
 	"paddings" is not real paddings. It controls how many bytes the bootcode reads.
 	padding is also calculated into checksum, so we pre-add the bytecnt and give a paddings value
@@ -473,7 +501,10 @@ int fill_fwtbl(fw_desc_table_v1_t* pFWTblDesc,
 	pFWTblDesc->version = FW_DESC_TABLE_V2_T_VERSION_2;
 	strncpy((char*)pFWTblDesc->signature, signature, 8);
 	bytecnt += (sizeof(fw_desc_table_v1_t)-12);
-	pFWTblDesc->paddings = SIZE_ALIGN_BOUNDARY_MORE(bytecnt, 4096); //4k for spi erase size
+	if (!use_spi && use_nand && !use_emmc)
+		pFWTblDesc->paddings = SIZE_ALIGN_BOUNDARY_MORE(bytecnt, mtd_erasesize);
+	else
+		pFWTblDesc->paddings = SIZE_ALIGN_BOUNDARY_MORE(bytecnt, align_size);
 	pFWTblDesc->seqnum = seq_num;
 	pFWTblDesc->checksum += get_checksum((uint8_t*)pFWTblDesc + 12, sizeof(fw_desc_table_v1_t)-12);
 	dump_fw_desc_table_v1(pFWTblDesc);
@@ -496,6 +527,7 @@ static void run_burn_spi(uint32_t count_1stfw, fw_desc_entry_v2_t *p1stFWDesc, u
 	install_log("Burning Bluecore [Y/N]: %c\n",burn_bluecore?'Y':'N');	
 	install_log("Burning Factory [Y/N]: %c\n",burn_factory?'Y':'N');
 	install_log("Burning BootLogo [Y/N]: %c\n",burn_bootlogo?'Y':'N');
+	install_log("Burning initramfs [Y/N]: %c\n",burn_initramfs?'Y':'N');
 
 	if (burn_factory) {
 		install_log("Installing Factory...\n");
@@ -556,6 +588,8 @@ static void run_burn_spi(uint32_t count_1stfw, fw_desc_entry_v2_t *p1stFWDesc, u
 						continue;
 					if ((p1stFWDesc[i].type==FW_TYPE_IMAGE_FILE)&&(!burn_bootlogo))
 						continue;
+					if ((p1stFWDesc[i].type==FW_TYPE_KERNEL_ROOTFS)&&(!burn_initramfs))
+						continue;
 
 					install_log("[1st FW] Erasing for %s\n", file);
 					run("/tmp/flash_erase /dev/mtd0 0x%llx %ld", p1stFWDesc[i].offset, p1stFWDesc[i].paddings/align_size);
@@ -613,63 +647,49 @@ static void run_burn_spi(uint32_t count_1stfw, fw_desc_entry_v2_t *p1stFWDesc, u
 	}
 }
 
-static void prepare_emmc_MBR(void)
+static void prepare_emmc_MBR_for_parted()
 {
-	FILE *target=NULL;
-	#define SECTOR_SIZE 512
-	#define BOOTPART 0
-	#define SWAP_PART 1
-	
-	struct __attribute__((packed)) mbr_entry_s 
-	{
-		unsigned char active;
-		unsigned char head_start;
-		unsigned char sector_start;
-		unsigned char cylinder_start;
-		unsigned char id;
-		unsigned char head_end;
-		unsigned char sector_end;
-		unsigned char cylinder_end;
-		unsigned int rel_sector_start;
-		unsigned int sector_num;
-	};
+	#define CMD_MAXLEN 512
+	char *cmd;
+	char *parted="/tmp/parted -s";
+	int i;
 
-	struct __attribute__((packed)) mbr_header_s 
-	{
-		unsigned char codes[446];
-		struct mbr_entry_s part[4];
-		unsigned short signature;
-	} mbr = {
-		{0}, //codes[446];
-		{
-			{0x00, 0x3, 0xd0, 0xff, 0x83, 0x3, 0xd0, 0xff, 0x0, 0x0}, //part[0], bootpart mmcblk0p1
-			{0x00, 0x3, 0xd0, 0xff, 0x82, 0x3, 0xd0, 0xff, 0x0, 0x0}, //part[1], swap		
-			{0x00, 0x3, 0xd0, 0xff, 0x82, 0x3, 0xd0, 0xff, 0x0, 0x0}, //part[2]
-			{0x00, 0x3, 0xd0, 0xff, 0x82, 0x3, 0xd0, 0xff, 0x0, 0x0}, //part[3]
-		
-		},
-		0xaa55,
-	};
+	if ((cmd = malloc(CMD_MAXLEN)) == NULL) {
+		install_fail("Malloc for parted CMD failed");
+		return;
+	}
+	/* Create MBR type partition table */
+	snprintf(cmd, CMD_MAXLEN, "%s %s mklabel msdos", parted, storage_dev);
+	parted_cmd[parted_cmd_len++] = cmd;
 
-	mbr.part[BOOTPART].rel_sector_start=bootpart.address/SECTOR_SIZE;
-	mbr.part[BOOTPART].sector_num=bootpart.zone_size*2/SECTOR_SIZE;
-	if (swap_part)
-	{
-		mbr.part[SWAP_PART].rel_sector_start=mbr.part[BOOTPART].rel_sector_start + mbr.part[BOOTPART].sector_num;
-		mbr.part[SWAP_PART].sector_num=swap_part_size_MB*(1024*1024)/SECTOR_SIZE;
+	if ((cmd = malloc(CMD_MAXLEN)) == NULL) {
+		install_fail("Malloc for parted CMD failed");
+		return;
 	}
 
-	target=fopen("/tmp/emmc_mbr.bin","w");
-	if(target == NULL) {
-		install_fail("Can't open emmc_mbr.bin\r\n");
-		exit(1);
-	}	
+	/* Create bootpart partition */
+	snprintf(cmd, CMD_MAXLEN, "%s %s unit B mkpart primary %llu %llu"
+		,parted
+		,storage_dev
+		,bootpart.address
+		,bootpart.address+bootpart.zone_size-1);
+	parted_cmd[parted_cmd_len++] = cmd;
 
-	fwrite(&mbr, 1, sizeof(mbr), target);
-	fclose(target);
-	install_log("Build emmc MBR, bootpart:mmcblk0, %s \n", swap_part?"swap part:mmcblk1":"");
-	install_ui("raw dump:\r\n");
-	dump_rawdata((uint8_t*)&mbr, sizeof(mbr));
+	for (i = 0; i < count_normalpart; i++) {
+
+		if ((cmd = malloc(CMD_MAXLEN)) == NULL) {
+			install_fail("Malloc for parted CMD failed");
+			return;
+		}
+
+		/* Create normalpart partition */
+		snprintf(cmd, CMD_MAXLEN, "%s %s unit B mkpart primary %llu %llu"
+			,parted
+			,storage_dev
+			,normalpart[i].address
+			,normalpart[i].address+normalpart[i].zone_size-1);
+		parted_cmd[parted_cmd_len++] = cmd;
+	}
 }
 
 static void re_read_partition_table(char *dev)
@@ -693,7 +713,9 @@ static void re_read_partition_table(char *dev)
 
 static void run_burn_emmc(uint32_t count_1stfw, fw_desc_entry_v2_t *p1stFWDesc, uint32_t count_2ndfw, fw_desc_entry_v2_t *p2ndFWDesc, part_desc_entry_v1_t *pPartDesc)
 {	
+	int burn_partition_table = burn_bootpart | (count_normalpart != 0);
 	uint32_t is_bootlogo_burn_once = 0;
+	uint32_t i;
 	install_log("Burning eMMC\n");
 	install_log("Burning Firmware Table [Y/N]: %c\n",burn_fwtbl?'Y':'N');
 	install_log("Burning 1st Firmware Table [Y/N]: %c\n",update_1stfw?'Y':'N');	
@@ -714,7 +736,6 @@ static void run_burn_emmc(uint32_t count_1stfw, fw_desc_entry_v2_t *p1stFWDesc, 
 	if (burn_fwtbl)
 	{
 		if ((update_1stfw == 1) && (update_2ndfw == 1)) {
-			uint32_t i;
 			uint64_t storage_addr_1stfw_bootlogo = 0;
 			uint64_t storage_addr_2ndfw_bootlogo = 0;
 			for (i = 0; i < count_1stfw; i++) {
@@ -742,9 +763,7 @@ static void run_burn_emmc(uint32_t count_1stfw, fw_desc_entry_v2_t *p1stFWDesc, 
 			install_log("Burning 1st Firmware, count %d%s\n", count_1stfw, !count_1stfw? ", exit!":"");
 			if (count_1stfw != 0)
 			{
-				uint32_t i;
 				char *file;
-
 
 				for(i=0; i<count_1stfw; i++)
 				{
@@ -784,7 +803,6 @@ static void run_burn_emmc(uint32_t count_1stfw, fw_desc_entry_v2_t *p1stFWDesc, 
 			
 			if (count_2ndfw != 0)
 			{
-				uint32_t i;
 				char *file;
 		
 				for(i=0; i<count_2ndfw; i++)
@@ -820,31 +838,269 @@ static void run_burn_emmc(uint32_t count_1stfw, fw_desc_entry_v2_t *p1stFWDesc, 
 				}
 			}
 		}
-		install_log("Burning Boot Partition\n");
-		if (burn_bootpart)
+		install_log("Buring Partition Table\n");
+		if (burn_partition_table)
 		{
 			install_log("Erasing MBR\n");
 			run("dd if=/dev/zero of=/dev/mmcblk0 obs=%ld seek=0 bs=%ld count=1", align_size, align_size);
 			install_log("Writing MBR\n");
-			run("dd if=/tmp/emmc_mbr.bin of=/dev/mmcblk0 obs=%ld seek=0 bs=%ld",  align_size, align_size);
+			for (i = 0; i < parted_cmd_len; i++)
+			{
+				run("%s", parted_cmd[i]);
+				free(parted_cmd[i]);
+			}
+
+			// Reload partition table in order to mkswap on newly-created partition
 			install_log("Re-read /dev/mmcblk0 Partition Table\n");
 			re_read_partition_table("/dev/mmcblk0");
-
-			install_log("[Partition]Erasing for %s\n", bootpart.file);
-			run("dd if=/dev/zero of=/dev/mmcblk0 obs=%ld seek=%lu bs=%ld count=%lu", align_size, bootpart.address/align_size, align_size, bootpart.zone_size*2/align_size);
-			install_log("[Partition]Writing for %s\n", bootpart.file);
-			run("dd if=/tmp/%s of=/dev/mmcblk0 obs=%ld seek=%lu", bootpart.file, align_size, bootpart.address/align_size);			
 		}
-		if (swap_part)
+
+		install_log("Burning Boot Partition\n");
+		if (burn_bootpart)
 		{
-			install_log("[Partition]Erasing swap\n");
-			run("dd if=/dev/zero of=/dev/mmcblk0 obs=%ld seek=%lu bs=%ld count=%ld", align_size, (bootpart.address+bootpart.zone_size*2)/align_size, align_size, swap_part_size_MB*1024*1024/align_size);
-			install_log("[Partition]Enable swap\n");
-			run("mkswap -L swap /dev/mmcblk0p2");
+			install_log("[Partition]Erasing for %s\n", bootpart.file);
+			run("dd if=/dev/zero of=/dev/mmcblk0 obs=%ld seek=%llu bs=%ld count=%lu", align_size, bootpart.address/align_size, align_size, bootpart.zone_size/align_size);
+			install_log("[Partition]Writing for %s\n", bootpart.file);
+			run("dd if=/tmp/%s of=/dev/mmcblk0 obs=%ld seek=%llu", bootpart.file, align_size, bootpart.address/align_size);
+		}
+
+		install_log("Burning Normal Partition\n");
+		for (i = 0; i < count_normalpart; i++)
+		{
+			install_log("[Partition]Erasing for %s\n", normalpart[i].file);
+			run("dd if=/dev/zero of=/dev/mmcblk0 obs=%ld seek=%llu bs=%ld count=%lu"
+				,align_size
+				,normalpart[i].address/align_size
+				,align_size
+				,normalpart[i].zone_size/align_size);
+
+			if (strcmp(normalpart[i].fs_name, "swap") == 0)
+			{
+				/* i+2: 1 is bootpart, normalpart starts from 2 */
+				install_log("[Partition]Enable swap\n");
+				run("mkswap -L swap /dev/mmcblk0p%u", i+2);
+			}
+			else if (strcmp(normalpart[i].fs_name, "overlay") != 0)
+			{
+				install_log("[Partition]Writing for %s\n", normalpart[i].file);
+				run("dd if=/tmp/%s of=/dev/mmcblk0 obs=%ld seek=%llu"
+					,normalpart[i].file
+					,align_size
+					,normalpart[i].address/align_size);
+			}
 		}
 	}
 }
 
+static void run_burn_nand(uint32_t count_1stfw, fw_desc_entry_v2_t *p1stFWDesc, uint32_t count_2ndfw, fw_desc_entry_v2_t *p2ndFWDesc)
+{
+	uint32_t is_bootlogo_burn_once = 0;
+	uint32_t i;
+	install_log("Burning NAND\n");
+	install_log("Burning Firmware Table [Y/N]: %c\n",burn_fwtbl?'Y':'N');
+	install_log("Burning 1st Firmware Table [Y/N]: %c\n",update_1stfw?'Y':'N');
+	install_log("Burning 2nd Firmware Table [Y/N]: %c\n",update_2ndfw?'Y':'N');
+	install_log("Burning Kernel [Y/N]: %c\n",burn_kernel?'Y':'N');
+	install_log("Burning Kernel DTB [Y/N]: %c\n",burn_kerneldtb?'Y':'N');
+	install_log("Burning Rescue DTB [Y/N]: %c\n",burn_rescuedtb?'Y':'N');
+	install_log("Burning Rescue Rootfs [Y/N]: %c\n",burn_rescue_rootfs?'Y':'N');
+	install_log("Burning Bluecore [Y/N]: %c\n",burn_bluecore?'Y':'N');
+	install_log("Burning Factory [Y/N]: %c\n",burn_factory?'Y':'N');
+	install_log("Burning BootLogo [Y/N]: %c\n",burn_bootlogo?'Y':'N');
+	install_log("Burning initramfs [Y/N]: %c\n",burn_initramfs?'Y':'N');
+
+	if (burn_factory) {
+		install_log("Installing Factory...\n");
+		install_factory();
+	}
+
+	if (burn_fwtbl)
+	{
+		if ((update_1stfw == 1) && (update_2ndfw == 1)) {
+			uint32_t i;
+			uint64_t storage_addr_1stfw_bootlogo = 0;
+			uint64_t storage_addr_2ndfw_bootlogo = 0;
+			for (i = 0; i < count_1stfw; i++) {
+				if ((p1stFWDesc[i].type==FW_TYPE_IMAGE_FILE) && (burn_bootlogo)) {
+					storage_addr_1stfw_bootlogo = p1stFWDesc[i].offset;
+				}
+			}
+			for (i = 0; i < count_2ndfw; i++) {
+				if ((p2ndFWDesc[i].type==FW_TYPE_IMAGE_FILE) && (burn_bootlogo)) {
+					storage_addr_2ndfw_bootlogo = p2ndFWDesc[i].offset;
+				}
+			}
+			if ( (storage_addr_1stfw_bootlogo != 0) && (storage_addr_2ndfw_bootlogo != 0) ) {
+				if ( storage_addr_1stfw_bootlogo == storage_addr_2ndfw_bootlogo ) {
+					is_bootlogo_burn_once=1;
+				}
+			}
+		}
+		if (update_1stfw)
+		{
+			install_log("Erasing 1st Firmware Table...\n");
+			run("/tmp/flash_erase /dev/mtd0 0x%lx %ld", addr_1stfwtbl, fwtbl_size/mtd_erasesize);
+			install_log("Writing 1st Firmware Table...\n");
+			run("/tmp/nandwrite -m -p -s 0x%lx /dev/mtd0 /tmp/tbl_1stfw.bin", addr_1stfwtbl);
+			install_log("Burning 1st Firmware, count %d%s\n", count_1stfw, !count_1stfw? ", exit!":"");
+			if (count_1stfw != 0)
+			{
+				uint32_t i;
+				char *file;
+
+				for(i=0; i<count_1stfw; i++)
+				{
+					if ((file=search_fw_filename(p1stFWDesc[i].type))==NULL)
+					{
+						install_fail("typecode %d not found\n",p1stFWDesc[i].type);
+						exit(1);
+					}
+
+					if ((p1stFWDesc[i].type==FW_TYPE_KERNEL)&&(!burn_kernel))
+						continue;
+					if ((p1stFWDesc[i].type==FW_TYPE_KERNEL_DT)&&(!burn_kerneldtb))
+						continue;
+					if ((p1stFWDesc[i].type==FW_TYPE_RESCUE_ROOTFS)&&(!burn_rescue_rootfs))
+						continue;
+					if ((p1stFWDesc[i].type==FW_TYPE_RESCUE_DT)&&(!burn_rescuedtb))
+						continue;
+					if ((p1stFWDesc[i].type==FW_TYPE_AUDIO)&&(!burn_bluecore))
+						continue;
+					if ((p1stFWDesc[i].type==FW_TYPE_IMAGE_FILE)&&(!burn_bootlogo))
+						continue;
+					if ((p1stFWDesc[i].type==FW_TYPE_KERNEL_ROOTFS)&&(!burn_initramfs))
+						continue;
+
+					install_log("[1st FW] Erasing for %s\n", file);
+					run("/tmp/flash_erase /dev/mtd0 0x%llx %u", p1stFWDesc[i].offset, p1stFWDesc[i].paddings/mtd_erasesize);
+					install_log("[1st FW] Writing for %s\n", file);
+					run("/tmp/nandwrite -m -p -s 0x%llx /dev/mtd0 /tmp/%s", p1stFWDesc[i].offset, file);
+				}
+			}
+
+		}
+		if (update_2ndfw)
+		{
+			install_log("Erasing 2nd Firmware Table...\n");
+			run("/tmp/flash_erase /dev/mtd0 0x%lx %ld", addr_2ndfwtbl, fwtbl_size/mtd_erasesize);
+			install_log("Writing 2nd Firmware Table...\n");
+			run("/tmp/nandwrite -m -p -s 0x%lx /dev/mtd0 /tmp/tbl_2ndfw.bin", addr_2ndfwtbl);
+			install_log("Burning 2nd Firmware, count %d%s\n", count_2ndfw, !count_2ndfw? ", exit!":"");
+			if (count_2ndfw != 0)
+			{
+				uint32_t i;
+				char *file;
+
+				for(i=0; i<count_2ndfw; i++)
+				{
+					if ((file=search_fw_filename(p2ndFWDesc[i].type))==NULL)
+					{
+						printf("typecode %d not found\n",p2ndFWDesc[i].type);
+						exit(1);
+					}
+
+					if ((p2ndFWDesc[i].type==FW_TYPE_KERNEL)&&(!burn_kernel))
+						continue;
+					if ((p2ndFWDesc[i].type==FW_TYPE_KERNEL_DT)&&(!burn_kerneldtb))
+						continue;
+					if ((p2ndFWDesc[i].type==FW_TYPE_RESCUE_ROOTFS)&&(!burn_rescue_rootfs))
+						continue;
+					if ((p2ndFWDesc[i].type==FW_TYPE_RESCUE_DT)&&(!burn_rescuedtb))
+						continue;
+					if ((p2ndFWDesc[i].type==FW_TYPE_AUDIO)&&(!burn_bluecore))
+						continue;
+					if ((p2ndFWDesc[i].type==FW_TYPE_IMAGE_FILE)&&(!burn_bootlogo))
+						continue;
+					if ((p2ndFWDesc[i].type==FW_TYPE_IMAGE_FILE)&&(is_bootlogo_burn_once)) {
+						install_debug("[2nd FW] The BootLogo in 1st and 2nd fw table"
+									  "are the same, do nothing\n");
+						continue;
+					}
+
+					install_log("[2nd FW] Erasing for %s\n", file);
+					run("/tmp/flash_erase /dev/mtd0 0x%llx %u", p2ndFWDesc[i].offset, p2ndFWDesc[i].paddings/mtd_erasesize);
+					install_log("[2nd FW] Writing for %s\n", file);
+					run("/tmp/nandwrite -m -p -s 0x%llx /dev/mtd0 /tmp/%s", p2ndFWDesc[i].offset, file);
+				}
+			}
+		}
+
+		install_log("Burning Boot Partition\n");
+		if (bootpart.file[0] != '\0')
+		{
+			install_log("[Partition]Erasing and writing for %s\n", bootpart.file);
+			// usage: ubiformat -f <flash-image> -b <start-offset> -t <total-size>
+			run("/tmp/ubiformat /dev/mtd0 -y -c -f /tmp/%s -b 0x%llx -t 0x%x", bootpart.file, bootpart.address, bootpart.zone_size);
+		}
+
+		install_log("Burning Normal Partition\n");
+		for (i = 0; i < count_normalpart; i++) {
+			install_log("[Partition]Erasing and writing for %s\n", normalpart[i].file);
+			run("/tmp/ubiformat /dev/mtd0 -y -c -f /tmp/%s -b 0x%llx -t 0x%x", normalpart[i].file, normalpart[i].address, normalpart[i].zone_size);
+		}
+
+	}
+}
+
+static unsigned int get_meminfo(char *dev)
+{
+	mtd_info_t mtd_info;
+	int dev_fd;
+
+	dev_fd = open(dev, O_RDWR);
+	if (dev_fd < 0) {
+		install_fail("Fail to open %s: %s\n", dev, strerror(errno));
+		exit(1);
+	}
+	if (ioctl(dev_fd, MEMGETINFO, &mtd_info) < 0) {
+		install_fail("ioctl fail: %s\n", strerror(errno));
+		exit(1);
+	}
+	close(dev_fd);
+
+	return mtd_info.erasesize;
+}
+
+static long get_nand_factory_start_addr(unsigned int nand_erase_size)
+{
+	uint64_t erase_size_ull = (uint64_t) nand_erase_size;
+	uint64_t factory_zone_ull = (uint64_t) factory_zone;
+	uint64_t rsv_size = 0;
+	uint64_t ret = 0;
+
+	/* subsitute default erase size (0x20000) with nand_erase_size */
+	switch(factory_start_addr)
+	{
+		/* KYLIN NAND (NAS) */
+		case 0x4C0000:
+			/* CONFIG_SYS_NO_BL31 */
+			rsv_size = erase_size_ull * (6+4+4);
+			rsv_size += SIZE_ALIGN_BOUNDARY_MORE(0xC0000, erase_size_ull)*4;
+			rsv_size += SIZE_ALIGN_BOUNDARY_MORE(factory_zone_ull, erase_size_ull);
+			ret = rsv_size - factory_zone_ull;
+			break;
+
+		/* KYLIN NAND */
+		case 0x940000:
+			rsv_size = erase_size_ull * (6+4+4+4+4+4);
+			rsv_size += SIZE_ALIGN_BOUNDARY_MORE(0xC0000, erase_size_ull)*(4+4);
+			rsv_size += SIZE_ALIGN_BOUNDARY_MORE(factory_zone_ull, erase_size_ull);
+			ret = rsv_size - factory_zone_ull;
+			break;
+
+		/* THOR NAND */
+		case 0xE60000:
+			if (erase_size_ull == 0x40000)
+				ret = erase_size_ull * 70;
+			else
+				ret = erase_size_ull * 115;
+			break;
+
+		default:
+			break;
+	}
+	return (long)ret;
+}
 
 int main (int argc, char* argv[])
 {
@@ -885,7 +1141,7 @@ int main (int argc, char* argv[])
 		exit(0);
 	}
 
-	pPartDesc=(part_desc_entry_v1_t*)calloc(1, FWTBL_ZONE_SIZE);
+	pPartDesc=(part_desc_entry_v1_t*)calloc(MAX_PART_LEN, FWTBL_ZONE_SIZE);
 	install_log("Allocate partition descriptor %p(%d)\n", pPartDesc, FWTBL_ZONE_SIZE);
 
 	if (pPartDesc == NULL)
@@ -895,32 +1151,55 @@ int main (int argc, char* argv[])
 	}
 	p1stFWTblDesc=(fw_desc_table_v1_t*)calloc(1, FWTBL_ZONE_SIZE);
 	install_log("Allocate firmware table 1 descriptor %p(%d)\n", p1stFWTblDesc, FWTBL_ZONE_SIZE);
-	if (pPartDesc == NULL)
+	if (p1stFWTblDesc == NULL)
 	{
 		install_fail("Allocate firmware table 1 descriptor fail \r\n");
 		exit(0);
 	}
 	p2ndFWTblDesc=(fw_desc_table_v1_t*)calloc(1, FWTBL_ZONE_SIZE);
 	install_log("Allocate firmware table 2 descriptor %p(%d)\n", p2ndFWTblDesc, FWTBL_ZONE_SIZE);
-	if (pPartDesc == NULL)
+	if (p2ndFWTblDesc == NULL)
 	{
 		install_fail("Allocate firmware table 2 descriptor fail \r\n");
 		exit(0);
 	}
 	p1stFWDesc=(fw_desc_entry_v2_t*)calloc(1, FWTBL_ZONE_SIZE);
 	install_log("Allocate firmware 1 descriptor %p(%d)\n", p1stFWDesc, FWTBL_ZONE_SIZE);
-	if (pPartDesc == NULL)
+	if (p1stFWDesc == NULL)
 	{
 		install_fail("Allocate firmware 1 descriptor fail \r\n");
 		exit(0);
 	}
 	p2ndFWDesc=(fw_desc_entry_v2_t*)calloc(1, FWTBL_ZONE_SIZE);
 	install_log("Allocate firmware 2 descriptor %p(%d)\n", p2ndFWDesc, FWTBL_ZONE_SIZE);
-	if (pPartDesc == NULL)
+	if (p2ndFWDesc == NULL)
 	{
 		install_fail("Allocate firmware 2 descriptor fail \r\n");
 		exit(0);
 	}
+
+	while(NULL != fgets(newline, sizeof(newline), file)) {
+		if((newline[0] == ';') || (newline[0] == '#')) continue;
+
+		del_cr_lf(newline);
+		create_yn_match(use_spi)
+		create_yn_match(use_nand)
+		create_yn_match(use_emmc)
+		create_var_match(align_size)
+	}
+
+	if (!use_spi && use_nand && !use_emmc)
+	{
+		strncpy(storage_dev, "/dev/mtd0", sizeof(storage_dev));
+		mtd_erasesize = get_meminfo(storage_dev);
+		fwtbl_size = SIZE_ALIGN_BOUNDARY_MORE(0x8000, (uint64_t)mtd_erasesize);
+	}
+	else
+	{
+		fwtbl_size = SIZE_ALIGN_BOUNDARY_MORE(0x8000, (uint64_t)align_size);
+	}
+
+	fseek(file, 0, SEEK_SET);
 
 	install_log("Reading config.txt\n");
 	while(NULL != fgets(newline, sizeof(newline), file)) {
@@ -929,10 +1208,6 @@ int main (int argc, char* argv[])
 
 		del_cr_lf(newline);
 		create_var_match(debug_level)
-		create_yn_match(use_spi)
-		create_yn_match(use_nand)
-		create_yn_match(use_emmc)
-		create_var_match(align_size)
 	
 		create_yn_match(update_1stfw)
 		create_yn_match(update_2ndfw)
@@ -949,9 +1224,8 @@ int main (int argc, char* argv[])
 		create_yn_match(burn_rescue_rootfs)
 		create_yn_match(burn_bluecore)
 		create_yn_match(burn_bootlogo)
+		create_yn_match(burn_initramfs)
 		create_yn_match(burn_bootpart)
-		create_yn_match(swap_part)
-		create_var_match(swap_part_size_MB)	
 		if (update_1stfw==1)
 		{
 			if (align_size==(-1))
@@ -980,7 +1254,15 @@ int main (int argc, char* argv[])
 			}
 		}
 		if ( 0 == strncmp("bootpart", newline, 8) ) {
-			add_partition(skip_char(newline+4, '='), &pPartDesc[0]);
+			add_partition(skip_char(newline+8, '=')
+				, &pPartDesc[count_part++]
+				, &bootpart);
+			continue;
+		}
+		if ( 0 == strncmp("normalpart", newline, 10) ) {
+			add_partition(skip_char(newline+10, '=')
+				,&pPartDesc[count_part++]
+				,&normalpart[count_normalpart++]);
 			continue;
 		}
 		if ( 0 == strncmp("factory", newline, 7) ) {
@@ -990,8 +1272,14 @@ int main (int argc, char* argv[])
 	}
 	install_info("close config.txt\n");
 	fclose(file);
+
+	// PartDesc will not be used for NAND since partitions are specified via kernelargs
+	if (use_nand)
+		count_part = 0;
+
 	install_log("1stfw count %d\n",count_1stfw);
 	install_log("2ndfw count %d\n",count_2ndfw);
+	install_log("partition count %d\n", count_part);
 	
 	if ((use_spi + use_nand + use_emmc) !=1 )
 	{	
@@ -1013,7 +1301,7 @@ int main (int argc, char* argv[])
 		write_total=fwrite(p1stFWTblDesc, 1, sizeof(fw_desc_table_v1_t), target);
 		write_total+=fwrite(pPartDesc, 1, p1stFWTblDesc->part_list_len, target);
 		write_total+=fwrite(p1stFWDesc, 1, p1stFWTblDesc->fw_list_len, target);
-		write_total=(zone_size_OF_FWTBL)-write_total;
+		write_total=(size_t)fwtbl_size-write_total;
 		padding=(char*)calloc(1, write_total);
 		fwrite(padding,1, write_total, target);
 		fclose(target);
@@ -1033,7 +1321,7 @@ int main (int argc, char* argv[])
 		write_total=fwrite(p2ndFWTblDesc, 1, sizeof(fw_desc_table_v1_t), target);
 		write_total+=fwrite(pPartDesc, 1, p2ndFWTblDesc->part_list_len, target);
 		write_total+=fwrite(p2ndFWDesc, 1, p2ndFWTblDesc->fw_list_len, target);
-		write_total=(zone_size_OF_FWTBL)-write_total;
+		write_total=(size_t)fwtbl_size-write_total;
 		padding=(char*)calloc(1, write_total);
 		fwrite(padding,1, write_total, target);
 		fclose(target);
@@ -1044,20 +1332,34 @@ int main (int argc, char* argv[])
 	{
 		addr_1stfwtbl = 0x100000;
 		addr_2ndfwtbl = 0x108000;
-		fwtbl_size = 0x8000;
 		strncpy(storage_dev, "/dev/mtd0", sizeof(storage_dev));
 		run_burn_spi(count_1stfw, p1stFWDesc, count_2ndfw, p2ndFWDesc);
 	}
 
 	if (!use_spi && !use_nand && use_emmc)	
 	{
-		fwtbl_size = 0x8000;
 		addr_1stfwtbl = factory_start_addr+factory_zone;
 		addr_2ndfwtbl = factory_start_addr+factory_zone+fwtbl_size;
-		prepare_emmc_MBR();
 		strncpy(storage_dev, "/dev/mmcblk0", sizeof(storage_dev));
+		prepare_emmc_MBR_for_parted();
 		run_burn_emmc(count_1stfw, p1stFWDesc, count_2ndfw, p2ndFWDesc, pPartDesc);
 	}
+
+	if (!use_spi && use_nand && !use_emmc)
+	{
+		install_log("NAND erase size: 0x%x\n", mtd_erasesize);
+		/* Erasesize is not default value (128KiB). */
+		if (mtd_erasesize != 0x20000)
+		{
+			factory_start_addr = get_nand_factory_start_addr(mtd_erasesize);
+			install_log("Factory Start Addr: 0x%lx.\n", factory_start_addr);
+		}
+
+		addr_1stfwtbl = factory_start_addr + factory_zone;
+		addr_2ndfwtbl = factory_start_addr + factory_zone + fwtbl_size;
+		run_burn_nand(count_1stfw, p1stFWDesc, count_2ndfw, p2ndFWDesc);
+	}
+
 	free(pPartDesc);
 	free(p1stFWTblDesc);
 	free(p1stFWDesc);

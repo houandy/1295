@@ -1,7 +1,6 @@
 
-totalversion=%C
-version=%V
-project=%P
+version=1.0.0
+project=nas
 
 #FAIL_LEVEL  0x01
 #INFO_LEVEL  0x02
@@ -22,25 +21,23 @@ bootargs=bootargs.conf.spi
 lzma=y
 
 update_1stfw=y
-update_2ndfw=n
+update_2ndfw=y
 
 
 burn_fwtbl=y
 seqnum_1stfw=$((0))
 seqnum_2ndfw=$((0))
 
-swap_part=n
-swap_part_size_MB=700
 burn_bootpart=n
 
 #Factory file
-burn_factory=n
+burn_factory=y
 
 #Device Tree
 kerneldtb_file=normal.dtb
 kerneldtb_zone=$((57344))
 kerneldtb_1stfw_addr=$(($storage_start_addr))
-start_addr_2ndfw=$((0x6ba000))
+start_addr_2ndfw=$((0x686000+0x000bd000))
 kerneldtb_2ndfw_addr=$((start_addr_2ndfw))
 burn_kerneldtb=y
 
@@ -53,22 +50,22 @@ burn_rescuedtb=y
 
 #Rescue rootfs
 rescuefs_file=rescue_rootfs.cpio.gz
-rescuefs_zone=$((0xCA000))
+rescuefs_zone=$((0xBA000))
 rescuefs_1stfw_addr=$((rescuedtb_1stfw_addr+rescuedtb_zone))
 rescuefs_2ndfw_addr=$((rescuedtb_2ndfw_addr+rescuedtb_zone))
-burn_rescue_rootfs=n
+burn_rescue_rootfs=y
 
 #bluecore
 bluecore_file=bluecore.audio
-bluecore_zone=$((0x60000))
+bluecore_zone=$((1024000))
 bluecore_1stfw_addr=$((rescuefs_1stfw_addr+rescuefs_zone))
 bluecore_2ndfw_addr=$((rescuefs_2ndfw_addr+rescuefs_zone))
 burn_bluecore=y
-
+encrypted_bluecore=n
 
 #kernel
 kernel_file=Image
-kernel_zone=$((0x444000))
+kernel_zone=$((0x443000))
 kernel_1stfw_addr=$((bluecore_1stfw_addr+bluecore_zone))
 kernel_2ndfw_addr=$((bluecore_2ndfw_addr+bluecore_zone))
 burn_kernel=y
@@ -76,40 +73,15 @@ burn_kernel=y
 #bootlogo
 bootlogo_file=bootfile.image
 bootlogo_zone=$((0x43000))
+bootlogo_1stfw_addr=$((kernel_2ndfw_addr+kernel_zone))
 bootlogo_2ndfw_addr=$((kernel_2ndfw_addr+kernel_zone))
-bootlogo_1stfw_addr=$((bootlogo_2ndfw_addr+bootlogo_zone))
 burn_bootlogo=n
 
+#initramfs
+initramfs_file=initramfs.cpio.gz
+initramfs_zone=$((0x1400000))
+initramfs_addr=$((kernel_2ndfw_addr+kernel_zone))
+burn_initramfs=y
 
-secureboot_addr=$((bootlogo_1stfw_addr+bootlogo_zone))
-secureboot_zone=$((0x10000))
-encrykey_addr=$((secureboot_addr+secureboot_zone))
-encrykey_zone=$((0x10000))
-hashdata_addr=$((encrykey_addr+encrykey_zone))
-hashdata_zone=$((0x80000))
-free_addr=$((hashdata_addr+hashdata_zone))
-free_zone=$((0x278000))
-ait_addr=$((free_addr+free_zone))
-ait_zone=$((0x20000))
-end_addr=$((ait_addr+ait_zone))
-
-#echo "storage_start_addr=$(printf "%x\n" $storage_start_addr)"
-#echo "kerneldtb_1stfw_addr=$(printf "%x\n" ${kerneldtb_1stfw_addr})"
-#echo "rescuedtb_1stfw_addr=$(printf "%x\n" $rescuedtb_1stfw_addr)"
-#echo "rescuefs_1stfw_addr=$(printf "%x\n" $rescuefs_1stfw_addr)"
-#echo "bluecore_1stfw_addr=$(printf "%x\n" $bluecore_1stfw_addr)"
-#echo "kernel_1stfw_addr=$(printf "%x\n" $kernel_1stfw_addr)"
-#kerneldtb_2ndfw_addr=$((kernel_1stfw_addr+kernel_zone))
-#echo "kerneldtb_2ndfw_addr =$(printf "%x\n" ${kerneldtb_2ndfw_addr})"
-#echo "rescuedtb_2ndfw_addr=$(printf "%x\n" $rescuedtb_2ndfw_addr)"
-#echo "rescuefs_2ndfw_addr=$(printf "%x\n" $rescuefs_2ndfw_addr)"
-#echo "bluecore_2ndfw_addr=$(printf "%x\n" $bluecore_2ndfw_addr)"
-#echo "kernel_2ndfw_addr=$(printf "%x\n" $kernel_2ndfw_addr)"
-#echo "bootlogo_2ndfw_addr=$(printf "%x\n" $bootlogo_2ndfw_addr)"
-#echo "bootlogo_1stfw_addr=$(printf "%x\n" $bootlogo_1stfw_addr)"
-#echo "secureboot_addr=$(printf "%x\n" $secureboot_addr)"
-#echo "encrykey_addr=$(printf "%x\n" $encrykey_addr)"
-#echo "hashdata_addr=$(printf "%x\n" $hashdata_addr)"
-#echo "free_addr=$(printf "%x\n" $free_addr)"
-#echo "ait_addr=$(printf "%x\n" $ait_addr)"
-#echo "end_addr=$(printf "%x\n" $end_addr)"
+#normalpart
+normalpart_count=$((0))

@@ -34,7 +34,10 @@
 /* if this driver knows the dedicated video memory address */
 //#define JPU_SUPPORT_RESERVED_VIDEO_MEMORY
 #endif
+//#define JPU_IRQ_CONTROL
+#ifdef JPU_FRAGMENT_FRAME_BITSTREAM
 #define JPU_IRQ_CONTROL
+#endif
 #define DEV_NAME "[RTK_JPU]"
 #define JPU_PLATFORM_DEVICE_NAME "jdec"
 #define JPU_CLK_NAME "jpeg"
@@ -280,15 +283,19 @@ static int jpu_free_buffers(struct file *filp)
 static irqreturn_t jpu_irq_handler(int irq, void *dev_id)
 {
 	jpu_drv_context_t *dev = (jpu_drv_context_t *)dev_id;
-#ifdef JPU_IRQ_CONTROL
+#ifdef JPU_FRAGMENT_FRAME_BITSTREAM
 	unsigned long value = 0;
 
 	value = ReadJpuRegister(0x004); /* MJPEG_PIC_STATUS_REG */
 	if(value == 0)
 		return IRQ_HANDLED;
+#endif
 
+#ifdef JPU_IRQ_CONTROL
 	disable_irq_nosync(s_jpu_irq);
+#endif
 
+#ifdef JPU_FRAGMENT_FRAME_BITSTREAM
 	dev->interrupt_reason = value;
 #else
 	dev->interrupt_reason = ReadJpuRegister(0x004); /* MJPEG_PIC_STATUS_REG */

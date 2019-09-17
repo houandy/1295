@@ -230,7 +230,8 @@ int rtk_usb_phy_init(struct usb_phy* phy)
 				__FUNCTION__, __LINE__,
 				(phy_page0_default_setting + i)->addr,
 				(phy_page0_default_setting + i)->data);
-			return -1;
+			ret = -1;
+			goto out;
 		} else {
 			dev_dbg(phy->dev, "[%s:%d], page0 Good : addr = 0x%x, value = 0x%x\n",
 				__FUNCTION__, __LINE__,
@@ -669,7 +670,11 @@ err:
 
 static int rtk_usb_rle0599_phy_remove(struct platform_device *pdev)
 {
-//	struct rtk_usb_phy_s *rtk_usb_phy = platform_get_drvdata(pdev);
+	struct rtk_usb_phy_s *rtk_usb_phy = platform_get_drvdata(pdev);
+
+#ifdef CONFIG_DYNAMIC_DEBUG
+	debugfs_remove_recursive(rtk_usb_phy->debug_dir);
+#endif
 
 #if 0
 	/* Due to usb_add_phy only support one USB2_phy and one USB3_phy

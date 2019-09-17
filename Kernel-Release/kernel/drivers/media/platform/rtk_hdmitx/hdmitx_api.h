@@ -69,4 +69,9 @@ int ops_get_output_format(void __user *arg);
 int ops_set_interface_type(void __user *arg);
 int ops_get_config_tv_system(void __user *arg);
 
+#if 1//def __LINUX_MEDIA_NAS__
+int ops_set_hotplug_detection(void __user *arg, hdmitx_device_t * dev);
+int ops_wait_hotplug(void __user *arg, hdmitx_device_t * dev);
+#endif
+
 #endif  //__HDMITX_API_H__

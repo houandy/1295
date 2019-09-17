@@ -9,15 +9,13 @@
 #include <linux/slab.h>
 #include <linux/io.h>
 #include <linux/of.h>
+#include <linux/of_gpio.h>
+#include <linux/usb/otg.h>
 #include <soc/realtek/rtk_usb.h>
 #include <soc/realtek/rtk_chip.h>
 
 struct rtk_usb {
 	struct power_ctrl_reg {
-		u32 usb_ctrl;
-		/* Port 0~2 */
-		u32 usb0_sram_pwr3;
-		u32 usb0_sram_pwr4;
 		/* l4_icg */
 		u32 p0_l4_icg;
 		u32 p1_l4_icg;
@@ -25,7 +23,18 @@ struct rtk_usb {
 	} power_ctrl_reg;
 
 	bool usb_power_cut;
+
+	struct type_c {
+		int connector_switch_gpio;
+		int plug_side_switch_gpio;
+	} type_c;
+
+	u32 pcie_usb3phy_sel;
 };
+
+#define disable_cc 0x0
+#define enable_cc1 0x1
+#define enable_cc2 0x2
 
 static struct rtk_usb *rtk_usb;
 
@@ -87,37 +96,6 @@ int rtk_usb_iso_power_ctrl(struct rtk_usb *rtk_usb,
 
 	pr_debug("%s START\n", __func__);
 
-	if (rtk_usb->usb_power_cut &&
-		    rtk_usb->power_ctrl_reg.usb_ctrl &&
-		    rtk_usb->power_ctrl_reg.usb0_sram_pwr3 &&
-		    rtk_usb->power_ctrl_reg.usb0_sram_pwr4) {
-		void __iomem *usb0_sram_pwr3 =
-			    ioremap(rtk_usb->power_ctrl_reg.usb0_sram_pwr3, 0x4);
-		void __iomem *usb0_sram_pwr4 =
-			    ioremap(rtk_usb->power_ctrl_reg.usb0_sram_pwr4, 0x4);
-		void __iomem *usb_ctrl = ioremap(rtk_usb->power_ctrl_reg.usb_ctrl, 0x4);
-
-		pr_info("%s power_%s ([0x%x=0x%08x)\n", __func__, power_on?"on":"off",
-			    rtk_usb->power_ctrl_reg.usb_ctrl, readl(usb_ctrl));
-		if (power_on) {
-			writel((BIT(0) | BIT(1) | BIT(4) | BIT(5) |BIT(6)) |
-				     readl(usb_ctrl), usb_ctrl);
-			writel(0x00000f00, usb0_sram_pwr4);
-			writel(~(BIT(8) | BIT(9)) & readl(usb_ctrl), usb_ctrl);
-		} else {
-			writel((BIT(8) | BIT(9)) | readl(usb_ctrl), usb_ctrl);
-			// port0-port2 sram
-			writel(0, usb0_sram_pwr3);
-			writel(0x00000f01, usb0_sram_pwr4);
-			writel(~(BIT(0) | BIT(1) | BIT(4) | BIT(5) |BIT(6)) &
-				     readl(usb_ctrl), usb_ctrl);
-		}
-		pr_info("set power_domain %s ([0x%x]=0x%08x)\n", power_on?"on":"off",
-			    rtk_usb->power_ctrl_reg.usb_ctrl, readl(usb_ctrl));
-		iounmap(usb_ctrl);
-		iounmap(usb0_sram_pwr3);
-		iounmap(usb0_sram_pwr4);
-	}
 	pr_debug("%s END\n", __func__);
 	return 0;
 }
@@ -131,23 +109,74 @@ int rtk_usb_port_suspend_resume(struct rtk_usb *rtk_usb,
 	return 0;
 }
 
-struct rtk_usb *rtk_usb_soc_init(struct device_node *sub_node)
+int rtk_type_c_init(struct rtk_usb *rtk_usb)
 {
+	if (!rtk_usb)
+		return 0;
+
+	return 0;
+}
+
+int rtk_type_c_plug_config(struct rtk_usb *rtk_usb, int dr_mode, int cc)
+{
+	bool high;
+
+	/* host / device */
+	if (dr_mode == USB_DR_MODE_PERIPHERAL) {
+		high = true;
+	} else if (dr_mode == USB_DR_MODE_HOST) {
+		high = false;
+	} else {
+		goto cc_config;
+	}
+
+	if (rtk_usb->type_c.connector_switch_gpio != -1 &&
+		    gpio_is_valid(rtk_usb->type_c.connector_switch_gpio)) {
+		pr_info("%s Set connector to %s by gpio %d\n",
+			    __func__, high?"device":"host",
+			    rtk_usb->type_c.connector_switch_gpio);
+		if (gpio_direction_output(rtk_usb->type_c.connector_switch_gpio, high))
+			pr_err("%s ERROR connector_switch_ctrl_gpio fail\n",
+				    __func__);
+	}
+
+cc_config:
+	/* cc pin */
+	/* host / device */
+	if (cc == enable_cc1) {
+		high = true;
+	} else if (cc == enable_cc2) {
+		high = false;
+	} else {
+		goto out;
+	}
+
+	if (rtk_usb->type_c.plug_side_switch_gpio != -1 &&
+		    gpio_is_valid(rtk_usb->type_c.plug_side_switch_gpio)) {
+		pr_info("%s type plug to %s by gpio %d\n",
+			    __func__, high?"cc1":"cc2",
+			    rtk_usb->type_c.plug_side_switch_gpio);
+		if (gpio_direction_output(rtk_usb->type_c.plug_side_switch_gpio, high))
+			pr_err("%s set ERROR plug_side_switch_gpio fail\n",
+				    __func__);
+	}
+
+out:
+	return 0;
+}
+
+struct rtk_usb *rtk_usb_soc_init(struct device_node *node)
+{
+	struct device_node *sub_node;
+
 	if (!rtk_usb)
 		rtk_usb = kzalloc(sizeof(struct rtk_usb), GFP_KERNEL);
 
 	pr_info("%s START (%s)\n", __func__, __FILE__);
+
+	sub_node = of_get_child_by_name(node, "power_ctrl_reg");
 	if (sub_node) {
 		pr_debug("%s sub_node %s\n", __func__, sub_node->name);
-		of_property_read_u32(sub_node,
-			    "usb_ctrl", &rtk_usb->power_ctrl_reg.usb_ctrl);
-		/* Port 0~2 */
-		of_property_read_u32(sub_node,
-			    "usb0_sram_pwr3",
-			    &rtk_usb->power_ctrl_reg.usb0_sram_pwr3);
-		of_property_read_u32(sub_node,
-			    "usb0_sram_pwr4",
-			    &rtk_usb->power_ctrl_reg.usb0_sram_pwr4);
 
 		of_property_read_u32(sub_node,
 			    "p0_l4_icg", &rtk_usb->power_ctrl_reg.p0_l4_icg);
@@ -160,8 +189,48 @@ struct rtk_usb *rtk_usb_soc_init(struct device_node *sub_node)
 			rtk_usb->usb_power_cut = true;
 		else
 			rtk_usb->usb_power_cut = false;
-
 	}
+
+	sub_node = of_get_child_by_name(node, "type_c");
+	if (sub_node) {
+		int gpio;
+		pr_debug("%s sub_node %s\n", __func__, sub_node->name);
+
+		gpio = of_get_named_gpio(sub_node, "realtek,connector_switch-gpio", 0);
+		if (gpio_is_valid(gpio)) {
+			rtk_usb->type_c.connector_switch_gpio = gpio;
+			pr_info("%s get connector_switch-gpio (id=%d) OK\n",
+				    __func__, gpio);
+		} else {
+			pr_info("connector_switch-gpio no found");
+			rtk_usb->type_c.connector_switch_gpio = -1;
+		}
+
+		gpio = of_get_named_gpio(sub_node, "realtek,plug_side_switch-gpio", 0);
+		if (gpio_is_valid(gpio)) {
+			rtk_usb->type_c.plug_side_switch_gpio = gpio;
+			pr_info("%s get plug_side_switch-gpio (id=%d) OK\n",
+				    __func__, gpio);
+		} else {
+			pr_info("plug_side_switch-gpio no found");
+			rtk_usb->type_c.plug_side_switch_gpio = -1;
+		}
+	}
+	if (of_property_read_u32(node,
+			    "pcie_usb3phy_sel", &rtk_usb->pcie_usb3phy_sel)) {
+		rtk_usb->pcie_usb3phy_sel = -1;
+	} else {
+		void __iomem *reg = ioremap(rtk_usb->pcie_usb3phy_sel, 0x4);
+		int val = readl(reg) | BIT(6);
+
+		writel(val, reg);
+
+		pr_info("%s: pcie_usb3phy_sel=%x to enable usb3phy (val=0x%x)\n",
+			    __func__, rtk_usb->pcie_usb3phy_sel, readl(reg));
+
+		iounmap(reg);
+	}
+
 	pr_info("%s END\n", __func__);
 	return rtk_usb;
 }

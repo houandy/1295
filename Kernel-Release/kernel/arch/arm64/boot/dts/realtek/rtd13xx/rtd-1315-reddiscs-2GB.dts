@@ -34,8 +34,8 @@
 /memreserve/ ION_AUDIO_HEAP_PHYS_0  ION_AUDIO_HEAP_SIZE_0;
 /memreserve/ ION_MEDIA_HEAP_PHYS_1  ION_MEDIA_HEAP_SIZE_1;
 
-#include "rtd-13xx.dtsi"
-#include "rtd-1319-usb.dtsi"
+#include "rtd-1315-reddiscs.dtsi"
+#include "rtd-1315-usb.dtsi"
 #include "rtd-1319-sata.dtsi"
 
 / {
