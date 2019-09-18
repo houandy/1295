@@ -133,9 +133,12 @@ define Package/base-files/install
 		fi; \
 	)
 
-	$(VERSION_SED_SCRIPT) \
+	-$(VERSION_SED_SCRIPT) \
 		$(1)/etc/banner \
 		$(1)/etc/openwrt_version \
+		$(1)/etc/SOC_FW_version \
+		$(1)/etc/PKG_FW_version \
+		$(1)/etc/modelname
 		$(1)/usr/lib/os-release
 
 	$(VERSION_SED_SCRIPT) \

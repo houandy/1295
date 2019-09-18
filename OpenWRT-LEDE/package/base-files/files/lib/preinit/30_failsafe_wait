@@ -80,7 +80,7 @@ fs_wait_for_key () {
 	return $keypressed
 }
 
-failsafe_wait() {
+failsafe_wait_bak() {
 	FAILSAFE=
 	[ "$pi_preinit_no_failsafe" == "y" ] && {
 		fs_wait_for_key "" "" $fs_failsafe_wait_timeout
@@ -95,6 +95,17 @@ failsafe_wait() {
 		[ -f "/tmp/failsafe_button" ] && FAILSAFE=true && echo "- failsafe button "`cat /tmp/failsafe_button`" was pressed -"
 		[ "$FAILSAFE" = "true" ] && export FAILSAFE && touch /tmp/failsafe
 	fi
+}
+
+failsafe_wait() {
+  AITMODE=$(/root/utils/factory list | grep aitmode | cut -d "=" -f2)
+  [ -z ${AITMODE} ] || {
+    [ ${AITMODE} = "1" ] && {
+      FAILSAFE=true
+      export FAILSAFE
+      touch /tmp/failsafe
+    }
+  }
 }
 
 boot_hook_add preinit_main failsafe_wait

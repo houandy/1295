@@ -27,9 +27,9 @@ ifdef KERNEL_PATCHVER
 endif
 endif
 
-ifneq (,$(CONFIG_TARGET_realtek))
-  LINUX_VERSION=external
-endif
+#ifneq (,$(CONFIG_TARGET_realtek))
+#  LINUX_VERSION=external
+#endif
 split_version=$(subst ., ,$(1))
 merge_version=$(subst $(space),.,$(1))
 KERNEL_BASE=$(firstword $(subst -, ,$(LINUX_VERSION)))
