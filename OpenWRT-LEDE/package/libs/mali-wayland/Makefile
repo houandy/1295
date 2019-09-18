@@ -10,10 +10,10 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=mali-wayland
 PKG_RELEASE:=2
 
-ifeq ($(CONFIG_TARGET_realtek_rtd16xx),y)
+ifeq ($(CONFIG_RTK_BOARD_CHIP_1619),y)
 	GPU_ARCH:=bifrost
 	PKG_VERSION:=rp16
-else ifeq ($(CONFIG_TARGET_realtek_rtd129x),y)
+else ifeq ($(CONFIG_RTK_BOARD_CHIP_1295),y)
 	GPU_ARCH:=midgard
 	ifeq ($(CONFIG_RTK_KERNEL_4_4_18),y)
 		PKG_VERSION:=rp20
@@ -43,7 +43,7 @@ $(call Package/mali-wayland/Default)
   DEPENDS:=+libdrm +libwayland +kmod-mali-wayland \
 		+!RTK_KERNEL_4_4_18:kmod-mali \
 		+RTK_KERNEL_4_4_18:kmod-lib-mali \
-		+TARGET_realtek_rtd16xx:libstdcpp
+		+RTK_BOARD_CHIP_1619:libstdcpp
 endef
 
 define Build/Prepare

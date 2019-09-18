@@ -12,7 +12,7 @@ PKG_NAME:=ffmpeg
 
 ifdef CONFIG_RTK_NAS_TRANSCODE
 
-ifdef CONFIG_TARGET_realtek_rtd129x
+ifdef CONFIG_RTK_BOARD_CHIP_1295
 PKG_VERSION:=4.0.3
 PKG_RELEASE:=1
 TOOLCHAIN:=OpenWRT-gcc8.2-glibc2.27
@@ -28,7 +28,7 @@ PKG_SOURCE_URL:=https://ffmpeg.org/releases/
 PKG_MD5SUM:=91b52d8cacbb9693e29c8d2d95c21a9d
 endif
 
-ifdef CONFIG_TARGET_realtek_rtd16xx
+ifdef CONFIG_RTK_BOARD_CHIP_1619
 PKG_VERSION:=3.3.7
 PKG_RELEASE:=1
 TOOLCHAIN:=OpenWRT-gcc8.2-glibc2.27

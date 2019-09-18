@@ -14,7 +14,7 @@ PKG_RELEASE:=1
 TOOLCHAIN:=OpenWRT-gcc8.2-glibc2.27
 PKG_SOURCE_PROTO:=local
 
-ifdef CONFIG_TARGET_realtek_rtd129x
+ifdef CONFIG_RTK_BOARD_CHIP_1295
 ifdef CONFIG_RTK_NAS_TRANSCODE
 TARGET_SOURCE_URL:=$(TOPDIR)/../Packages/apps/mm/ffmpeg
 TARGET_SOURCE:=apps_ffmpeg_4.0.3_OpenWRT-gcc8.2-glibc2.27.tar.xz
@@ -25,7 +25,7 @@ endif
 endif
 endif
 
-ifdef CONFIG_TARGET_realtek_rtd16xx
+ifdef CONFIG_RTK_BOARD_CHIP_1619
 ifdef CONFIG_RTK_NAS_TRANSCODE
 TARGET_SOURCE_URL:=$(TOPDIR)/../Packages/apps/mm/ffmpeg
 TARGET_SOURCE:=apps_ffmpeg_3.3.7_OpenWRT-gcc8.2-glibc2.27.tar.xz

@@ -14,10 +14,10 @@ PKG_SOURCE:=mali
 PKG_SOURCE_URL:=$(TOPDIR)/../Packages/drivers/$(PKG_SOURCE)
 PKG_SOURCE_PROTO:=local
 
-ifeq ($(CONFIG_TARGET_realtek_rtd16xx),y)
+ifeq ($(CONFIG_RTK_BOARD_CHIP_1619),y)
 	GPU_ARCH:=bifrost
 	PKG_VERSION:=r16p0
-else ifeq ($(CONFIG_TARGET_realtek_rtd129x),y)
+else ifeq ($(CONFIG_RTK_BOARD_CHIP_1295),y)
 	GPU_ARCH:=midgard
 	PKG_VERSION:=r23p0
 endif

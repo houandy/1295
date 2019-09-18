@@ -213,7 +213,7 @@ define KernelPackage/android
 
   FILES:=
   AUTOLOAD:=
-  DEPENDS:=@TARGET_realtek_rtd16xx +rtk-init
+  DEPENDS:=@RTK_BOARD_CHIP_1619 +rtk-init
 endef
 
 define KernelPackage/android/description

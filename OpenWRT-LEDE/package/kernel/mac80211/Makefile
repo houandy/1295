@@ -1532,7 +1532,7 @@ PKG_RTL8192CD_SUBDIR:=$(PKG_RTL8192CD_NAME)
 
 define KernelPackage/rtl8192cd
   SUBMENU:=Wireless Drivers
-  DEPENDS:= @PCI_SUPPORT +kmod-cfg80211 +@DRIVER_11N_SUPPORT +@DRIVER_11AC_SUPPORT @!RTKWIFIU +pwrdiff-convert @TARGET_realtek_rtd129x
+  DEPENDS:= @PCI_SUPPORT +kmod-cfg80211 +@DRIVER_11N_SUPPORT +@DRIVER_11AC_SUPPORT @!RTKWIFIU +pwrdiff-convert @RTK_BOARD_CHIP_1295
   TITLE:=Realtek RTL8192CD WiFi Driver
   FILES:=$(PKG_BUILD_DIR)/drivers/net/wireless/realtek/rtl8192cd/rtl8192cd.ko
   AUTOLOAD:=$(call AutoProbe,rtl8192cd)
@@ -2068,7 +2068,7 @@ config-$(CONFIG_LEDS_TRIGGERS) += MAC80211_LEDS B43_LEDS B43LEGACY_LEDS
 ifneq ($(CONFIG_PACKAGE_kmod-rtl8192cd),)
   # From platform.mk
   EXTRA_CFLAGS += -DRTK_129X_PLATFORM
-ifneq ($(CONFIG_TARGET_realtek_rtd129x),)
+ifneq ($(CONFIG_RTK_BOARD_CHIP_1295),)
   EXTRA_CFLAGS += -DRTK_129X_PLATFORM_PCI
 endif
   EXTRA_CFLAGS += -D_LITTLE_ENDIAN_ -DSMP_SYNC -Wno-error=incompatible-pointer-types
@@ -2085,9 +2085,9 @@ endif
 ifneq ($(CONFIG_PACKAGE_kmod-rtkwifiu),)
 RTKWIFIU_OPTS+=CONFIG_PLATFORM_RTL8117=$(CONFIG_TARGET_rtl8117)
 RTKWIFIU_OPTS+=CONFIG_PLATFORM_RTK119X=$(CONFIG_TARGET_rtd1195)
-RTKWIFIU_OPTS+=CONFIG_PLATFORM_RTK129X=$(CONFIG_TARGET_realtek_rtd129x)
-RTKWIFIU_OPTS+=CONFIG_PLATFORM_RTK139X=$(CONFIG_TARGET_realtek_rtd139x)
-RTKWIFIU_OPTS+=CONFIG_PLATFORM_RTK16XX=$(CONFIG_TARGET_realtek_rtd16xx)
+RTKWIFIU_OPTS+=CONFIG_PLATFORM_RTK129X=$(CONFIG_RTK_BOARD_CHIP_1295)
+RTKWIFIU_OPTS+=CONFIG_PLATFORM_RTK139X=$(CONFIG_RTK_BOARD_CHIP_1395)
+RTKWIFIU_OPTS+=CONFIG_PLATFORM_RTK16XX=$(CONFIG_RTK_BOARD_CHIP_1619)
 RTKWIFIU_OPTS+=TopDIR=$(RTKWIFIU_DIR)
 ##backport kernel 4.14
 ##expr $((4<<16)) + $((14<<8))
@@ -2450,7 +2450,7 @@ ifneq ($(CONFIG_RTKWIFIU),)
 ifeq ($(CONFIG_PACKAGE_kmod-rtd1395xen),)
 	$(INSTALL_BIN) ./rtkwifiu/files/enable-usb-wifi.sh $(1)/etc/hotplug.d/net/30-enable-usb-rtlwifi
 endif
-ifneq ($(CONFIG_TARGET_realtek_rtd16xx),)
+ifneq ($(CONFIG_RTK_BOARD_CHIP_1619),)
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_DATA) ./rtkwifiu/files/wireless_1619 $(1)/etc/config/wireless
 	$(INSTALL_DATA) ./rtkwifiu/files/dhcp_1619 $(1)/etc/config/dhcp
