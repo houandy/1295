@@ -2,7 +2,7 @@ ARCH:=aarch64
 SUBTARGET:=rtd129x
 BOARDNAME:=RTD129x NAS
 CPU_TYPE:=cortex-a53
-
+CHIP:= rtd129x
 KERNELNAME:=Image dtbs
 
 ifeq ("$(CONFIG_RTK_KERNEL_4_4_18)","y")

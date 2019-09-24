@@ -42,7 +42,7 @@ endif
   IMAGE/pack = padding-hash | check-size $$$$(1)
 endef
 
--include $(SUBTARGET).mk
+-include $(CHIP).mk
 
 ifneq ($(CONFIG_PACKAGE_rtk-imagefile),)
 ifneq ("$(layout_type)", "spi")
@@ -150,9 +150,10 @@ define Image/Build/rtkimg
 	cp $(DTB_FILE) $(FEED_DIR)/rescue.dtb
 	cp $(KDIR)/$$(KERNEL_NAME) $(FEED_DIR)/Image
 	cp $(RESCUE_ROOTFS) $(FEED_DIR)
-	( cd $(IMAGE_BUILDER); $(IMAGE_BUILDER)/build_image.sh $(IMAGE_BUILDER)/feed $(SUBTARGET)_$(layout_type) || exit 1; cd -)
+	( cd $(IMAGE_BUILDER); $(IMAGE_BUILDER)/build_image.sh $(IMAGE_BUILDER)/feed $(CHIP)_$(layout_type) || exit 1; cd -)
 	cp $(IMAGE_BUILDER)/install.img $(BIN_DIR)
 	rm -rf $(BIN_DIR)/rescue; cp $(IMAGE_BUILDER)/workspace/rescue $(BIN_DIR) -a
+	cd $(TARGET_DIR); tar jcf $(BIN_DIR)/root.tar.bz2 *;cd $(TOPDIR)
 endef
 endif
 
