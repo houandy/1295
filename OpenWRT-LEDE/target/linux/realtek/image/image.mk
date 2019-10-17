@@ -1,7 +1,8 @@
 board_name:=$(basename $(subst -,.,$(PROFILE)))
 layout_type:=$(subst .,,$(suffix $(subst -,.,$(PROFILE))))
 
-DTS_FULL_DIR:=$(DTS_DIR)/realtek/$(SUBTARGET)
+#DTS_FULL_DIR:=$(DTS_DIR)/realtek/$(SUBTARGET)
+DTS_FULL_DIR:=$(DTS_DIR)/realtek/$(CHIP)
 
 DTS_PREFIX:=$(CONFIG_RTK_BOARD_CHIP)-nas-$(board_name)
 ifeq ("$(CONFIG_RTK_NAS_TRANSCODE)","y")

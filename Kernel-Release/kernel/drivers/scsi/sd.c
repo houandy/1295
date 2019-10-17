@@ -3108,18 +3108,20 @@ static int sd_probe(struct device *dev)
 		goto out_put;
 	}
 
-#if 0//#ifdef CONFIG_AHCI_RTK
+#if 1//#ifdef CONFIG_AHCI_RTK
 	if( sdp->host && sdp->host->hostt ) {
 		if( strncmp(sdp->host->hostt->name, "ahci", 4 ) == 0 ) {
-			error = sd_format_disk_name("sata", index, gd->disk_name, DISK_NAME_LEN);
+			error = sd_format_disk_name("sata", 0, gd->disk_name, DISK_NAME_LEN);
 		}
 		else {
 			error = sd_format_disk_name("sd", index, gd->disk_name, DISK_NAME_LEN);
 		}
 	}
 	else
-#endif
+#else
 	error = sd_format_disk_name("sd", index, gd->disk_name, DISK_NAME_LEN);
+#endif
+
 	if (error) {
 		sdev_printk(KERN_WARNING, sdp, "SCSI disk (sd) name length exceeded.\n");
 		goto out_free_index;
@@ -3459,4 +3461,3 @@ static void sd_print_result(const struct scsi_disk *sdkp, const char *msg,
 			  "%s: Result: hostbyte=0x%02x driverbyte=0x%02x\n",
 			  msg, host_byte(result), driver_byte(result));
 }
-
