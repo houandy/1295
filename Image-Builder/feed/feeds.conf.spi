@@ -37,7 +37,7 @@ burn_factory=n
 kerneldtb_file=normal.dtb
 kerneldtb_zone=$((57344))
 kerneldtb_1stfw_addr=$(($storage_start_addr))
-start_addr_2ndfw=$((0x687000+0x000bd000))
+start_addr_2ndfw=$((0x686000+0x000bc000))
 kerneldtb_2ndfw_addr=$((start_addr_2ndfw))
 burn_kerneldtb=y
 
@@ -65,7 +65,7 @@ encrypted_bluecore=n
 
 #kernel
 kernel_file=Image
-kernel_zone=$((0x444000))
+kernel_zone=$((4464640))
 kernel_1stfw_addr=$((bluecore_1stfw_addr+bluecore_zone))
 kernel_2ndfw_addr=$((bluecore_2ndfw_addr+bluecore_zone))
 burn_kernel=y
