@@ -748,6 +748,7 @@ const struct platform_suspend_ops rtk_suspend_ops = {
 static void rtk_poweroff(void)
 {
 	pr_info("[%s] Power off\n", DEV_NAME);
+    rtk_suspend_gpip_output_change_suspend();
 
 	rtk_suspend_to_coolboot();
 
