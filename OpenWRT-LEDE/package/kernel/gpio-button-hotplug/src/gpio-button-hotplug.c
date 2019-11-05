@@ -99,7 +99,7 @@ static struct bh_map button_map[] = {
 	BH_MAP(KEY_HELP,		"help"),
 	BH_MAP(KEY_LIGHTS_TOGGLE,	"lights_toggle"),
 	BH_MAP(KEY_PHONE,		"phone"),
-	BH_MAP(KEY_POWER,		"power"),
+	BH_MAP(KEY_POWER2,		"power"),
 	BH_MAP(KEY_RESTART,		"reset"),
 	BH_MAP(KEY_RFKILL,		"rfkill"),
 	BH_MAP(KEY_VIDEO,		"video"),

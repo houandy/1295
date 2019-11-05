@@ -32,6 +32,7 @@
 /Bootcode/U-Boot64*/examples/standalone/
 /Bootcode/U-Boot64*/examples/flash_writer/include/
 /Bootcode/U-Boot64*/tools/
+/Bootcode/U-Boot64*/toolchain/
 /Bootcode/U-Boot64*/scripts/
 /Bootcode/U-Boot64*/bootloader.tar
 *.o

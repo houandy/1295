@@ -45,6 +45,7 @@ define Build/Prepare
 #	$(call Build/Prepare/Default)
 	mkdir -p $(IMG_DST_DIR)
 	$(CP) $(PKG_SOURCE_URL)/* $(IMG_DST_DIR)/
+	$(CP) ./files/$(SUBTARGET)/* $(IMG_DST_DIR)/
 #	$(SED) "s/^\(IMGFILE_VER=\).*/\1g$(PKG_SOURCE_VERSION)/" $(PKG_BUILD_DIR)/Makefile.in
 #	rm -rf $(IMG_DST_DIR)
 #	mkdir -p $(IMG_DST_DIR)

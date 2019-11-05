@@ -5,7 +5,7 @@ include $(TOPDIR)/rules.mk
 ARCH:=aarch64
 BOARD:=realtek
 BOARDNAME:=Realtek SoC
-SUBTARGETS:=rtd16xx rtd13xx rtd129x qsinas
+SUBTARGETS:=rtd16xx rtd13xx rtd129x hvlrs qsinas
 FEATURES:= squashfs usb
 MAINTAINER:=william.lee <william.lee@realtek.com>
 CFLAGS:=-Os -pipe -fno-caller-saves

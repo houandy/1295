@@ -451,7 +451,7 @@ KBUILD_AFLAGS   := -D__ASSEMBLY__
 
 # Read UBOOTRELEASE from include/config/uboot.release (if it exists)
 UBOOTRELEASE = $(shell cat include/config/uboot.release 2> /dev/null)
-UBOOTVERSION = $(VERSION)$(if $(PATCHLEVEL),.$(PATCHLEVEL)$(if $(SUBLEVEL),.$(SUBLEVEL)))-$(EXTRAVERSION)
+#UBOOTVERSION = $(VERSION)$(if $(PATCHLEVEL),.$(PATCHLEVEL)$(if $(SUBLEVEL),.$(SUBLEVEL)))-$(EXTRAVERSION)
 
 export VERSION PATCHLEVEL SUBLEVEL UBOOTRELEASE UBOOTVERSION
 export ARCH CPU BOARD VENDOR SOC CPUDIR BOARDDIR
@@ -1655,6 +1655,17 @@ distclean: mrproper_v2
 		-o -name '*.pyc' \) \
 		-type f -print | xargs rm -f
 	@rm -f boards.cfg
+	@rm -f examples/flash_writer/Bind/bind.bin*
+	@rm -f examples/flash_writer/Bind/uboot.bin
+	@rm -f examples/flash_writer/dvrboot.exe*
+	@rm -f examples/flash_writer/hash_target.bin
+	@rm -f examples/flash_writer/sha256_digest.bin
+	@rm -f examples/flash_writer/signature.bin
+	@rm -f examples/flash_writer/temp_target_array.h
+	@rm -f examples/flash_writer/u-boot.bin
+	@rm -f examples/flash_writer/uboot_packed.bin
+	@rm -f examples/flash_writer/uboot_packed_padding.bin
+	@rm -rf DVRBOOT_OUT
 
 backup:
 	F=`basename $(srctree)` ; cd .. ; \

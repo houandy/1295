@@ -106,8 +106,6 @@ menuconfig RTK_NAS_PACKAGES
 config RTK_NAS_SMB
 	bool
 	depends on RTK_NAS_PACKAGES
-	select PACKAGE_samba4-server
-	select PACKAGE_luci-app-samba4 if PACKAGE_luci
 
 config RTK_NAS_FTP
 	bool
