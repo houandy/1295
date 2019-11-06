@@ -306,7 +306,7 @@ static int sb2_dbg_probe(struct platform_device *pdev)
 	sb2_info("use smc %x\n", SB2_USE_SMCCALL);
 
 	sb2_dbg_register_dbg_notifier(&sb2_dbg_default_dbg_nb);
-	sb2_dbg_register_inv_notifier(&sb2_dbg_default_inv_nb);
+	//sb2_dbg_register_inv_notifier(&sb2_dbg_default_inv_nb);
 	debugfs_create_u32("sb2_default_handlers_enable", 0644, NULL,
 			   &sb2_default_handler_enable);
 

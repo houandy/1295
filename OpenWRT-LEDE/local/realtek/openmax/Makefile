@@ -63,7 +63,7 @@ endef
 
 define Package/openmax/install
 	tar -C $(1) --strip-components=1 -Jxf $(TARGET_SOURCE_URL)/$(TARGET_SOURCE) $(TARGET_NAME)/usr
-  ifeq ($(SUBTARGET), rtd129x)
+  ifdef CONFIG_RTK_BOARD_CHIP_1295
 	tar -C $(1) --strip-components=1 -Jxf $(TARGET_SOURCE_URL)/$(TARGET_SOURCE) $(TARGET_NAME)/system
   endif
   ifeq ("$(CONFIG_RTK_KERNEL_4_4_18)","y")

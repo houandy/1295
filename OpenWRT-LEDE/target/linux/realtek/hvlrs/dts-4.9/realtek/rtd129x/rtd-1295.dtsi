@@ -121,6 +121,7 @@
 		pinctrl-0 = <&i2c_pins_6>,
 			<&spdif_pins>,
 			<&spi_pins_loc_gpio>,
+			<&dc_fan_sensor_pins>,
 			<&pwm0_1_pins>,
 			<&pwm1_1_pins>,
 			<&pwm2_1_pins>,
@@ -211,7 +212,7 @@
 		clock-names = "clk_en_hdmi";
 		resets = <&rst1 RSTN_HDMI>;
 		reset-names = "rstn_hdmi";
-		status = "disabled";
+		status = "okay";
 
 		scdc_rr {
 			enable-scdc-rr = <0>;
@@ -381,7 +382,7 @@
 		mac5_phy_id = <1>;
 		led_mode = <1>; /* 0~3: SCAN_0~3, 4~6: DIRECT 0~2 */
 		gpio_link_led_enable = <0>; /* 0:disable, 1:enable */
-		gpios = <&rtk_iso_gpio 27 1 0>; /* Link LED, output, default low */
+		/*gpios = <&rtk_iso_gpio 27 1 0>;  Link LED, output, default low */
 
 		clocks = <&cc CC_PLL_DDSA>,
 			<&clk_en_1 CLK_EN_SATA_0>,
@@ -477,7 +478,7 @@
 			"phy_mdio";
 		clocks = <&clk_en_1 CLK_EN_PCIE0>;
 		debug-mode = <0>;
-		status = "disabled";
+		status = "okay";
 		phys_a = <0x31810801>,
 			<0xB2001101>,
 			<0x00100001>;
@@ -528,7 +529,7 @@
 			"phy",
 			"phy_mdio";
 		clocks = <&clk_en_2 CLK_EN_PCIE1>;
-		status = "disabled";
+		status = "okay";
 		phys = <0x00000003>, /* #Write soft reset */
 			<0x27E90301>,
 			<0x52F50401>, /* #F code,close SSC */
@@ -567,7 +568,7 @@
 		clock-names = "sdio",
 			"sdio_ip";
 		resets = <&rst2 RSTN_SDIO>;
-		status = "disabled";
+		status = "okay";
 	};
 
 	sdmmc@98010400 {
@@ -587,7 +588,7 @@
 			<&clk_en_1 CLK_EN_SD_IP>;
 		clock-names = "cr",
 			"sd_ip";
-		status = "disabled";
+		status = "okay";
 	};
 
 	emmc@98012000 {
@@ -607,7 +608,7 @@
 			"cr";
 		resets = <&rst2 RSTN_EMMC>;
 		reset-names = "emmc";
-		status = "disabled";
+		status = "okay";
 		pddrive_nf_s0 = <1 0x77 0x77 0x77 0x33>; /* pddrive_nf0, pddrive_nf1, pddrive_nf2, pddrive_nf3, pddrive_nf4 ; for sdr50 */
 		pddrive_nf_s2 = <1 0xbb 0xbb 0xbb 0x33>; /* pddrive_nf0, pddrive_nf1, pddrive_nf2, pddrive_nf3, pddrive_nf4 ; for hs200 */
 		pddrive_nf_s3 = <1 0xff 0x99 0xaa 0x33>; /* pddrive_nf0, pddrive_nf1, pddrive_nf2, pddrive_nf3, pddrive_nf4 ; for hs400 */
@@ -734,7 +735,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_pins_0>;
 		i2c-num = <0>;
-		status = "disabled";
+		status = "okay";
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&iclk_en CLK_EN_I2C0>;
@@ -748,7 +749,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_pins_1>;
 		i2c-num = <1>;
-		status = "disabled";
+		status = "okay";
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&iclk_en CLK_EN_I2C1>;
@@ -760,7 +761,7 @@
 		interrupt-parent = <&mux_intc>;
 		interrupts = <0 26>;
 		i2c-num = <2>;
-		status = "disabled";
+		status = "okay";
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&clk_en_2 CLK_EN_MISC_I2C_2>;
@@ -772,7 +773,7 @@
 		interrupt-parent = <&mux_intc>;
 		interrupts = <0 23>;
 		i2c-num = <3>;
-		status = "disabled";
+		status = "okay";
 		#address-cells = <1>;
 		#size-cells = <0>;
 		clocks = <&clk_en_2 CLK_EN_MISC_I2C_3>;
@@ -850,7 +851,7 @@
 		reg = <0x9801BC00 0x14>, <0x9801A910 0x4>;
 		interrupt-parent = <&mux_intc>;
 		interrupts = <0 29>;
-		status = "disabled";
+		status = "okay";
 
 		pwms = <&pwm 0 37878>; // (1) pwm node (2) pwm id (3) out period_ns (1/26400 ns)
 
@@ -981,7 +982,7 @@
 		smc-num = <0>;
 		clocks = <&clk_en_2 CLK_EN_MISC_SC>;
 		resets = <&rst2 RSTN_MISC_SC>;
-		status = "disabled";
+		status = "okay";
 		lsic_control{
 			gpios = <&rtk_misc_gpio 11 1 0>, /* pin cmd_vcc , default low */
 				<&rtk_misc_gpio 12 1 0>; /* pin pwr_sel , default 0 */
@@ -1053,26 +1054,26 @@
 
 	audio-out-devices {
 		compatible = "realtek,audio-out";
-		status = "disabled";
+		status = "okay";
 		dac {
 			compatible = "dac";
-			status = "disabled";
+			status = "okay";
 		};
 		spdif {
 			compatible = "spdif";
-			status = "disabled";
+			status = "okay";
 		};
 		i2s {
 			compatible = "i2s";
-			status = "disabled";
+			status = "okay";
 		};
 		hdmi {
 			compatible = "hdmi";
-			status = "disabled";
+			status = "okay";
 		};
 		global {
 			compatible = "global";
-			status = "disabled";
+			status = "okay";
 		};
 	};
 
