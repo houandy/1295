@@ -151,7 +151,7 @@ if [ $target = RTD129x_spi ]; then
 #		cp ./examples/flash_writer/image/hw_setting/$hwsetting.bin ./DVRBOOT_OUT/$target/hw_setting/B00-$hwsetting.bin
 #		cp ./examples/flash_writer/dvrboot.exe.bin ./DVRBOOT_OUT/$target/B00-$hwsetting-nas-RTD1296_spi.bin
 #	done
-	BUILD_HWSETTING_LIST=RTD1295_hwsetting_BOOT_2DDR4_8Gb_s2133
+	BUILD_HWSETTING_LIST=RTD1295_hwsetting_BOOT_2DDR4_4Gb_s2133
 	make mrproper; make rtd1295_spi_16MB_defconfig
 	for hwsetting in $BUILD_HWSETTING_LIST
 	do
