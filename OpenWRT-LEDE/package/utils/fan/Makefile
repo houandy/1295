@@ -40,11 +40,9 @@ define Build/Compile
 endef
 
 define Package/fan/install
-	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) ./files/fan.init $(1)/etc/init.d/fan
-	$(INSTALL_DIR) $(1)/usr/sbin
+	$(INSTALL_DIR) $(1)/etc/init.d $(1)/usr/sbin/ $(1)/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/fan $(1)/usr/sbin/
-
+	$(CP) ./files/* $(1)/
 endef
 
 $(eval $(call BuildPackage,fan))

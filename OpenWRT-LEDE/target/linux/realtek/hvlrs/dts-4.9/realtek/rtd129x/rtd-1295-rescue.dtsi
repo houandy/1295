@@ -763,7 +763,7 @@
 			enable = <1>;
 			clkout_div = <0xff>; //default OCD: from 0x0 to 0xff
 			clksrc_div = <0x1>; //default OSD: from 0x0 to 0xf
-			duty_rate = <50>; //default duty_rate 0 ~ 100
+			duty_rate = <30>; //default duty_rate 0 ~ 100
 		};
 		pwm_1 {
 			enable = <0>;
@@ -773,14 +773,14 @@
 		};
 		pwm_2 {
 			enable = <1>;
-			clkout_div = <0xff>; //default OCD: from 0x0 to 0xff
-			clksrc_div = <0xd>; //default OSD: from 0x0 to 0xf
+			clkout_div = <0x99>; //default OCD: from 0x0 to 0xff
+			clksrc_div = <0xe>; //default OSD: from 0x0 to 0xf
 			duty_rate = <50>; //default duty_rate 0 ~ 100
 		};
 		pwm_3 {
 			enable = <1>;
-			clkout_div = <0xff>; //default OCD: from 0x0 to 0xff
-			clksrc_div = <0xd>; //default OSD: from 0x0 to 0xf
+			clkout_div = <0x99>; //default OCD: from 0x0 to 0xff
+			clksrc_div = <0xe>; //default OSD: from 0x0 to 0xf
 			duty_rate = <50>; //default duty_rate 0 ~ 100
 		};
 	};
