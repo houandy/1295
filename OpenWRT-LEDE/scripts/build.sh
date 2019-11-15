@@ -86,9 +86,10 @@ initcode()
 
 buildimage()
 {
-  initcode $1
+	initcode $1
 	make defconfig
 	make VERSION_PRODUCT=${modelname} VERSION_CODE=${VERSION_CODE} VERSION_NUMBER=${VERSION_NUMBER} BUILDTIME=${now}
+	git checkout ../Kernel-Release/kernel/
 }
 
 checkmodel()

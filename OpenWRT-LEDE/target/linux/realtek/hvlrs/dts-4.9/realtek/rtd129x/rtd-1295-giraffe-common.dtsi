@@ -180,24 +180,18 @@
 			gpios = <&rtk_iso_gpio 28 1 1>;
 			default-state = "on";
 			linux,default-trigger = "timer";
-			linux,default-delay_on = "100";
-			linux,default-delay_off = "100";
 		};
 		LED_R {
 			label = "IODATA:R";
 			gpios = <&rtk_iso_gpio 29 1 1>;
 			default-state = "on";
 			linux,default-trigger = "timer";
-			linux,default-delay_on = "100";
-			linux,default-delay_off = "100";
 		};
 		LED_G {
 			label = "IODATA:G";
 			gpios = <&rtk_iso_gpio 30 1 1>;
 			default-state = "on";
 			linux,default-trigger = "timer";
-			linux,default-delay_on = "100";
-			linux,default-delay_off = "100";
 		};
 		/*BTN_0 {
 			label = "USB2.0_BC1.2_PWR";
