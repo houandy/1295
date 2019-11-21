@@ -118,8 +118,7 @@
 			<0x98007000 0x340>;
 		#gpio-range-cells = <3>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&i2c_pins_6>,
-			<&spdif_pins>,
+		pinctrl-0 = <&spdif_pins>,
 			<&spi_pins_loc_gpio>,
 			<&dc_fan_sensor_pins>,
 			<&pwm0_1_pins>,
@@ -304,15 +303,13 @@
 			<0x9801B00c 0x100>;
 		interrupts-st-mask = <0x8>;
 		interrupts = <0 3>, <0 5>; /*UR1_INT and UR1_TO_INT*/
-		pinctrl-names = "default";
-		pinctrl-0 = <&uart1_pins>;
 		reg-shift = <2>;
 		reg-io-width = <4>;
 		clocks = <&clk_en_2 CLK_EN_UR1>;
 		resets = <&rst2 RSTN_UR1>;
 		/* This value must be overriden by the board. */
 		clock-frequency = <0>;
-		status = "okay";
+		status = "disabled";
 	};
 
 	uart2: serial2@9801B400 {
@@ -322,8 +319,6 @@
 			<0x9801B00c 0x100>;
 		interrupts-st-mask = <0x100>;
 		interrupts = <0 8>, <0 13>; /*UR2_INT and UR2_TO_INT*/
-		pinctrl-names = "default";
-		pinctrl-0 = <&uart2_pins_0>;
 		reg-shift = <2>;
 		reg-io-width = <4>;
 		clocks = <&clk_en_2 CLK_EN_UR2>;
@@ -982,7 +977,7 @@
 		smc-num = <0>;
 		clocks = <&clk_en_2 CLK_EN_MISC_SC>;
 		resets = <&rst2 RSTN_MISC_SC>;
-		status = "okay";
+		status = "disabled";
 		lsic_control{
 			gpios = <&rtk_misc_gpio 11 1 0>, /* pin cmd_vcc , default low */
 				<&rtk_misc_gpio 12 1 0>; /* pin pwr_sel , default 0 */

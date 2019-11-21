@@ -41,7 +41,7 @@ int main(int argc, char* argv[])
         char buff[CMD_RESULT_LEN] = {0};
         while(1){
                 execute_cmd_result("/sbin/fan.sh", buff);
-                sleep(5);
+                sleep(3);
         }
 	return 0; 
 }

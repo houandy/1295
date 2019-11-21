@@ -1,4 +1,3 @@
-#include "rtd-1295.dtsi"
 
 / {
 	model= "Realtek_RTD1295";

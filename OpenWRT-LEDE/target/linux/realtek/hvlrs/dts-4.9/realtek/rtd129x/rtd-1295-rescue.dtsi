@@ -118,8 +118,7 @@
 			<0x98007000 0x340>;
 		#gpio-range-cells = <3>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&i2c_pins_6>,
-			<&spdif_pins>,
+		pinctrl-0 = <&spdif_pins>,
 			<&spi_pins_loc_gpio>,
 			<&pwm0_1_pins>,
 			<&pwm2_1_pins>,

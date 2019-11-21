@@ -2,10 +2,12 @@
 
 hdd_temp=40
 soc_temp=80
+hdd_limit_temp=48
 hddthermal=
 socthermal=
+fast_speed=80
 high_speed=50
-low_speed=35
+low_speed=30
 
 fan()
 {
@@ -23,6 +25,21 @@ fan()
 				touch /tmp/fan_high
 				return
 			}
+		else
+			if [ "$hddthermal" -ge "$hdd_limit_temp" ]; then
+				if [ "$dutyrate" -lt "$fast_speed" ]; then
+					[ -f /tmp/fan_fast ] &&	{
+						echo $fast_speed > /sys/devices/platform/980070d0.pwm/dutyRate0
+					} || {
+						touch /tmp/fan_fast
+						return
+					}
+				fi
+			else
+				if [ "$dutyrate" -eq "$fast_speed" ]; then
+					echo $high_speed > /sys/devices/platform/980070d0.pwm/dutyRate0
+				fi
+			fi
 		fi
 	else
 		if [ "$dutyrate" -gt "$low_speed" ]; then
