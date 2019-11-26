@@ -152,7 +152,6 @@
 		reg = <0x9801b000 0x100>,
 			<0x9801b100 0x100>; /* MISC_SYS MISC_GPIO*/
 		gpio-ranges = <&pinctrl 0 0 101>;
-		status = "okay";
 	};
 
 	rtk_iso_gpio: rtk_iso_gpio@98007100 {
@@ -168,7 +167,6 @@
 		reg = <0x98007000 0x100>,
 			<0x98007100 0x100>; /* ISO_SYS ISO_GPIO*/
 		gpio-ranges = <&pinctrl 0 101 35>;
-		status = "okay";
 	};
 
 	rbus@98000000 {
@@ -303,15 +301,13 @@
 			<0x9801B00c 0x100>;
 		interrupts-st-mask = <0x8>;
 		interrupts = <0 3>, <0 5>; /*UR1_INT and UR1_TO_INT*/
-		pinctrl-names = "default";
-		pinctrl-0 = <&uart1_pins>;
 		reg-shift = <2>;
 		reg-io-width = <4>;
 		clocks = <&clk_en_2 CLK_EN_UR1>;
 		resets = <&rst2 RSTN_UR1>;
 		/* This value must be overriden by the board. */
 		clock-frequency = <0>;
-		status = "okay";
+		status = "disabled";
 	};
 
 	uart2: serial2@9801B400 {
@@ -321,8 +317,6 @@
 			<0x9801B00c 0x100>;
 		interrupts-st-mask = <0x100>;
 		interrupts = <0 8>, <0 13>; /*UR2_INT and UR2_TO_INT*/
-		pinctrl-names = "default";
-		pinctrl-0 = <&uart2_pins_0>;
 		reg-shift = <2>;
 		reg-io-width = <4>;
 		clocks = <&clk_en_2 CLK_EN_UR2>;

@@ -5,7 +5,7 @@ soc_temp=80
 hdd_limit_temp=48
 hddthermal=
 socthermal=
-fast_speed=80
+fast_speed=70
 high_speed=50
 low_speed=30
 

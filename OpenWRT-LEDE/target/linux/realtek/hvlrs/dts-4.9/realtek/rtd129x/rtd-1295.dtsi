@@ -120,11 +120,11 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&spdif_pins>,
 			<&spi_pins_loc_gpio>,
-			<&dc_fan_sensor_pins>,
 			<&pwm0_1_pins>,
 			<&pwm1_1_pins>,
 			<&pwm2_1_pins>,
-			<&pwm3_1_pins>;
+			<&pwm3_1_pins>,
+			<&dc_fan_sensor_pins>;
 		status = "okay";
 	};
 
@@ -354,69 +354,6 @@
 		status = "okay";
 	};
 
-	hwnat: gmac@98060000 {
-		compatible = "Realtek,rtd1295-hwnat";
-		reg = <0x98060000 0x170000>, /* NAT */
-			<0x98000000 0x20000>, /* CLK SYS */
-			<0x9803FF00 0x100>; /* SATA Wrapper */
-		interrupts = <0 24 4>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&rgmii0_pins>;
-		offload_enable = <0>; /* 0:disable, 1:enable HW NAT offload */
-		rgmii_voltage = <1>; /* 1:1.8V, 2: 2.5V, 3:3.3V */
-		rgmii0_tx_delay = <0>; /* 0 to 7: 0.5ns per step */
-		rgmii0_rx_delay = <4>; /* 0 to 7: 0.5ns per step */
-		rgmii1_tx_delay = <0>; /* 0 to 7: 0.5ns per step */
-		rgmii1_rx_delay = <4>; /* 0 to 7: 0.5ns per step */
-		rgmii_enable = <1>; /* 0:disable, 1:enable */
-		mac0_enable = <0>; /* 0:disable, 1:enable */
-		mac0_mode = <1>; /* 0:RGMII to PHY, 1:SGMII to PHY, 2: RGMII to MAC, 3: SGMII to MAC */
-		mac5_conn_to = <0>; /* 0:PHY, 1:MAC */
-		mac0_phy_id = <3>; /* PHY ID 2 for RGMII, 3 for SGMII */
-		mac4_phy_id = <4>;
-		mac5_phy_id = <1>;
-		led_mode = <1>; /* 0~3: SCAN_0~3, 4~6: DIRECT 0~2 */
-		gpio_link_led_enable = <0>; /* 0:disable, 1:enable */
-		/*gpios = <&rtk_iso_gpio 27 1 0>;  Link LED, output, default low */
-
-		clocks = <&cc CC_PLL_DDSA>,
-			<&clk_en_1 CLK_EN_SATA_0>,
-			<&clk_en_1 CLK_EN_SATA_ALIVE_0>,
-			<&clk_en_2 CLK_EN_SATA_1>,
-			<&clk_en_2 CLK_EN_SATA_ALIVE_1>,
-			<&cc CC_PLL_DDSB>,
-			<&clk_en_2 CLK_EN_NAT>,
-			<&iclk_en CLK_EN_ETN_250M>,
-			<&iclk_en CLK_EN_ETN_SYS>;
-		clock-names = "pll_ddsa",
-			"sata_0",
-			"sata_alive_0",
-			"sata_1",
-			"sata_alive_1",
-			"pll_ddsb",
-			"nat",
-			"etn_250m",
-			"etn_sys";
-		resets = <&rst1 RSTN_SATA_0>,
-			<&rst1 RSTN_SATA_PHY_0>,
-			<&rst1 RSTN_SATA_PHY_POW_0>,
-			<&rst1 SATA_FUNC_EXIST_0>,
-			<&rst2 RSTN_SDS_PHY>,
-			<&rst1 RSTN_NAT>,
-			<&irst IRSTN_GMAC>,
-			<&irst IRSTN_GPHY>;
-		reset-names = "sata_0",
-			"sata_phy_0",
-			"sata_phy_pow_0",
-			"sata_func_exist_0",
-			"rstn_sds_phy",
-			"nat",
-			"gmac",
-			"gphy";
-		power-domains = <&pd0 PD_SRAM_NAT>;
-		status = "disabled";
-	};
-
 	timer0@9801B000 {
 		compatible = "realtek,rtk-timer0";
 		reg = <0x9801B000 0x600>,
@@ -473,7 +410,7 @@
 			"phy_mdio";
 		clocks = <&clk_en_1 CLK_EN_PCIE0>;
 		debug-mode = <0>;
-		status = "okay";
+		status = "disabled";
 		phys_a = <0x31810801>,
 			<0xB2001101>,
 			<0x00100001>;
@@ -524,7 +461,7 @@
 			"phy",
 			"phy_mdio";
 		clocks = <&clk_en_2 CLK_EN_PCIE1>;
-		status = "okay";
+		status = "disabled";
 		phys = <0x00000003>, /* #Write soft reset */
 			<0x27E90301>,
 			<0x52F50401>, /* #F code,close SSC */
@@ -583,7 +520,7 @@
 			<&clk_en_1 CLK_EN_SD_IP>;
 		clock-names = "cr",
 			"sd_ip";
-		status = "okay";
+		status = "disabled";
 	};
 
 	emmc@98012000 {
@@ -603,7 +540,7 @@
 			"cr";
 		resets = <&rst2 RSTN_EMMC>;
 		reset-names = "emmc";
-		status = "okay";
+		status = "disabled";
 		pddrive_nf_s0 = <1 0x77 0x77 0x77 0x33>; /* pddrive_nf0, pddrive_nf1, pddrive_nf2, pddrive_nf3, pddrive_nf4 ; for sdr50 */
 		pddrive_nf_s2 = <1 0xbb 0xbb 0xbb 0x33>; /* pddrive_nf0, pddrive_nf1, pddrive_nf2, pddrive_nf3, pddrive_nf4 ; for hs200 */
 		pddrive_nf_s3 = <1 0xff 0x99 0xaa 0x33>; /* pddrive_nf0, pddrive_nf1, pddrive_nf2, pddrive_nf3, pddrive_nf4 ; for hs400 */
@@ -1049,26 +986,26 @@
 
 	audio-out-devices {
 		compatible = "realtek,audio-out";
-		status = "okay";
+		status = "disabled";
 		dac {
 			compatible = "dac";
-			status = "okay";
+			status = "disabled";
 		};
 		spdif {
 			compatible = "spdif";
-			status = "okay";
+			status = "disabled";
 		};
 		i2s {
 			compatible = "i2s";
-			status = "okay";
+			status = "disabled";
 		};
 		hdmi {
 			compatible = "hdmi";
-			status = "okay";
+			status = "disabled";
 		};
 		global {
 			compatible = "global";
-			status = "okay";
+			status = "disabled";
 		};
 	};
 
