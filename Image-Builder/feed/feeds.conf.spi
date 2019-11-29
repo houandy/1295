@@ -50,6 +50,7 @@ burn_rescuedtb=y
 
 #Rescue rootfs
 rescuefs_file=rescue_rootfs.cpio.gz
+#rescuefs_zone=$((0x260000))
 rescuefs_zone=$((0xBA000))
 rescuefs_1stfw_addr=$((rescuedtb_1stfw_addr+rescuedtb_zone))
 rescuefs_2ndfw_addr=$((rescuedtb_2ndfw_addr+rescuedtb_zone))

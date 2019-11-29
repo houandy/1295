@@ -774,6 +774,7 @@ function build_rescue_file() {
 	cp feed/$kernel_rsq $workspace/$storage.uImage
 	cp feed/$dtb_rsq $workspace/rescue.$storage.dtb
 	dd if=feed/$rootfs_rsq of=$workspace/rescue.root.$storage.cpio.gz_pad.img bs=1048576 count=1 conv=sync 2>/dev/null
+	#dd if=feed/$rootfs_rsq of=$workspace/rescue.root.$storage.cpio.gz_pad.img bs=2621440 count=1 conv=sync 2>/dev/null
 }
 
 function prepare_factory() {
