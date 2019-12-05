@@ -18,7 +18,7 @@ define Package/fan
   SECTION:=utils
   CATEGORY:=Utilities
   TITLE:=This app can control NCT3941SA1 fan, and keep a box cooling.
-  DEPENDS:=+libpthread
+  DEPENDS:=
 endef
 
 define Package/fan/description

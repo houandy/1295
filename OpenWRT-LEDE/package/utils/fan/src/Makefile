@@ -2,7 +2,7 @@ all: fan
 LDFLAGS := $(LDFLAGS)
 
 fan:
-	$(CC) $(CFLAGS) -o $@ fan.c -lpthread -lm $(LDFLAGS) 
+	$(CC) $(CFLAGS) -o $@ fan.c $(LDFLAGS)
 
 clean:
 	rm -f fan
