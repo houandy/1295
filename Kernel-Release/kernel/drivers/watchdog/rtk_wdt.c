@@ -26,6 +26,9 @@
 #include <linux/watchdog.h>
 #include <linux/interrupt.h>
 #include <linux/sysrq.h>
+#include <linux/slab.h>
+#include <linux/uaccess.h>
+#include <linux/proc_fs.h>
 #include <soc/realtek/rtk_wdt.h>
 
 #define TCWCR 0x0
@@ -40,7 +43,14 @@
 #define TCWOV_RSTB_CNT 0x40
 #define TCWOV_RSTB_PAD 0x44
 static int watchdog_oe = -1;
+static void __iomem *ISO_WATCH_BASE;
+static char * rtk_watchdog_buffer_read;
+static char * rtk_watchdog_buffer_write;
 
+struct proc_dir_entry * rtk_watchdog_dir = NULL;
+struct proc_dir_entry * rtk_watchdog_entry = NULL;
+
+#define MAX_LINE_SIZE 128
 #define ISO_WDT_CLK (27000000) /* 27 MHz */
 #define ISO_WDT_1MS_CNT (27000)
 
@@ -318,6 +328,83 @@ static const struct watchdog_ops rtk_wdt_ops = {
 
 };
 
+static int rtk_watchdog_proc_open(struct inode *inode, struct file *file)
+{
+    //printk("OPEN proc/watchdog...\n");
+    return single_open(file, NULL, inode->i_private);
+}
+
+static ssize_t rtk_watchdog_proc_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
+{
+    int total_len;
+    int len2;
+    int ret;
+
+    char * pBuf = rtk_watchdog_buffer_read;
+    memset( pBuf,0,MAX_LINE_SIZE );
+
+    len2 = sprintf( pBuf, "overflow reg = 0x%08x\n", readl(ISO_WATCH_BASE + TCWOV) );
+    total_len = len2;
+
+    len2 = sprintf( pBuf+total_len, "control reg = 0x%08x\n", readl(ISO_WATCH_BASE + TCWCR) );
+    total_len += len2;
+
+    ret = copy_to_user(buf, pBuf, total_len);
+
+    if (ret) {
+        printk("copy_to_user failed!\n");
+        return 0;//-EFAULT;
+    }
+    if (*ppos == 0) {
+        *ppos += total_len;
+    }
+    else {
+        total_len = 0;
+    }
+    return total_len;
+}
+
+static ssize_t rtk_watchdog_proc_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
+{
+    char str[MAX_LINE_SIZE];
+    int ret;
+    if (count > PAGE_SIZE) { //procfs write and read has PAGE_SIZE limit
+        count = MAX_LINE_SIZE;
+    }
+
+    ret = copy_from_user(str, buf, count);
+    if (ret)
+    {
+        printk("copy_from_user failed!\n");
+        return -EFAULT;
+    }
+
+    if( strncmp( str, "disable", 7 ) == 0 ) {
+		    printk("disable watchdog reset\n");
+		    writel(0xA5, ISO_WATCH_BASE + TCWCR);
+    }
+    if( strncmp( str, "enable", 6 ) == 0 ) {
+		    printk("enable watchdog reset\n");
+		#ifdef CONFIG_ARCH_RTD129X
+		    writel(0x00800000, ISO_WATCH_BASE + TCWOV_RSTB_CNT);
+		#endif
+		    writel(0xFF, ISO_WATCH_BASE + TCWCR);
+    }
+
+    str[count-1] = '\0';
+    //printk("Your enter :\n%s\n", str);
+
+    return count;
+}
+
+static const struct file_operations rtk_watchdog_proc_fops = {
+    .owner = THIS_MODULE,
+    .open  = rtk_watchdog_proc_open,
+    .read  = rtk_watchdog_proc_read,
+    .write = rtk_watchdog_proc_write,
+    .release = single_release,
+};
+
 static int rtk_wdt_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -328,6 +415,8 @@ static int rtk_wdt_probe(struct platform_device *pdev)
 	int init_oe = 0;
 
 	pr_err("[%s] %s enter\n", KBUILD_MODNAME, __func__);
+	ISO_WATCH_BASE = of_iomap(pdev->dev.of_node, 0);
+	printk(KERN_INFO "%s: RTK Watchdog base address 0x%08llx\n", __func__, (u64)ISO_WATCH_BASE);
 
 	rtk_wdt = devm_kzalloc(&pdev->dev, sizeof(*rtk_wdt), GFP_KERNEL);
 	if (!rtk_wdt)
@@ -424,6 +513,50 @@ static int rtk_wdt_probe(struct platform_device *pdev)
 
 	pr_err("[%s] %s exit\n", KBUILD_MODNAME, __func__);
 
+    // create proc/watchdog entry
+    rtk_watchdog_buffer_read = NULL;
+    rtk_watchdog_buffer_write = NULL;
+    rtk_watchdog_buffer_read = kzalloc( MAX_LINE_SIZE, GFP_KERNEL);
+    rtk_watchdog_buffer_write = kzalloc( MAX_LINE_SIZE, GFP_KERNEL);
+    if (!rtk_watchdog_buffer_read || !rtk_watchdog_buffer_write) {
+        printk("no mem\n");
+
+        if( !rtk_watchdog_buffer_read ) {
+            kfree(rtk_watchdog_buffer_read);
+        }
+        if( !rtk_watchdog_buffer_write ) {
+            kfree(rtk_watchdog_buffer_write);
+        }
+
+        return -ENOMEM;
+    }
+
+    /* create a procfs entry for read-only */
+#ifdef CONFIG_PROC_FS
+    //rtk_watchdog_dir = proc_mkdir(dir_name, NULL);
+    //if (!rtk_watchdog_dir)
+    //{
+    //	printk("Create directory \"%s\" failed.\n", dir_name);
+    //	return -1;
+    //}
+
+    rtk_watchdog_entry = proc_create("watchdog", 0x0644, NULL, &rtk_watchdog_proc_fops);
+    if (!rtk_watchdog_entry) {
+        printk("create proc failed\n");
+
+        if( !rtk_watchdog_buffer_read ) {
+            kfree(rtk_watchdog_buffer_read);
+        }
+        if( !rtk_watchdog_buffer_write ) {
+            kfree(rtk_watchdog_buffer_write);
+        }
+
+        return -1;
+    }
+#else
+    printk("This module requests the kernel to support procfs,need set CONFIG_PROC_FS configure Y\n");
+#endif
+
 	return ret;
 }
 
@@ -435,6 +568,20 @@ static int rtk_wdt_remove(struct platform_device *pdev)
 	rtk_wdt_unregister_notifier(&wdt->iso_reset_nb);
 	unregister_restart_handler(&wdt->restart_nb);
 	watchdog_unregister_device(&wdt->wdt);
+
+      // remove proc/watchdog entry
+#ifdef CONFIG_PROC_FS
+    //proc_remove(rtk_watchdog_entry);
+    proc_remove(rtk_watchdog_dir);
+#endif
+
+    // free resource
+    if( !rtk_watchdog_buffer_read ) {
+        kfree(rtk_watchdog_buffer_read);
+    }
+    if( !rtk_watchdog_buffer_write ) {
+        kfree(rtk_watchdog_buffer_write);
+    }
 
 	return 0;
 }
