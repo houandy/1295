@@ -800,7 +800,7 @@
 		reg = <0x9801B00C 0x4>, /* MISC_ISR */
 			<0x98012800 0x200>, /* LSADC */
 			<0x9800034C 0x4>; /* LSADC_PG */
-		status = "disabled";
+		status = "okay";
 		clk_gating_en = <1>, /* LSADC0 0:disable; 1:enable */
 						<1>; /* LSADC1 0:disable; 1:enable */
 		vdd_mux_sel = <0>; /* 0:VDD1; 1:VDD2 */

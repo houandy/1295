@@ -77,7 +77,6 @@ static double lsadc_formula(double lsadc_value)
  * 返回值：0
  */
 static int sys_lsadc_temp()
-{
         char buff[CMD_RESULT_LEN] = {0};
         if (execute_cmd_result("cat /sys/devices/platform/9801b00c.rtk-lsadc/info0 | grep pad0_adc | cut -c 13-14", buff) < 0)
         {
@@ -208,39 +207,28 @@ static void* fan_server_th(void *arg)
 
 int main(int argc, char* argv[])
 {
-
-
+	int ret=-1;
         if (argc < 2)
         {
-		printf("Enter soc or hdd parameter \n");
-		return 0;                  
+            printf("Enter at least one parameter \n");
+            printf("1.lsadc 2.soc 3.hdd\n");
+            return 0;
         }
-	/*
+
         if (strcmp(argv[1], "lsadc") == 0)
         {
-            printf("lsadc\n");
-            sys_ctrl_cmd("echo 1 > /sys/devices/platform/9801b00c.rtk-lsadc/threshold00");
-        	int temp = sys_lsadc_temp();                    
-        }
-
-        else */ if (strcmp(argv[1], "soc") == 0) 
-   		{
-      		printf("soc\n");
-      		int temp = sys_soc_temp();   
-  		}
-  		else if (strcmp(argv[1], "hdd") == 0) 
-   		{
-      		printf("hdd\n");
-      		int temp = sys_hdd_temp();
-
-  		}
-   		else 
-   		{
-      		printf("1.soc 2.hdd\n");
-   		}
-
-
-
+		printf("lsadc\n");
+		sys_ctrl_cmd("echo 1 > /sys/devices/platform/9801b00c.rtk-lsadc/threshold00");
+		ret = sys_lsadc_temp();
+        }else if (strcmp(argv[1], "soc") == 0){
+		printf("soc\n");
+		ret = sys_soc_temp();
+	}else if (strcmp(argv[1], "hdd") == 0){
+		printf("hdd\n");
+		ret = sys_hdd_temp();
+	}else{
+		printf("1.lsadc 2.soc 3.hdd\n");
+	}
 
 /*        pthread_attr_t attr;
         pthread_attr_init(&attr);
@@ -256,5 +244,5 @@ int main(int argc, char* argv[])
 
         pthread_attr_destroy(&attr); //銷毀線程屬性結構體 
 */
-	return 0; 
+	return ret;
 }
