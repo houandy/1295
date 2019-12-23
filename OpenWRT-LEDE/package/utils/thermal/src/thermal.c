@@ -77,6 +77,7 @@ static double lsadc_formula(double lsadc_value)
  * 返回值：0
  */
 static int sys_lsadc_temp()
+{
         char buff[CMD_RESULT_LEN] = {0};
         if (execute_cmd_result("cat /sys/devices/platform/9801b00c.rtk-lsadc/info0 | grep pad0_adc | cut -c 13-14", buff) < 0)
         {
@@ -212,7 +213,7 @@ int main(int argc, char* argv[])
         {
             printf("Enter at least one parameter \n");
             printf("1.lsadc 2.soc 3.hdd\n");
-            return 0;
+            return -1;
         }
 
         if (strcmp(argv[1], "lsadc") == 0)
