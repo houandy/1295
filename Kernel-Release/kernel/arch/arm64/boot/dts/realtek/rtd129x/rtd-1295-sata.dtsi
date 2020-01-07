@@ -25,12 +25,10 @@
 					<0x40000C11>, <0x40004C11>, <0x40008C11>,
 					<0x00271711>, <0x00275711>, <0x00279711>;
 			/delete-property/ phy-param;
-			tx-driving = <2>;
 			
 			tx-driving-tbl = // user can define tx driving here //
-					<0x94a72011>, <0x94a76011>, <0x94a7a011>,
-					<0x587a2111>, <0x587a6111>, <0x587aa111>;
-			/delete-property/ tx-driving-tbl;
+					<0x94a82011>, <0x94aa6011>, <0x94aaa011>,
+					<0x888a2111>, <0x88aa6111>, <0x88aaa111>;
 		};
 	};
 	
