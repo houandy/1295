@@ -93,6 +93,15 @@ diff --git a/include/configs/rtd1295_common.h b/include/configs/rtd1295_common.h
 index dca094b..2f7767e 100644
 --- a/include/configs/rtd1295_common.h
 +++ b/include/configs/rtd1295_common.h
+@@ -269,7 +269,7 @@
+ /* Port 0, DRD, TYPE_C */
+ #define USB_PORT0_GPIO_TYPE "ISOGPIO"
+ #define USB_PORT0_GPIO_NUM 1
+-#define USB_PORT0_TYPE_C_RD_GPIO_TYPE "ISOGPIO"
++#define USB_PORT0_TYPE_C_RD_GPIO_TYPE "none"
+ #define USB_PORT0_TYPE_C_RD_GPIO_NUM 34
+ /* Port 1, xhci u2 host */
+ #define USB_PORT1_GPIO_TYPE "GPIO"
 @@ -316,7 +316,7 @@
  
  /* GPIO */
