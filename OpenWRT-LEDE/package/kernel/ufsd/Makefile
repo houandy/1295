@@ -25,6 +25,14 @@ else ifeq ($(CONFIG_RTK_BOARD_CHIP_1295),y)
     PKG_VERSION:=9.5.1
     FS_LIB:=lke_$(PKG_VERSION)_b7
   endif
+else ifeq ($(CONFIG_RTK_BOARD_CHIP_1296),y)
+  ifeq ($(KERNEL_PATCHVER), 4.4.18)
+    PKG_VERSION:=9.4.4
+    FS_LIB:=lke_$(PKG_VERSION)_b4
+  else
+    PKG_VERSION:=9.5.1
+    FS_LIB:=lke_$(PKG_VERSION)_b7
+  endif
 endif
 UTIL_VER:=$(FS_LIB)_utilites
 

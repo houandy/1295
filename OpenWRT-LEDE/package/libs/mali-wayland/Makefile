@@ -20,6 +20,13 @@ else ifeq ($(CONFIG_RTK_BOARD_CHIP_1295),y)
 	else
 		PKG_VERSION:=rp23
 	endif
+else ifeq ($(CONFIG_RTK_BOARD_CHIP_1296),y)
+        GPU_ARCH:=midgard
+        ifeq ($(CONFIG_RTK_KERNEL_4_4_18),y)
+                PKG_VERSION:=rp20
+        else
+                PKG_VERSION:=rp23
+        endif
 endif
 
 TOOLCHAIN_VERSION:=OpenWRT-gcc4.9-glibc2.19

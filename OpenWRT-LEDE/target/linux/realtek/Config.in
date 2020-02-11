@@ -6,13 +6,17 @@ config RTK_BOARD_CHIP_1295
 	bool
 	depends on TARGET_realtek_rtd129x
 
+config RTK_BOARD_CHIP_1296
+	bool
+	depends on TARGET_realtek_rtd129x
+
 config RTK_BOARD_CHIP_1295
         bool
         depends on TARGET_realtek_qsinas
 
 config RTK_BOARD_CHIP_1296
-	bool
-	depends on TARGET_realtek_rtd129x
+        bool
+        depends on TARGET_realtek_qsinas
 
 config RTK_BOARD_CHIP_1319
 	bool

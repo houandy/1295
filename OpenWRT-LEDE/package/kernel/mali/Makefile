@@ -20,6 +20,9 @@ ifeq ($(CONFIG_RTK_BOARD_CHIP_1619),y)
 else ifeq ($(CONFIG_RTK_BOARD_CHIP_1295),y)
 	GPU_ARCH:=midgard
 	PKG_VERSION:=r23p0
+else ifeq ($(CONFIG_RTK_BOARD_CHIP_1296),y)
+        GPU_ARCH:=midgard
+        PKG_VERSION:=r23p0
 endif
 
 PATCH_DIR:=./patches-$(GPU_ARCH)

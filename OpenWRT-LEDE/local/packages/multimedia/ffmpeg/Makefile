@@ -28,6 +28,22 @@ PKG_SOURCE_URL:=https://ffmpeg.org/releases/
 PKG_MD5SUM:=91b52d8cacbb9693e29c8d2d95c21a9d
 endif
 
+ifdef CONFIG_RTK_BOARD_CHIP_1296
+PKG_VERSION:=4.0.3
+PKG_RELEASE:=1
+TOOLCHAIN:=OpenWRT-gcc8.2-glibc2.27
+ifdef CONFIG_RTK_NAS_VIDEO
+TARGET_SOURCE_URL:=$(TOPDIR)/../Packages/apps/mm/player
+TARGET_SOURCE:=apps_player_$(PKG_VERSION)_$(TOOLCHAIN).tar.xz
+else
+TARGET_SOURCE_URL:=$(TOPDIR)/../Packages/apps/mm/ffmpeg
+TARGET_SOURCE:=apps_ffmpeg_$(PKG_VERSION)_$(TOOLCHAIN).tar.xz
+endif
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.xz
+PKG_SOURCE_URL:=https://ffmpeg.org/releases/
+PKG_MD5SUM:=91b52d8cacbb9693e29c8d2d95c21a9d
+endif
+
 ifdef CONFIG_RTK_BOARD_CHIP_1619
 PKG_VERSION:=3.3.7
 PKG_RELEASE:=1
