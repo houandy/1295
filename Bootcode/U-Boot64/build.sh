@@ -12,6 +12,11 @@ releaseimagefolder="/var/www/html/release/image/${project}"
 [ -z $3 ] && VERSION_NUMBER="0.0.0" || VERSION_NUMBER=$3
 [ -z $4 ] && release=0 || release=1
 
+for patchfile in $(ls patches/*.patch)
+do
+        patch -p1 --no-backup-if-mismatch < ${patchfile}
+done
+
 for patchfile in $(ls patches/${project}/*.patch)
 do
 	patch -p1 --no-backup-if-mismatch < ${patchfile}
@@ -219,6 +224,11 @@ if [ $target = RTD129x_nand ]; then
 fi
 
 for patchfile in $(ls patches/${project}/*.patch)
+do
+        patch -R -p1 < ${patchfile}
+done
+
+for patchfile in $(ls patches/*.patch)
 do
         patch -R -p1 < ${patchfile}
 done
