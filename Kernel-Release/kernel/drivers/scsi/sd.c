@@ -3111,7 +3111,7 @@ static int sd_probe(struct device *dev)
 #if 1//#ifdef CONFIG_AHCI_RTK
 	if( sdp->host && sdp->host->hostt ) {
 		if( strncmp(sdp->host->hostt->name, "ahci", 4 ) == 0 ) {
-			error = sd_format_disk_name("sata", 0, gd->disk_name, DISK_NAME_LEN);
+			error = sd_format_disk_name("sata", index, gd->disk_name, DISK_NAME_LEN);
 		}
 		else {
 			error = sd_format_disk_name("sd", index, gd->disk_name, DISK_NAME_LEN);
