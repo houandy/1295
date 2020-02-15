@@ -135,6 +135,18 @@ if [ $target = RTD129x_emmc ]; then
 		cp ./examples/flash_writer/image/hw_setting/$hwsetting.bin ./DVRBOOT_OUT/$target/hw_setting/
 		cp ./examples/flash_writer/dvrboot.exe.bin ./DVRBOOT_OUT/$target/A01-$hwsetting-nas-RTD1296_emmc.bin
 	done
+
+        BUILD_HWSETTING_LIST=RTD1296_hwsetting_BOOT_2DDR3_4Gb_s1600
+        make mrproper; make rtd1296_qa_NAS_defconfig
+        for hwsetting in $BUILD_HWSETTING_LIST
+        do
+                make Board_HWSETTING=$hwsetting CONFIG_CHIP_TYPE=0001
+                cp ./examples/flash_writer/image/hw_setting/$hwsetting.bin ./DVRBOOT_OUT/$target/hw_setting/
+                cp ./examples/flash_writer/dvrboot.exe.bin ./DVRBOOT_OUT/$target/A01-$hwsetting-nas-RTD1296_emmc.bin
+                cp ./DVRBOOT_OUT/$target/A01-$hwsetting-nas-RTD1296_emmc.bin ./DVRBOOT_OUT/$target/Uboot-${project}.bin
+                DEST_FILE="${binfilefolder}/Uboot-${project}.bin"
+                DEST_HWSETTING_FILE="${binfilefolder}/hw_setting/A01-${hwsetting}.bin"
+        done
 fi
 
 if [ $target = RTD129x_spi ]; then

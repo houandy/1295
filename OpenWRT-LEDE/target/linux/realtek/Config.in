@@ -1,18 +1,18 @@
 config RTK_BOARD_CHIP_1295
-	bool
-	depends on TARGET_realtek_hvlrs
+        bool
+        depends on TARGET_realtek_hvlrs
 
 config RTK_BOARD_CHIP_1295
 	bool
 	depends on TARGET_realtek_rtd129x
 
 config RTK_BOARD_CHIP_1296
+        bool
+        depends on TARGET_realtek_pelican
+
+config RTK_BOARD_CHIP_1296
 	bool
 	depends on TARGET_realtek_rtd129x
-
-config RTK_BOARD_CHIP_1295
-        bool
-        depends on TARGET_realtek_qsinas
 
 config RTK_BOARD_CHIP_1296
         bool

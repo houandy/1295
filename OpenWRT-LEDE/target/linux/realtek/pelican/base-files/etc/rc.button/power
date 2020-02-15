@@ -1,0 +1,9 @@
+#!/bin/sh
+
+[ "${ACTION}" = "released" ] || exit 0
+
+echo 0 > /sys/devices/platform/980070d0.pwm/enable0
+echo "disable" > /proc/watchdog
+exec /sbin/poweroff
+
+return 0
