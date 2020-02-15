@@ -172,7 +172,7 @@ if [ ! ${build_mode} = "all" ]; then
 		[ -d ${releaseimagefolder} ] || mkdir -p ${releaseimagefolder}
 		[ -d ${releaseimagefolder} ] && {
 		cp ${FOLDER}/${binfilefolder}/${DEST_FILE} ${releaseimagefolder}
-		cp ${FOLDER}/${binfilefolder}/${DEST_ROOTFS_FILE} ${releaseimagefolder}
+		[ -f ${FOLDER}/${binfilefolder}/${DEST_ROOTFS_FILE} ] && cp ${FOLDER}/${binfilefolder}/${DEST_ROOTFS_FILE} ${releaseimagefolder}
 		cp ${FOLDER}/${binfilefolder}/rescue/* ${releaseimagefolder}
 		}
 	fi
