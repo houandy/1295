@@ -87,36 +87,47 @@
 	};
 
 	rtk_misc_gpio: rtk_misc_gpio@9801b100 {
-		gpios = <&rtk_misc_gpio 8 0 0>, /* install button */
-			<&rtk_misc_gpio 100 1 1>; /* audio dac unmute */
+		gpios = <&rtk_misc_gpio 8 0 0>,
+		<&rtk_misc_gpio 12 0 0>,
+		<&rtk_misc_gpio 13 0 0>,
+		<&rtk_misc_gpio 14 0 0>;
+		/* boardmodel_pin */
 	};
 
 	rfkilligpio{
 		gpios = <&rtk_iso_gpio 24 1 0>; /* bt power */
-		status = "okay";
+		status = "disabled";
 	};
 
 	/*
 	 * Suspend GPIO control
-	 *
-	 * [wakeup-gpio-list]
-	 * rtk_iso_gpio 14: BT wakeup host pin
-	 * rtk_iso_gpio 33: WiFi wakeup host pin
-	 *
-	 * [wakeup-gpio-enable]
-	 * Wakeup from BT: <0>disabele
-	 * Wakeup from WiFi: <1> enable
-	 *
-	 * [wakeup-gpio-activity]
-	 * BT pin: <1>active high
-	 * WIFI pin: <0>active low
 	 */
 	power-management@0  {
 		compatible = "Realtek,power-management";
-		wakeup-gpio-list = <&rtk_iso_gpio 14 0 0>,
-			<&rtk_iso_gpio 33 0 0>;
-		wakeup-gpio-enable = <0>, <1>;
-		wakeup-gpio-activity =<1>, <0>;
+
+		/* GPIO Wakeup */
+		wakeup-gpio-enable = /* (0) disable (1) enable */
+			<1>; /* Wakeup from Button : enable */
+		wakeup-gpio-list = /* <&rtk_iso_gpio {num} {force input (0) } {default N/A (0)] }> */
+			<&rtk_iso_gpio 22 0 0>; /* Button wakeup host pin */
+		wakeup-gpio-activity = /* (0) active low (1) active high*/
+			<0>; /* Button : low activity */
+	};
+	gpio-keys-polled {
+		compatible = "gpio-keys-polled";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		poll-interval = <20>;
+		power {
+			label = "power";
+			gpios = <&rtk_iso_gpio 22 0 1>;
+			linux,code = <0x164>;
+		};
+		reset {
+			label = "reset";
+			gpios = <&rtk_iso_gpio 20 0 1>;
+			linux,code = <0x198>;
+		};
 	};
 };
 

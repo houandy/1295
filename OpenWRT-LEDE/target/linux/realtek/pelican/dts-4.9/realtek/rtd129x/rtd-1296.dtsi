@@ -130,7 +130,6 @@
 			<&i2c_pins_0>,
 			<&i2c_pins_1>,
 			<&i2c_pins_5>,
-			<&i2c_pins_6>,
 			<&pcie1_clk_pins>,
 			<&pcie2_clk_pins>,
 			<&rgmii0_pins>,
@@ -227,7 +226,7 @@
 		clock-names = "clk_en_hdmi";
 		resets = <&rst1 RSTN_HDMI>;
 		reset-names = "rstn_hdmi";
-		status = "okay";
+		status = "disabled";
 
 		scdc_rr {
 			enable-scdc-rr = <0>;
@@ -242,7 +241,7 @@
 		compatible = "realtek,rtk129x-hdcptx";
 		reg = <0x9800d000 0x400>;
 		interrupts = <0 31 4>; /*gen Ri*/
-		status = "okay";
+		status = "disabled";
 	};
 
 	hdmirx@98034000 {
@@ -293,7 +292,7 @@
 			"tp",
 			"cp";
 		power-domains = <&pd0 PD_SRAM_DISP_HDMIRX>;
-		status = "okay";
+		status = "disabled";
 	};
 
 	uart0: serial0@98007800 {
@@ -812,7 +811,7 @@
 		compatible = "Realtek,rtd1295-pwm";
 		#pwm-cells = <2>;
 		reg = <0x980070D0 0xC>;
-		status = "okay";
+		status = "disabled";
 		pwm_0 {
 			enable = <0>;
 			clkout_div = <0xff>; //default OCD: from 0x0 to 0xff
@@ -820,7 +819,7 @@
 			duty_rate = <5>; //default duty_rate 0 ~ 100
 		};
 		pwm_1 {
-			enable = <1>;
+			enable = <0>;
 			clkout_div = <0xff>; //default OCD: from 0x0 to 0xff
 			clksrc_div = <0x1>; //default OSD: from 0x0 to 0xf
 			duty_rate = <50>; //default duty_rate 0 ~ 100
@@ -1028,7 +1027,7 @@
 
 	audio-out-devices {
 		compatible = "realtek,audio-out";
-		status = "okay";
+		status = "disabled";
 		dac {
 			compatible = "dac";
 			status = "okay";
@@ -1043,7 +1042,7 @@
 		};
 		hdmi {
 			compatible = "hdmi";
-			status = "okay";
+			status = "disabled";
 		};
 		global {
 			compatible = "global";
