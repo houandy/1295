@@ -31,6 +31,7 @@ dtb-$(CONFIG_ARCH_RTD129x) += rtd-1296-saola-xenott-3GB.dtb
 dtb-$(CONFIG_ARCH_RTD129x) += rtd-1296-saola-xenott-3GB-tee.dtb
 
 dtb-$(CONFIG_ARCH_RTD129x) += rtd-1296-nas-saola-2GB.dtb
+dtb-$(CONFIG_ARCH_RTD129x) += rtd-1296-mmnas-saola-1GB.dtb
 dtb-$(CONFIG_ARCH_RTD129x) += rtd-1296-mmnas-saola-2GB.dtb
 dtb-$(CONFIG_ARCH_RTD129x) += rtd-1296-videonas-saola-2GB.dtb
 dtb-$(CONFIG_ARCH_RTD129x) += rtd-1296-nas-qa-rescue.dtb

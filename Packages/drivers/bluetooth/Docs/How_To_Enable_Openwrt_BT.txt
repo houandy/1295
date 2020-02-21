@@ -1,0 +1,29 @@
+1. USB BT:
+a. Drivers:
+CONFIG_PACKAGE_kmod-rtk_btusb
+
+
+b. Tools:
+CONFIG_PACKAGE_bluez-utils
+
+c. BT Firmware:
+CONFIG_PACKAGE_rtkbt-firmware-rtl8822cu
+
+d. WEB UI:
+CONFIG_PACKAGE_luci-app-bluetooth
+
+
+2. UART BT:
+a. Drivers:
+CONFIG_PACKAGE_kmod-rtk_btuart
+CONFIG_PACKAGE_kmod-rtk_rfkill
+
+b. Tools:
+CONFIG_PACKAGE_rtk-hciattach
+CONFIG_PACKAGE_bluez-utils
+
+c. BT Firware:
+CONFIG_PACKAGE_rtkbt-firmware-rtl8822cs
+
+d. WEB UI:
+CONFIG_PACKAGE_luci-app-bluetooth

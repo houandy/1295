@@ -21,7 +21,7 @@ bootargs=bootargs.conf.spi
 lzma=y
 
 update_1stfw=y
-update_2ndfw=y
+update_2ndfw=n
 
 
 burn_fwtbl=y
@@ -31,7 +31,7 @@ seqnum_2ndfw=$((0))
 burn_bootpart=n
 
 #Factory file
-burn_factory=y
+burn_factory=n
 
 #Device Tree
 kerneldtb_file=normal.dtb

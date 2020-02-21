@@ -1,0 +1,3 @@
+Don't enable kernel config "BT_RTKBTRFKILL" for 8822C USB BT:
+
+#CONFIG_BT_RTKBTRFKILL is not set

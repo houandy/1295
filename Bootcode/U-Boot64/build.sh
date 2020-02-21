@@ -104,11 +104,29 @@ if [ $target = RTD129x_emmc ]; then
 	make mrproper; make rtd1295_qa_NAS_defconfig	
 	for hwsetting in $BUILD_HWSETTING_LIST
 	do
-		make Board_HWSETTING=$hwsetting CONFIG_CHIP_TYPE=0002
+		make Board_HWSETTING=$hwsetting CONFIG_CHIP_TYPE=0001
 		cp ./examples/flash_writer/image/hw_setting/$hwsetting.bin ./DVRBOOT_OUT/$target/hw_setting/
-		cp ./examples/flash_writer/dvrboot.exe.bin ./DVRBOOT_OUT/$target/B00-$hwsetting-nas-RTD1295_emmc.bin
+		cp ./examples/flash_writer/dvrboot.exe.bin ./DVRBOOT_OUT/$target/A01-$hwsetting-nas-RTD1295_emmc.bin
 	done
+
+	BUILD_HWSETTING_LIST=RTD1295_hwsetting_BOOT_2DDR4_4Gb_s2133
+        make mrproper; make rtd1295_qa_NAS_defconfig
+        for hwsetting in $BUILD_HWSETTING_LIST
+        do
+                make Board_HWSETTING=$hwsetting CONFIG_CHIP_TYPE=0001
+                cp ./examples/flash_writer/image/hw_setting/$hwsetting.bin ./DVRBOOT_OUT/$target/hw_setting/
+                cp ./examples/flash_writer/dvrboot.exe.bin ./DVRBOOT_OUT/$target/A01-$hwsetting-nas-RTD1295_emmc.bin
+        done
 	
+	BUILD_HWSETTING_LIST=RTD1296_hwsetting_BOOT_4DDR4_4Gb_s1600
+	make mrproper; make rtd1296_qa_NAS_defconfig
+	for hwsetting in $BUILD_HWSETTING_LIST
+	do
+		make Board_HWSETTING=$hwsetting CONFIG_CHIP_TYPE=0001
+		cp ./examples/flash_writer/image/hw_setting/$hwsetting.bin ./DVRBOOT_OUT/$target/hw_setting/
+		cp ./examples/flash_writer/dvrboot.exe.bin ./DVRBOOT_OUT/$target/A01-$hwsetting-nas-RTD1296_emmc.bin
+	done
+
 	BUILD_HWSETTING_LIST=RTD1296_hwsetting_BOOT_4DDR4_4Gb_s1866
 	make mrproper; make rtd1296_qa_NAS_defconfig
 	for hwsetting in $BUILD_HWSETTING_LIST
@@ -117,7 +135,7 @@ if [ $target = RTD129x_emmc ]; then
 		cp ./examples/flash_writer/image/hw_setting/$hwsetting.bin ./DVRBOOT_OUT/$target/hw_setting/
 		cp ./examples/flash_writer/dvrboot.exe.bin ./DVRBOOT_OUT/$target/B00-$hwsetting-nas-RTD1296_emmc.bin
 	done
-	
+
 	BUILD_HWSETTING_LIST=RTD1295_hwsetting_BOOT_2DDR4_8Gb_s2133
 	make mrproper; make rtd1295_qa_NAS_defconfig	
 	for hwsetting in $BUILD_HWSETTING_LIST
@@ -126,7 +144,7 @@ if [ $target = RTD129x_emmc ]; then
 		cp ./examples/flash_writer/image/hw_setting/$hwsetting.bin ./DVRBOOT_OUT/$target/hw_setting/
 		cp ./examples/flash_writer/dvrboot.exe.bin ./DVRBOOT_OUT/$target/A01-$hwsetting-nas-RTD1295_emmc.bin
 	done
-	
+
 	BUILD_HWSETTING_LIST=RTD1296_hwsetting_BOOT_4DDR4_4Gb_s1866
 	make mrproper; make rtd1296_qa_NAS_defconfig
 	for hwsetting in $BUILD_HWSETTING_LIST

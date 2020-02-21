@@ -110,7 +110,7 @@ hash_var = $(if $(filter-out x,$(1)),MD5SUM,HASH)
 endif
 
 define DownloadMethod/local
-	
+	$(if $(PKG_WARNING), echo $(PKG_WARNING))
 endef
 define DownloadMethod/unknown
 	echo "ERROR: No download method available"; false

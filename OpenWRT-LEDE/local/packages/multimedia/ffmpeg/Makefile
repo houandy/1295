@@ -40,6 +40,7 @@ endif
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.xz
 PKG_SOURCE_URL:=https://ffmpeg.org/releases/
 PKG_MD5SUM:=91b52d8cacbb9693e29c8d2d95c21a9d
+PKG_HASH:=253c37e3f1d3626a2566e496554de9a4c29050753660835909a466d66b12e2ed
 endif
 
 else
@@ -50,6 +51,17 @@ PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.xz
 PKG_SOURCE_URL:=https://ffmpeg.org/releases/
 PKG_HASH:=8985cea7b1b3b2e0e2b2a8ac6187a7fb022fe8aa9d35101760a000205c59c412
 endif
+PKG_SOURCE_URL:=NULL
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.xz
+PKG_SOURCE_PROTO:=local
+PKG_WARNING:=\
+"********************\n \
+This SDK cannot provide source automatically for copyright concern.\n \
+Please download the source from FFmpeg website and put into dl/ directory manually.\n \
+https://ffmpeg.org/releases/$(PKG_NAME)-$(PKG_VERSION).tar.xz\n \
+SHA256: $(PKG_HASH)\n \
+********************"
+
 PKG_MAINTAINER:=Ted Hess <thess@kitschensync.net>, \
 		Ian Leonard <antonlacon@gmail.com>
 
