@@ -44,7 +44,7 @@
 #include <sata.h>
 #endif
 #include <asm/arch/factorylib.h>
-#include <../drivers/mmc/rtkemmc.h>
+#include <asm/arch/rtkemmc.h>
 #include <rtkspi.h>
 #ifdef CONFIG_CUSTOMIZE_BOOTFLOW_1
 #include <customized.h>
@@ -180,6 +180,7 @@ extern unsigned int OTP_JUDGE_BIT(unsigned int offset);
 #endif /* CONFIG_CMD_KEY_BURNING */
 
 static int accelerate_state = 0;  /*The flag for controlling faster blue logo*/
+unsigned int Auto_AFW_MEM_START = 0; /* Save the address of AFW from fw_desc */
 
 extern const unsigned int Kh_key_default[4];
 
@@ -1633,6 +1634,10 @@ int rtk_plat_read_fw_image_from_eMMC(
 		else if (2 == accelerate_state && (entry_type == FW_TYPE_AUDIO || entry_type == FW_TYPE_IMAGE_FILE))
 			continue;
 		/*The condition for decision the order of loading FW*/
+
+		if ( entry_type == FW_TYPE_AUDIO || entry_type == FW_TYPE_GOLD_AUDIO)
+			Auto_AFW_MEM_START = entry_target_addr;
+		/* Save the address of AFW from fw_desc */
 
 		if (entry_target_addr)
 		{
