@@ -348,3 +348,10 @@ board_name() {
 }
 
 [ -z "$IPKG_INSTROOT" -a -f /lib/config/uci.sh ] && . /lib/config/uci.sh
+
+default_postinst() {
+	return 0
+}
+default_prerm() {
+	return 0
+}
