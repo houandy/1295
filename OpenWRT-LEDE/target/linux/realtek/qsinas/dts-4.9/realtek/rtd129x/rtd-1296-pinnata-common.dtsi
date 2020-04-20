@@ -95,7 +95,7 @@
 	};
 
 	rtk_iso_gpio: rtk_iso_gpio@98007100 {
-	//	gpios =<&rtk_iso_gpio 22 1 0>; /* LED */
+		gpios =<&rtk_iso_gpio 22 1 0>; /* LED */
 	};
 
 	hdmitx@9800D000 {
