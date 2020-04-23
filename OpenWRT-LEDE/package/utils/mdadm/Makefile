@@ -8,8 +8,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=mdadm
-PKG_VERSION:=4.0
-PKG_RELEASE:=4
+PKG_VERSION:=4.1
+PKG_RELEASE:=2
 
 PKG_SOURCE_URL:=@KERNEL/linux/utils/raid/mdadm
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.xz
