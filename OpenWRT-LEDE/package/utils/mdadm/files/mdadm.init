@@ -48,6 +48,7 @@ verbose() {
 			# no SSH_TTY goes to logger
 			printf "$NAME: init %7s - %b\n" "$level" "$msg" | logger -t mdadm
 		fi
+		echo "$NAME: $level => $msg" >> /tmp/mdadm.log
 	fi
 }
 
@@ -68,7 +69,7 @@ mdadm_conf_auto() {
 	# Check block info for active linux_raid_members, if necessary then compare with mdadm, & dynamically update $mdadm_conf
 
 	block_md=0 # counter
-	for block_uuid in $(block info 2> /dev/null | sed -nEe 's#^.* UUID="([^"]*)".*TYPE="linux_raid_member"#\1#p'); do
+	for block_uuid in $(blkid 2> /dev/null | sed -nEe 's#^.* UUID="([^"]*)".*TYPE="linux_raid_member"#\1#p' | uniq); do
 		mdadm_md=""
 		mdadm_md_rc=0
 
@@ -210,14 +211,14 @@ mdadm_conf_uci() {
 	printf "ARRAY %s %s\n" "$device" "$array" >> $mdadm_conf
 }
 
-reload_service() {
-	while read line; do echo $line; done <<< "$(echo hello; echo world)"
+#reload_service() {
+#	while read line; do echo $line; done <<< "$(echo hello; echo world)"
 	# running start_service() on reload should be OK in all modes, except manual configs.
 	# for auto & none, start_service() already rescans for hotplugged devices, add new arrays, etc.
 	# could check for the configured mode & call appropriately?  doing nothing is safer; todo: test & resolve
-	verbose "reload_service called, ignoring" NOTICE
-	return 0
-}
+#	verbose "reload_service called, ignoring" NOTICE
+#	return 0
+#}
 
 start_service() {
     local config config_detail config_file config_level config_mode config_rc config_state config_verbose mdadm_conf
@@ -524,7 +525,7 @@ stop_service() {
 	[ -n "${umount_device}" ] && umount "${umount_device}"
 	sync
 	$PROG --stop --scan
-	echo "here VERBOSE=$VERBOSE"
+#	echo "here VERBOSE=$VERBOSE"
 	if [ $? -eq 0 ]; then
 		verbose "'$PROG --stop --scan' stop_service succeeded" OK
 	else
