@@ -1,13 +1,13 @@
 #!/bin/sh
 
-# ex: ./script/build.sh 1619_kernel49_nas build 1.0.0.0 1.0.0.0
+# ex: ./script/build.sh 1619_kernel49_nas build 1.0.0.0(PKG version) 1.0.0.0(FW version)
 
 
 workdir=$(pwd)
 [ -z $1 ] && modelname="1619_kernel49_nas" || modelname=$1
 [ -z $2 ] && build_mode="build" || build_mode=$2
-[ -z $3 ] && VERSION_CODE="0.0.0.0" || VERSION_CODE=$3
-[ -z $4 ] && VERSION_NUMBER="0.0.0.0" || VERSION_NUMBER=$4
+[ -z $3 ] && VERSION_CODE="0.0.0" || VERSION_CODE=$3
+[ -z $4 ] && VERSION_NUMBER="0.0.0" || VERSION_NUMBER=$4
 UBOOT_VERSION="1.0.0"
 branch=master
 now="$(date '+%Y%m%d')"
@@ -75,13 +75,18 @@ feed_install()
 initcode()
 {
 	[ ${branch} != "master" ] && {
-    echo "change branch"
-    cd $1
-    git checkout $branch || exit
-    cd ..
-  }
-  [ -d $1 ] && cd $1 && setconfig "$1" 
-  [ -d $1/package/feeds ] || feed_install "$1" 
+		echo "change branch"
+		cd $1
+		git checkout $branch || exit
+		cd ..
+	}
+	[ -d $1 ] && cd $1 && setconfig "$1"
+	[ -d $1/package/feeds ] || feed_install "$1"
+	if [ -f target/linux/realtek/image/rtk-imagefile/feed/feeds.conf ];then
+		make package/feeds/realtek/rtk-imagefile/clean
+	fi
+	sed -i "2s/version=1.0.0/version=${VERSION_NUMBER}/" ../Image-Builder/feed/feeds.conf.emmc
+	sed -i "2s/version=1.0.0/version=${VERSION_NUMBER}/" ../Image-Builder/feed/feeds.conf.spi
 }
 
 buildimage()
@@ -90,6 +95,7 @@ buildimage()
 	make defconfig
 	make VERSION_PRODUCT=${modelname} VERSION_CODE=${VERSION_CODE} VERSION_NUMBER=${VERSION_NUMBER} BUILDTIME=${now}
 	git checkout ../Kernel-Release/kernel/
+	git checkout ../Image-Builder/feed/feeds.conf.*
 }
 
 checkmodel()
@@ -107,19 +113,19 @@ checkmodel()
 packimage()
 {
 	echo "$1/${binfilefolder}/${DEST_FILE}"
-  cd $1/${binfilefolder}/ && mkdir -p packimagetmp
-  cp -f $1/${binfilefolder}/${DEST_FILE} $1/${binfilefolder}/packimagetmp/
-  cd $1/${binfilefolder}/packimagetmp/
-  md5sum  * > ${MD5SUM}
+	cd $1/${binfilefolder}/ && mkdir -p packimagetmp
+	cp -f $1/${binfilefolder}/${DEST_FILE} $1/${binfilefolder}/packimagetmp/
+	cd $1/${binfilefolder}/packimagetmp/
+	md5sum  * > ${MD5SUM}
 #  setpkginfo ${PKG_INFO_FILE}
 
 #  tar zcvf ${upgradefwfile} *
-  zip --password qsidesa${modelname} ${upgradefwfile} *
+	zip --password qsidesa${modelname} ${upgradefwfile} *
 #  zip ${upgradefwfile} *
-  mv ${upgradefwfile} ../${upgradefwbin}
+	mv ${upgradefwfile} ../${upgradefwbin}
 #  md5sum ${upgradefwfile} | cut -d ' ' -f1 > ../${upgradefwbin} && cat ${upgradefwfile} >> ../${upgradefwbin}
-  cd .. && rm -rf packimagetmp/
-  cd $1
+	cd .. && rm -rf packimagetmp/
+	cd $1
 }
 
 cpimage()
@@ -136,8 +142,8 @@ cpimage()
 if [ ! ${build_mode} = "all" ]; then
 	if [ ${build_mode} = "clean" ]; then
 		echo "clean"
-    cleanbinfile
-    runclean
+		cleanbinfile
+		runclean
 	fi
 	if [ ${build_mode} = "build" ]; then
 		echo "buildimage"
