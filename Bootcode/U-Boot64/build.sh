@@ -3,7 +3,7 @@
 
 #rm -rf DVRBOOT_OUT
 #[ $# = 0 ] && echo -e "Usage:\n\t./build.sh [RTD16xx_spi|RTD16xx_emmc|RTD12xx_emmc]\n\t./build.sh\t=>For building all version"
-[ $# -lt 2 ] && echo -e "Usage:\n\t./build.sh [RTD16xx_spi|RTD16xx_emmc|RTD129x_spi|RTD129x_emmc] [project]" && exit 0
+[ $# -lt 1 ] && echo -e "Usage:\n\t./build.sh [RTD16xx_spi|RTD16xx_emmc|RTD129x_spi|RTD129x_emmc] [project]" && exit 0
 target=$1
 project=$2
 now="$(date '+%Y%m%d')"
@@ -17,10 +17,12 @@ do
         patch -p1 --no-backup-if-mismatch < ${patchfile}
 done
 
+if [ -n "${project}" ]; then
 for patchfile in $(ls patches/${project}/*.patch)
 do
 	patch -p1 --no-backup-if-mismatch < ${patchfile}
 done
+fi
 
 ########### Build Thor A01 RTK #############
 #BUILD_HWSETTING_LIST=`ls $HWSETTING_DIR`
@@ -161,8 +163,13 @@ if [ $target = RTD129x_emmc ]; then
                 make Board_HWSETTING=$hwsetting CONFIG_CHIP_TYPE=0001
                 cp ./examples/flash_writer/image/hw_setting/$hwsetting.bin ./DVRBOOT_OUT/$target/hw_setting/
                 cp ./examples/flash_writer/dvrboot.exe.bin ./DVRBOOT_OUT/$target/A01-$hwsetting-nas-RTD1296_emmc.bin
-                cp ./DVRBOOT_OUT/$target/A01-$hwsetting-nas-RTD1296_emmc.bin ./DVRBOOT_OUT/$target/Uboot-${project}.bin
-                DEST_FILE="${binfilefolder}/Uboot-${project}.bin"
+		[ -n "${project}" ] && {
+			cp ./DVRBOOT_OUT/$target/A01-$hwsetting-nas-RTD1296_emmc.bin ./DVRBOOT_OUT/$target/Uboot-${project}.bin
+			DEST_FILE="${binfilefolder}/Uboot-${project}.bin"
+		} || {
+			cp ./DVRBOOT_OUT/$target/A01-$hwsetting-nas-RTD1296_emmc.bin ./DVRBOOT_OUT/$target/Uboot.bin
+			DEST_FILE="${binfilefolder}/Uboot.bin"
+		}
                 DEST_HWSETTING_FILE="${binfilefolder}/hw_setting/A01-${hwsetting}.bin"
         done
 fi
@@ -206,8 +213,13 @@ if [ $target = RTD129x_spi ]; then
 		done
 	fi
 
-	cp ./DVRBOOT_OUT/$target/A01-$hwsetting-nas-RTD1295_spi.bin ./DVRBOOT_OUT/$target/Uboot-${project}.bin
-	DEST_FILE="${binfilefolder}/Uboot-${project}.bin"
+	[ -n "${project}" ] && {
+		cp ./DVRBOOT_OUT/$target/A01-$hwsetting-nas-RTD1295_spi.bin ./DVRBOOT_OUT/$target/Uboot-${project}.bin
+		DEST_FILE="${binfilefolder}/Uboot-${project}.bin"
+	} || {
+		cp ./DVRBOOT_OUT/$target/A01-$hwsetting-nas-RTD1295_spi.bin ./DVRBOOT_OUT/$target/Uboot.bin
+		DEST_FILE="${binfilefolder}/Uboot.bin"
+	}
 	DEST_HWSETTING_FILE="${binfilefolder}/hw_setting/A01-${hwsetting}.bin"
 
 #	BUILD_HWSETTING_LIST=RTD1296_hwsetting_BOOT_4DDR4_4Gb_s1866
@@ -265,10 +277,12 @@ if [ $target = RTD129x_nand ]; then
 	done
 fi
 
+if [ -n "${project}" ]; then
 for patchfile in $(ls patches/${project}/*.patch)
 do
         patch -R -p1 < ${patchfile}
 done
+fi
 
 for patchfile in $(ls patches/*.patch)
 do
@@ -276,10 +290,18 @@ do
 done
 
 if [ $release == 1 ]; then
-		[ -d ${releaseimagefolder}/ ] || mkdir -p ${releaseimagefolder}/
+	[ -d ${releaseimagefolder}/ ] || mkdir -p ${releaseimagefolder}/
+	if [ -n "${project}" ]; then	
 		[ -d ${releaseimagefolder}/uboot-${project}-${VERSION_NUMBER}-${now}/ ] || mkdir -p ${releaseimagefolder}/uboot-${project}-${VERSION_NUMBER}-${now}
 		[ -d ${releaseimagefolder}/uboot-${project}-${VERSION_NUMBER}-${now}/ ] && {
 			[ -f ${DEST_FILE} ] && cp ${DEST_FILE} ${releaseimagefolder}/uboot-${project}-${VERSION_NUMBER}-${now}/
 			[ -f ${DEST_HWSETTING_FILE} ] && cp ${DEST_HWSETTING_FILE} ${releaseimagefolder}/uboot-${project}-${VERSION_NUMBER}-${now}/Uboot-${project}-hwsetting.bin
 		}
+	else
+                [ -d ${releaseimagefolder}/uboot-${VERSION_NUMBER}-${now}/ ] || mkdir -p ${releaseimagefolder}/uboot-${VERSION_NUMBER}-${now}
+                [ -d ${releaseimagefolder}/uboot-${VERSION_NUMBER}-${now}/ ] && {
+                        [ -f ${DEST_FILE} ] && cp ${DEST_FILE} ${releaseimagefolder}/uboot-${VERSION_NUMBER}-${now}/
+                        [ -f ${DEST_HWSETTING_FILE} ] && cp ${DEST_HWSETTING_FILE} ${releaseimagefolder}/uboot-${VERSION_NUMBER}-${now}/Uboot-hwsetting.bin
+                }
+	fi
 fi
