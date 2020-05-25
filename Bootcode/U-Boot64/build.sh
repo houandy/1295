@@ -8,7 +8,7 @@ target=$1
 project=$2
 now="$(date '+%Y%m%d')"
 binfilefolder="DVRBOOT_OUT/${target}"
-releaseimagefolder="/var/www/html/release/image/${project}"
+releaseimagefolder="/var/www/html/release/${project}"
 [ -z $3 ] && VERSION_NUMBER="0.0.0" || VERSION_NUMBER=$3
 [ -z $4 ] && release=0 || release=1
 
