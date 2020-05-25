@@ -1,0 +1,43 @@
+diff -Nru a/common/main.c b/common/main.c
+--- a/common/main.c	2020-03-27 17:42:05.252848064 +0900
++++ b/common/main.c	2020-03-27 17:22:11.300840820 +0900
+@@ -346,37 +346,17 @@
+ 		setenv("rescue_cmd", "go ru");
+ 		boot_mode = BOOT_RESCUE_MODE;
+ 		abort = 1;
++		setenv("ubootversion", PLAIN_VERSION);
++		saveenv();
+ 	}
+ 	if(boot_mode == BOOT_RESCUE_MODE)
+ 	{
+ 		run_command("mw 0x98007310 0x08001400", 0);
+ 		run_command("mw 0x98007314 0x00000000", 0);
+ 		run_command("mw 0x98007104 0x10000002", 0);
+-		setenv("bootup", " ");
+-		setenv("upgradeimage", "1");
+-		saveenv();
+ 	}
+ #endif
+ 
+-	if(boot_mode != BOOT_RESCUE_MODE)
+-	{
+-		if(getenv_ulong("bootup", 16, 0) >= 1)
+-		{
+-			run_command("mw 0x98007310 0x08001400", 0);
+-			run_command("mw 0x98007314 0x00020000", 0);
+-			run_command("mw 0x98007104 0x70000002", 0);
+-			boot_mode = BOOT_CONSOLE_MODE;
+-			abort = 1; // don't auto boot
+-			setenv("bootup", " ");
+-			saveenv();
+-		}else{
+-			setenv("bootup", "1");
+-			if(getenv_ulong("upgradeimage", 16, 0) == 1)
+-				setenv("ubootversion", PLAIN_VERSION);
+-			saveenv();
+-		}
+-	}
+-
+ #if defined(CONFIG_BOARD_WD_MONARCH)||defined(CONFIG_BOARD_WD_PELICAN)
+ 		/**
+ 		@WD_Changes_begin

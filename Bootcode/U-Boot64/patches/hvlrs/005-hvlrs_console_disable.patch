@@ -1,0 +1,58 @@
+diff -Nru a/board/realtek/1295_qa/board.c b/board/realtek/1295_qa/board.c
+--- a/board/realtek/1295_qa/board.c	2019-12-06 15:34:11.000000000 +0900
++++ b/board/realtek/1295_qa/board.c	2020-03-25 11:52:22.103672366 +0900
+@@ -102,3 +102,9 @@
+ 
+ 	return revision;
+ }
++
++int board_early_init_f(void)
++{
++	gd->flags |= GD_FLG_DISABLE_CONSOLE;
++	return 0;
++}
+diff -Nru a/common/console.c b/common/console.c
+--- a/common/console.c	2019-12-06 15:34:11.000000000 +0900
++++ b/common/console.c	2020-03-25 11:53:56.179672936 +0900
+@@ -465,10 +465,10 @@
+ 		return;
+ #endif
+ 
+-#ifdef CONFIG_DISABLE_CONSOLE
+-	if (gd->flags & GD_FLG_DISABLE_CONSOLE)
+-		return;
+-#endif
++//#ifdef CONFIG_DISABLE_CONSOLE
++//	if (gd->flags & GD_FLG_DISABLE_CONSOLE)
++//		return;
++//#endif
+ 
+ 	if (!gd->have_console)
+ 		return pre_console_putc(c);
+@@ -497,10 +497,10 @@
+ 		return;
+ #endif
+ 
+-#ifdef CONFIG_DISABLE_CONSOLE
+-	if (gd->flags & GD_FLG_DISABLE_CONSOLE)
+-		return;
+-#endif
++//#ifdef CONFIG_DISABLE_CONSOLE
++//	if (gd->flags & GD_FLG_DISABLE_CONSOLE)
++//		return;
++//#endif
+ 
+ 	if (!gd->have_console)
+ 		return pre_console_puts(s);
+diff -Nru a/include/configs/rtd1295_qa_spi_16MB_64.h b/include/configs/rtd1295_qa_spi_16MB_64.h
+--- a/include/configs/rtd1295_qa_spi_16MB_64.h	2020-03-25 11:34:59.535666040 +0900
++++ b/include/configs/rtd1295_qa_spi_16MB_64.h	2020-03-25 11:52:41.655672484 +0900
+@@ -144,5 +144,8 @@
+ #undef CONFIG_SYS_TEXT_BASE
+ #define CONFIG_SYS_TEXT_BASE		0x00020000
+ 
++#define CONFIG_DISABLE_CONSOLE
++#define CONFIG_BOARD_EARLY_INIT_F	1
++
+ #endif /* __CONFIG_RTK_RTD1296_QA_SPI_64_H */
+ 

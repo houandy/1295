@@ -1,0 +1,75 @@
+--- U-Boot64.orig/common/cmd_boot.c	2019-12-06 15:34:11.000000000 +0900
++++ U-Boot64/common/cmd_boot.c	2020-03-24 11:10:24.191132893 +0900
+@@ -129,6 +129,7 @@
+ 
+ #ifdef NAS_ENABLE
+ uint initrd_size=0;
++uint use_initrd=0;
+ 
+ #if defined(NAS_ENABLE) && defined(CONFIG_RTD161x)
+ char *ion_media_heap0_size_str;
+@@ -3069,10 +3070,15 @@
+ 						entry_target_addr = get_kernel_rootfs_addr(entry_target_addr);
+ #ifdef NAS_ENABLE
+ 						initrd_size = entry_length;
++						use_initrd = ~0;
+ 						sprintf(tmpbuf, "mw.b 0x%08x 0 0x%x", entry_target_addr, entry_paddings);
+ 						printf("\t Clear memory at 0x%08x, size=0x%08x (0x%08x)\n",
+ 							entry_target_addr, entry_paddings, entry_target_addr + entry_paddings);
+ 						run_command(tmpbuf, 0);
++						snprintf((char *)str, 10, "%d", entry_length);
++						setenv("rootfs_length", (char *)str);
++						snprintf((char *)str, 14, "0x%x", entry_target_addr);
++						setenv("rootfs_addr", (char *)str);
+ #endif
+ 						break;
+ 					}
+@@ -3246,6 +3252,12 @@
+ 			{
+ 				initrd_size = (entry_lzma)?decompressedSize:entry_length;
+ 			}
++			else if (FW_TYPE_KERNEL == entry_type)
++			{
++				uint size = (entry_lzma)?decompressedSize:entry_length;
++				snprintf((char *)str, 10, "%d", size);
++				setenv("kernel_length", (char *)str);
++			}
+ #endif
+ 		}
+ 	}
+@@ -4755,6 +4767,35 @@
+ 		booti_argv[1] =(char*) CONFIG_KERNEL_LOADADDR;
+ 	}
+ 
++	if (use_initrd) {
++		char *env1;
++		char *env2;
++		char tmp_str[64];
++		unsigned int * Kh_key_ptr = 
++				(unsigned int *)(uintptr_t)Kh_key_default;
++		unsigned char aes_key[16];
++		env1 = getenv("kernel_length");
++		env2 = getenv("rootfs_length");
++		sprintf(tmp_str, "rtkspi read 0x00C80000 0xc100000 0x20000");
++		run_command(tmp_str, 0);
++		snprintf(tmp_str, sizeof(tmp_str)-4,
++				 "go 0xc100000 %s %s", env1, env2);
++		run_command(tmp_str, 0);
++		Kh_key_ptr = (unsigned int *) (uintptr_t)aes_key;
++		volatile unsigned char *in = (volatile unsigned char*)0xc100000;
++		memcpy(aes_key, (unsigned char *)in, AES_KEY_SIZE);
++		flush_cache((unsigned int) (uintptr_t)aes_key, AES_KEY_SIZE);
++		void *dst = (void *) getenv_ulong("rootfs_addr",16,0x02200000);
++		ulong length = simple_strtoul(env2, NULL, 10);
++		Kh_key_ptr[0] = swap_endian(Kh_key_ptr[0]);
++		Kh_key_ptr[1] = swap_endian(Kh_key_ptr[1]);
++		Kh_key_ptr[2] = swap_endian(Kh_key_ptr[2]);
++		Kh_key_ptr[3] = swap_endian(Kh_key_ptr[3]);
++		decrypt_image(dst, dst, length, Kh_key_ptr);
++		memset((unsigned char *)in, 0, AES_KEY_SIZE);
++		memset(aes_key, 0, AES_KEY_SIZE);
++	}
++
+ 	if ((booti_argv[3] = getenv("fdt_loadaddr")) == NULL) {
+ 		booti_argv[3] =(char*) CONFIG_FDT_LOADADDR;
+ 	}
