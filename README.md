@@ -1,6 +1,6 @@
 # HVLRS
 How to build
 cd OpenWRT-LEDE
-./scripts/build.sh wifibackup build 1.1.0.6 1.1.0.6
+./scripts/build.sh hvlrs build 1.1.0.6 1.1.0.6
 
 The img will be generated to the path "/bin/targets/realtek/hvlrs-glibc"
