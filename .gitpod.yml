@@ -13,7 +13,7 @@ tasks:
       ./configure --prefix=/usr --libexecdir=/usr/lib
       make -j$(nproc)
       sudo make install
-      cd ..
+      cd ...
       cd Docs
       mkdir -p build
       docker build -t quastation-kernel-bpi -f Dockerfile build/
