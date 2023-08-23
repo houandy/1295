@@ -15,5 +15,5 @@ tasks:
       sudo make install
       cd ../Docs
       mkdir -p build
-    	docker build -t quastation-kernel-bpi -f Dockerfile build/
-    	rmdir build
+      docker build -t quastation-kernel-bpi -f Dockerfile build/
+      rmdir build
