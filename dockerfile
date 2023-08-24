@@ -7,7 +7,7 @@ RUN dpkg --add-architecture i386 \
     && apt-get update \
     && apt-get install -y libc6:i386 libstdc++6:i386 \
     && apt-get install -y zlib1g:i386 \
-    && apt-get install -y locales \
+    && apt-get install -y locales gcc-4.8 g++-4.8 \
     git-core build-essential \
     libssl-dev libncurses5-dev unzip gawk zlib1g-dev \
     subversion curl wget file python gettext \
@@ -18,7 +18,7 @@ RUN locale-gen en_US.UTF-8
 RUN useradd -m -k /etc/skel -u 1000 -G sudo -d /home/sdkuser sdkuser 
 RUN echo "sdkuser ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/no_password
 
-
+WORKDIR /build
 # How to Use 
 # build a docker image by dockerfile-realtek
 #     sudo docker build -f dockerfile-realtek -t openwrt .
