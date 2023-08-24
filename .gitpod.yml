@@ -6,5 +6,4 @@ tasks:
         libxml-parser-perl kmod cpio device-tree-compiler libarchive-zip-perl libc6-i386 lib32stdc++6
       cd 1295
       mkdir build
-      docker build -t quastation-kernel-bpi -f Docs/Dockerfile build/
-      cd ..
+      docker build -t quastation-kernel-bpi -f Dockerfile build/
