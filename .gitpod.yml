@@ -6,15 +6,5 @@ tasks:
         libxml-parser-perl kmod cpio device-tree-compiler libarchive-zip-perl libc6-i386 lib32stdc++6
       sudo apt-get remove -y gawk
       mkdir build
-      cd build
-      wget https://toolchains.bootlin.com/downloads/releases/sources/gawk-4.2.1/gawk-4.2.1.tar.xz
-      tar axf gawk-4.2.1.tar.xz
-      cd gawk-4.2.1
-      ./configure --prefix=/usr --libexecdir=/usr/lib
-      make -j$(nproc)
-      sudo make install
-      cd ...
-      cd Docs
-      mkdir -p build
-      docker build -t quastation-kernel-bpi -f Dockerfile build/
-      rmdir build
+      docker build -t quastation-kernel-bpi -f Docs/Dockerfile build/
+      cd ..
