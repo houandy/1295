@@ -1,9 +1,5 @@
 tasks:
   - command: |
-      sudo apt-get update
-#      sudo apt-get install -y util-linux libncurses5-dev libncursesw5-dev gcc g++ binutils bzip2 \
-#        flex python3 perl make grep diffutils unzip subversion libz-dev libc-dev rsync python2 \
-#        libxml-parser-perl kmod cpio device-tree-compiler libarchive-zip-perl libc6-i386 lib32stdc++6
       cd 1295
       mkdir build
       docker build -t quastation-kernel-bpi -f Dockerfile build/
