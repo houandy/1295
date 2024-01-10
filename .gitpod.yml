@@ -2,4 +2,4 @@ tasks:
   - command: |
       cd 1295
       mkdir build
-      docker build -t quastation-kernel-bpi -f Dockerfile build/
+      docker run --rm -i -t -v `pwd`:/build/ sinovoip/bpi-build-linux-4.4:ubuntu16.04 /bin/bash
